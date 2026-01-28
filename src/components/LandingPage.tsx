@@ -141,10 +141,10 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
           <img
             src="/hero.png"
             alt=""
-            className="w-full h-full object-cover grayscale-[20%] brightness-[0.7]"
-            style={{ opacity: 0.9 }}
+            className="w-full h-full object-cover grayscale-[10%] brightness-[0.9]"
+            style={{ opacity: 1 }}
           />
-          <div className="absolute inset-0 bg-black/30" />
+          <div className="absolute inset-0 bg-white/70" />
         </div>
 
         <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
