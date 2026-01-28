@@ -1,9 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  ShoppingCart24Regular, 
-  Food24Regular, 
-  Reward24Regular,
+import {
+  Cart24Regular,
+  FoodPizza24Regular,
+  Trophy24Regular,
   ChartMultiple24Regular,
   People24Regular,
   ArrowRight24Regular,
@@ -18,12 +18,12 @@ interface LandingPageProps {
 export function LandingPage({ onLoginClick }: LandingPageProps) {
   const features = [
     {
-      icon: ShoppingCart24Regular,
+      icon: Cart24Regular,
       title: "Gestão de Vendas",
       description: "Controle completo de vendas locais e delivery em tempo real"
     },
     {
-      icon: Food24Regular,
+      icon: FoodPizza24Regular,
       title: "Catálogo Digital Fastfood",
       description: "Menu digital integrado para restaurantes e delivery"
     },
@@ -38,7 +38,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       description: "Cadastro e histórico completo de clientes"
     },
     {
-      icon: Reward24Regular,
+      icon: Trophy24Regular,
       title: "Multi-Terminal",
       description: "Suporte para múltiplos pontos de venda simultâneos"
     },
@@ -124,23 +124,23 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             </h1>
 
             <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              SkyPDV é um sistema completo de gestão e controle de vendas que permite catálogo digital com fastfood. 
+              SkyPDV é um sistema completo de gestão e controle de vendas que permite catálogo digital com fastfood.
               Controle vendas locais e vendas de fastfood para delivery.
             </p>
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-4">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="h-14 px-8 text-lg font-medium group"
                 onClick={onLoginClick}
               >
                 Começar Agora
                 <ArrowRight24Regular className="ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Button 
-                size="lg" 
-                variant="outline" 
+              <Button
+                size="lg"
+                variant="outline"
                 className="h-14 px-8 text-lg font-medium"
                 onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
               >
@@ -173,8 +173,8 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
             {features.map((feature, index) => (
-              <Card 
-                key={index} 
+              <Card
+                key={index}
                 className="fluent-card border-border/50 hover:border-primary/30 transition-all duration-300 hover:-translate-y-1"
               >
                 <CardHeader>
@@ -206,13 +206,12 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
             {pricingPlans.map((plan, index) => (
-              <Card 
+              <Card
                 key={index}
-                className={`fluent-card relative ${
-                  plan.highlighted 
-                    ? 'border-primary/50 shadow-strong scale-105 md:scale-110' 
-                    : 'border-border/50'
-                } transition-all duration-300 hover:-translate-y-2`}
+                className={`fluent-card relative ${plan.highlighted
+                  ? 'border-primary/50 shadow-strong scale-105 md:scale-110'
+                  : 'border-border/50'
+                  } transition-all duration-300 hover:-translate-y-2`}
               >
                 {plan.highlighted && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
@@ -221,7 +220,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
                     </div>
                   </div>
                 )}
-                
+
                 <CardHeader className="text-center pb-8">
                   <CardTitle className="text-2xl mb-2">{plan.name}</CardTitle>
                   <CardDescription className="text-base mb-6">
@@ -254,12 +253,11 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
                     ))}
                   </ul>
 
-                  <Button 
-                    className={`w-full h-11 text-base ${
-                      plan.highlighted 
-                        ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
-                        : ''
-                    }`}
+                  <Button
+                    className={`w-full h-11 text-base ${plan.highlighted
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : ''
+                      }`}
                     variant={plan.highlighted ? "default" : "outline"}
                     onClick={onLoginClick}
                   >
@@ -283,8 +281,8 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
                 Junte-se a centenas de empresas que já transformaram sua gestão de vendas com o SkyPDV
               </p>
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 className="h-14 px-8 text-lg font-medium"
                 onClick={onLoginClick}
               >
@@ -310,7 +308,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
               Sistema de Gestão e Controle de Vendas
             </p>
             <p className="text-sm text-muted-foreground">
-              Subsistema da <span className="font-medium text-primary">SkyVenda MZ</span> • 
+              Subsistema da <span className="font-medium text-primary">SkyVenda MZ</span> •
               Criado pela <span className="font-medium text-foreground">BlueSpark MZ</span>
             </p>
             <p className="text-xs text-muted-foreground pt-4">
