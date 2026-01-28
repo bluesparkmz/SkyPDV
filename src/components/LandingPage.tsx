@@ -402,18 +402,19 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
 
       {/* Cookie Consent */}
       {showCookieConsent && (
-        <div className="fixed bottom-10 left-10 right-10 z-[100] animate-[slide-up_0.8s_cubic-bezier(0.16,1,0.3,1)]">
-          <div className="max-w-6xl mx-auto acrylic-surface border-4 border-primary/30 p-10 rounded-[3rem] shadow-3xl flex flex-col lg:flex-row items-center gap-10">
-            <div className="w-20 h-20 rounded-3xl bg-primary/10 flex items-center justify-center text-primary animate-pulse">
-              <Eye24Regular className="w-10 h-10" />
+        <div className="fixed bottom-6 left-6 right-6 z-[100] animate-[slide-up_0.8s_cubic-bezier(0.16,1,0.3,1)]">
+          <div className="max-w-4xl mx-auto acrylic-surface border border-primary/20 p-4 rounded-2xl shadow-2xl flex flex-row items-center gap-4">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+              <Eye24Regular className="text-primary w-5 h-5" />
             </div>
-            <div className="flex-grow space-y-2 text-center lg:text-left">
-              <h4 className="text-3xl font-black uppercase tracking-tighter">Segurança de Dados</h4>
-              <p className="text-lg text-muted-foreground font-bold italic">Utilizamos cookies para otimizar sua performance conforme o protocolo BlueSpark Privacy Framework.</p>
+            <div className="flex-grow">
+              <p className="text-sm font-semibold text-foreground">
+                Utilizamos cookies para melhorar sua experiência. Ao continuar, você concorda com nossa política de privacidade.
+              </p>
             </div>
-            <div className="flex gap-4 w-full lg:w-auto">
-              <Button variant="outline" className="h-16 flex-grow lg:flex-none px-10 rounded-2xl font-black text-xl border-4" onClick={() => setShowCookieConsent(false)}>Recusar</Button>
-              <Button className="h-16 flex-grow lg:flex-none px-12 rounded-2xl font-black text-xl bg-primary text-white shadow-2xl" onClick={acceptCookies}>Permitir</Button>
+            <div className="flex gap-2 flex-shrink-0">
+              <Button variant="outline" className="h-9 px-4 rounded-lg text-sm font-bold" onClick={() => setShowCookieConsent(false)}>Recusar</Button>
+              <Button className="h-9 px-6 rounded-lg text-sm font-bold bg-primary text-white" onClick={acceptCookies}>Aceitar</Button>
             </div>
           </div>
         </div>
