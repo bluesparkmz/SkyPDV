@@ -402,19 +402,19 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
 
       {/* Cookie Consent */}
       {showCookieConsent && (
-        <div className="fixed bottom-6 left-6 right-6 z-[100] animate-[slide-up_0.8s_cubic-bezier(0.16,1,0.3,1)]">
-          <div className="max-w-4xl mx-auto acrylic-surface border border-primary/20 p-4 rounded-2xl shadow-2xl flex flex-row items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <div className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-6 md:right-6 z-[100] animate-[slide-up_0.8s_cubic-bezier(0.16,1,0.3,1)]">
+          <div className="max-w-4xl mx-auto acrylic-surface border border-primary/20 p-3 md:p-4 rounded-xl md:rounded-2xl shadow-2xl flex flex-col md:flex-row items-center gap-3 md:gap-4">
+            <div className="hidden md:flex w-10 h-10 rounded-xl bg-primary/10 items-center justify-center flex-shrink-0">
               <Eye24Regular className="text-primary w-5 h-5" />
             </div>
-            <div className="flex-grow">
-              <p className="text-sm font-semibold text-foreground">
+            <div className="flex-grow text-center md:text-left">
+              <p className="text-xs md:text-sm font-semibold text-foreground">
                 Utilizamos cookies para melhorar sua experiência. Ao continuar, você concorda com nossa política de privacidade.
               </p>
             </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <Button variant="outline" className="h-9 px-4 rounded-lg text-sm font-bold" onClick={() => setShowCookieConsent(false)}>Recusar</Button>
-              <Button className="h-9 px-6 rounded-lg text-sm font-bold bg-primary text-white" onClick={acceptCookies}>Aceitar</Button>
+            <div className="flex gap-2 w-full md:w-auto flex-shrink-0">
+              <Button variant="outline" className="h-8 md:h-9 px-3 md:px-4 rounded-lg text-xs md:text-sm font-bold flex-1 md:flex-none" onClick={() => setShowCookieConsent(false)}>Recusar</Button>
+              <Button className="h-8 md:h-9 px-4 md:px-6 rounded-lg text-xs md:text-sm font-bold bg-primary text-white flex-1 md:flex-none" onClick={acceptCookies}>Aceitar</Button>
             </div>
           </div>
         </div>
