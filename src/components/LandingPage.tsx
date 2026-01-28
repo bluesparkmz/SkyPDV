@@ -128,7 +128,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             <Button variant="ghost" className="hidden sm:inline-flex font-bold hover:bg-primary/5 rounded-xl transition-all" onClick={onLoginClick}>
               Entrar
             </Button>
-            <Button className="shadow-2xl shadow-primary/40 h-11 px-8 font-black rounded-xl bg-primary hover:bg-primary/90 transition-all active:scale-95" onClick={onLoginClick}>
+            <Button className="shadow-2xl shadow-primary/40 h-11 px-8 font-black rounded-xl bg-primary hover:bg-primary/90 transition-all active:scale-95 text-white" onClick={onLoginClick}>
               Teste Grátis
             </Button>
           </div>
@@ -154,7 +154,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
               BlueSpark Innovation 2026
             </div>
 
-            <h1 className="text-7xl md:text-8xl lg:text-[10rem] font-black tracking-tighter mb-8 leading-[0.85] text-foreground drop-shadow-2xl uppercase">
+            <h1 className="text-7xl md:text-8xl lg:text-[9rem] font-black tracking-tighter mb-8 leading-[0.85] text-foreground drop-shadow-2xl uppercase">
               Venda como <br />
               <span className="bg-gradient-to-r from-primary via-indigo-500 to-blue-400 bg-clip-text text-transparent italic pr-2">
                 Gigante.
@@ -259,7 +259,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       {/* Methodology */}
       <section id="how-it-works" className="py-32 bg-primary/5">
         <div className="container mx-auto px-6 text-center mb-24">
-          <h2 className="text-5xl md:text-7xl font-black tracking-tighter">SkyFlow Methodology</h2>
+          <h2 className="text-5xl md:text-7xl font-black tracking-tighter uppercase">SkyFlow Methodology</h2>
         </div>
         <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-16">
           {[
@@ -271,7 +271,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
               <div className="w-20 h-20 rounded-[30px] bg-background shadow-2xl mx-auto flex items-center justify-center mb-8 border border-border group-hover:-translate-y-2 transition-transform">
                 <item.icon className="w-10 h-10 text-primary" />
               </div>
-              <h3 className="text-3xl font-black mb-4">{item.title}</h3>
+              <h3 className="text-3xl font-black mb-4 uppercase">{item.title}</h3>
               <p className="text-muted-foreground font-bold italic opacity-70 px-4">{item.desc}</p>
             </div>
           ))}
@@ -281,7 +281,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       {/* Pricing */}
       <section id="pricing" className="py-40">
         <div className="container mx-auto px-6 text-center mb-24">
-          <h2 className="text-6xl md:text-8xl font-black tracking-tighter">Planos de Poder.</h2>
+          <h2 className="text-6xl md:text-8xl font-black tracking-tighter uppercase">Planos de Poder.</h2>
         </div>
         <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-10">
           {[
@@ -289,7 +289,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             { name: "Professional", price: "5.500", highlight: true },
             { name: "Enterprise", price: "Custom", highlight: false }
           ].map(plan => (
-            <div key={plan.name} className={`p-16 rounded-[50px] border-4 flex flex-col h-full transition-all duration-700 ${plan.highlight ? "bg-primary text-white border-primary shadow-2xl scale-105 z-10" : "bg-background border-border hover:border-primary/20 shadow-xl"}`}>
+            <div key={plan.name} className={`p-10 md:p-16 rounded-[50px] border-4 flex flex-col h-full transition-all duration-700 ${plan.highlight ? "bg-primary text-white border-primary shadow-2xl scale-105 z-10" : "bg-background border-border hover:border-primary/20 shadow-xl"}`}>
               <h3 className="text-3xl font-black mb-10 uppercase tracking-tighter">{plan.name}</h3>
               <div className="flex items-baseline gap-2 mb-12">
                 <span className="text-7xl font-black tracking-tighter">{plan.price}</span>
@@ -303,7 +303,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
                   </div>
                 ))}
               </div>
-              <Button className={`w-full h-18 rounded-[2rem] text-xl font-black ${plan.highlight ? "bg-white text-primary hover:bg-white/90" : "bg-primary text-white"}`} onClick={onLoginClick}>
+              <Button className={`w-full h-18 rounded-[2rem] text-xl font-black ${plan.highlight ? "bg-white text-primary hover:bg-white/90 shadow-lg shadow-black/20" : "bg-primary text-white shadow-xl shadow-primary/30"}`} onClick={onLoginClick}>
                 Escolher {plan.name}
               </Button>
             </div>
@@ -311,48 +311,90 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-24 bg-secondary/20 border-t border-border/50">
-        <div className="container mx-auto px-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
-          <div className="space-y-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-black text-xl">S</div>
-              <span className="text-2xl font-black tracking-tighter">SkyPDV</span>
+      {/* FOOTER */}
+      <footer className="py-32 bg-secondary/20 border-t border-border/50">
+        <div className="container mx-auto px-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-24">
+            <div className="space-y-8">
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-black text-2xl shadow-xl">S</div>
+                <span className="text-3xl font-black tracking-tighter">SkyPDV</span>
+              </div>
+              <p className="text-xl text-muted-foreground font-semibold leading-relaxed italic opacity-80">
+                Liderando o futuro tecnológico em Moçambique com o talento incomparável da BlueSpark MZ Group.
+              </p>
+              <div className="space-y-6 pt-6 border-t border-border/50">
+                <div className="flex items-center gap-4 text-primary group cursor-pointer">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary group-hover:text-white transition-all shadow-lg shadow-primary/10">
+                    <Call24Regular className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[0.6rem] font-bold uppercase tracking-widest text-muted-foreground">Suporte / WhatsApp</span>
+                    <span className="text-2xl font-black">860716912</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-4 text-muted-foreground group cursor-pointer hover:text-primary transition-colors">
+                  <div className="w-12 h-12 rounded-full bg-secondary border border-border flex items-center justify-center group-hover:border-primary transition-all">
+                    <Mail24Regular className="w-6 h-6" />
+                  </div>
+                  <span className="text-lg font-bold">contato@bluesparkmz.com</span>
+                </div>
+              </div>
             </div>
-            <p className="text-lg text-muted-foreground font-semibold italic">Desenvolvido pela BlueSpark MZ Group em Moçambique.</p>
-            <div className="flex flex-col gap-2 font-black">
-              <span className="text-primary text-2xl tracking-tighter underline">860716912</span>
-              <span className="text-muted-foreground opacity-50 underline">contato@bluesparkmz.com</span>
+
+            <div className="space-y-10">
+              <h4 className="text-[0.6rem] font-black uppercase tracking-[0.5em] text-primary">Navegação</h4>
+              <nav className="flex flex-col gap-6 font-black text-lg tracking-tight uppercase tracking-[0.05em] text-muted-foreground">
+                <span onClick={() => scrollTo('features')} className="hover:text-primary cursor-pointer transition-all flex items-center gap-3"><ArrowRight24Regular className="w-4 h-4 opacity-30" /> Recursos</span>
+                <span onClick={() => scrollTo('devices')} className="hover:text-primary cursor-pointer transition-all flex items-center gap-3"><ArrowRight24Regular className="w-4 h-4 opacity-30" /> Dispositivos</span>
+                <span onClick={() => scrollTo('pricing')} className="hover:text-primary cursor-pointer transition-all flex items-center gap-3"><ArrowRight24Regular className="w-4 h-4 opacity-30" /> Preços</span>
+                <span className="hover:text-primary cursor-pointer transition-all flex items-center gap-3"><Eye24Regular className="w-4 h-4 opacity-30" /> Privacidade</span>
+                <span className="hover:text-primary cursor-pointer transition-all flex items-center gap-3"><QuestionCircle24Regular className="w-4 h-4 opacity-30" /> Ajuda / FAQ</span>
+              </nav>
+            </div>
+
+            <div className="space-y-10">
+              <h4 className="text-[0.6rem] font-black uppercase tracking-[0.5em] text-primary">Ecosystem Hub</h4>
+              <nav className="flex flex-col gap-6 font-black text-lg tracking-tight uppercase tracking-[0.05em] text-muted-foreground">
+                <a href="https://bluesparkmz.com" target="_blank" className="hover:text-primary transition-all flex items-center gap-3"><Globe24Regular className="w-4 h-4 opacity-30 text-blue-500" /> BlueSpark MZ</a>
+                <a href="https://skyvenda.com" target="_blank" className="hover:text-primary transition-all flex items-center gap-3"><Globe24Regular className="w-4 h-4 opacity-30 text-primary" /> SkyVenda.com</a>
+                <a href="https://fastfood.skyvenda.com" target="_blank" className="hover:text-primary transition-all flex items-center gap-3"><Globe24Regular className="w-4 h-4 opacity-30 text-amber-500" /> FastFood Sky</a>
+                <a href="https://smartmoz.skyvenda.com" target="_blank" className="hover:text-primary transition-all flex items-center gap-3"><Globe24Regular className="w-4 h-4 opacity-30 text-emerald-500" /> SmartMoz</a>
+              </nav>
+            </div>
+
+            <div className="space-y-10">
+              <h4 className="text-[0.6rem] font-black uppercase tracking-[0.5em] text-primary">Global Presence</h4>
+              <div className="p-8 rounded-[40px] bg-background border-2 border-primary/20 space-y-6 shadow-2xl relative overflow-hidden group">
+                <div className="flex items-center gap-4 font-black text-xl tracking-tighter">
+                  <ShieldCheckmark24Regular className="text-primary w-8 h-8" />
+                  Secured Data
+                </div>
+                <p className="text-sm font-bold text-muted-foreground leading-relaxed italic opacity-70">
+                  Sua operação em total conformidade com protocolos de segurança bancária.
+                </p>
+                <div className="flex items-center gap-2 font-black text-[0.6rem] text-primary tracking-widest uppercase">
+                  <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span> Live Security
+                </div>
+              </div>
             </div>
           </div>
-          <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.4em] text-primary mb-8">Navegação</h4>
-            <div className="flex flex-col gap-4 font-black text-muted-foreground uppercase text-sm">
-              <span onClick={() => scrollTo('features')} className="hover:text-primary cursor-pointer transition-colors">Recursos</span>
-              <span onClick={() => scrollTo('devices')} className="hover:text-primary cursor-pointer transition-colors">Dispositivos</span>
-              <span onClick={() => scrollTo('pricing')} className="hover:text-primary cursor-pointer transition-colors">Preços</span>
-              <span className="hover:text-primary cursor-pointer transition-colors italic">Privacidade</span>
+
+          <div className="pt-20 border-t border-border/30 flex flex-col md:flex-row items-center justify-between gap-12">
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-wrap justify-center md:justify-start items-center gap-8 font-black text-xs uppercase opacity-40 tracking-[0.3em]">
+                <span>© 2026 BLUESPARK MZ Group</span>
+                <span>Mozambique HQ</span>
+              </div>
+              <span className="text-[0.6rem] font-black opacity-20 uppercase tracking-[0.8em] text-center md:text-left">All Rights Reserved</span>
             </div>
-          </div>
-          <div>
-            <h4 className="text-xs font-black uppercase tracking-[0.4em] text-primary mb-8">Ecossistema</h4>
-            <div className="flex flex-col gap-4 font-black text-muted-foreground uppercase text-sm">
-              <a href="https://bluesparkmz.com" target="_blank">BlueSpark MZ</a>
-              <a href="https://skyvenda.com" target="_blank">SkyVenda</a>
-              <a href="https://fastfood.skyvenda.com" target="_blank">FastFood</a>
-              <a href="https://smartmoz.skyvenda.com" target="_blank">SmartMoz</a>
+
+            <div className="flex flex-col items-center md:items-end gap-3">
+              <div className="flex items-center gap-4 px-8 py-4 rounded-2xl bg-primary text-white font-black shadow-2xl shadow-primary/40 transform hover:scale-110 transition-transform">
+                <Building24Regular className="w-7 h-7" />
+                <span className="text-lg tracking-tighter uppercase">Mozambique Technology 🇲🇿</span>
+              </div>
             </div>
-          </div>
-          <div className="p-8 rounded-[40px] bg-background border border-border shadow-2xl relative overflow-hidden">
-            <div className="flex items-center gap-2 font-black text-primary mb-4">
-              <ShieldCheckmark24Regular className="w-5 h-5" /> Secured Data
-            </div>
-            <p className="text-xs font-bold text-muted-foreground opacity-70">Operação em total conformidade com protocolos de segurança bancária.</p>
-          </div>
-        </div>
-        <div className="container mx-auto px-6 pt-24 mt-24 border-t border-border/30 text-center">
-          <div className="inline-flex items-center gap-3 px-8 py-4 rounded-2xl bg-primary text-white font-black shadow-xl uppercase tracking-widest text-xs">
-            <Building24Regular className="w-5 h-5" /> MOZAMBIQUE TECHNOLOGY 🇲🇿
           </div>
         </div>
       </footer>
@@ -366,7 +408,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             </div>
             <div className="flex-grow space-y-2 text-center lg:text-left">
               <h4 className="text-3xl font-black uppercase tracking-tighter">Segurança de Dados</h4>
-              <p className="text-lg text-muted-foreground font-bold italic">Utilizamos cookies para otimizar sua performance conforme o protocolo BlueSpark Framework.</p>
+              <p className="text-lg text-muted-foreground font-bold italic">Utilizamos cookies para otimizar sua performance conforme o protocolo BlueSpark Privacy Framework.</p>
             </div>
             <div className="flex gap-4 w-full lg:w-auto">
               <Button variant="outline" className="h-16 flex-grow lg:flex-none px-10 rounded-2xl font-black text-xl border-4" onClick={() => setShowCookieConsent(false)}>Recusar</Button>
