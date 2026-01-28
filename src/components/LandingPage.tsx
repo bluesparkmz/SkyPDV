@@ -110,11 +110,10 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? "acrylic-surface border-b border-border/50 py-3 shadow-xl" : "bg-transparent py-6"
         }`}>
         <div className="container mx-auto px-6 flex items-center justify-between">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/40 transform hover:scale-105 transition-transform">
-              <span className="text-xl font-black text-white italic">S</span>
-            </div>
-            <span className="text-2xl font-black tracking-tighter">SkyPDV</span>
+          <div className="flex items-center cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            <span className="text-2xl font-black tracking-tighter transition-transform group-hover:scale-105 active:scale-95">
+              <span className="text-primary">Sky</span>PDV
+            </span>
           </div>
 
           <div className="hidden lg:flex items-center gap-10">
@@ -317,9 +316,10 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
         <div className="container mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16 mb-24">
             <div className="space-y-8">
-              <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-                <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center text-white font-black text-2xl shadow-xl">S</div>
-                <span className="text-3xl font-black tracking-tighter">SkyPDV</span>
+              <div className="flex items-center cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                <span className="text-3xl font-black tracking-tighter transition-transform group-hover:scale-105 active:scale-95">
+                  <span className="text-primary">Sky</span>PDV
+                </span>
               </div>
               <p className="text-xl text-muted-foreground font-semibold leading-relaxed italic opacity-80">
                 Liderando o futuro tecnológico em Moçambique com o talento incomparável da BlueSpark MZ Group.
