@@ -4,12 +4,14 @@ import { useQuery } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { SkyPDV } from "@/components/SkyPDV";
 import { Login } from "@/components/Login";
+import { LandingPage } from "@/components/LandingPage";
 import { terminalApi, ApiError } from "@/services/api";
 import { TerminalSetup } from "@/components/TerminalSetup";
 
 const AppContent = () => {
   const { isAuthenticated, isLoading } = useAuth();
   const [setupNonce, setSetupNonce] = useState(0);
+  const [showLogin, setShowLogin] = useState(false);
 
   const terminalQuery = useQuery({
     queryKey: ["terminal", setupNonce],
@@ -30,7 +32,7 @@ const AppContent = () => {
   }
 
   if (!isAuthenticated) {
-    return <Login />;
+    return showLogin ? <Login /> : <LandingPage onLoginClick={() => setShowLogin(true)} />;
   }
 
   const terminalNotSetup =
