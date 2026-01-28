@@ -1,0 +1,252 @@
+@import url('https://fonts.googleapis.com/css2?family=Segoe+UI:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Windows 11 Light Theme */
+    --background: 200 10% 96%;
+    --foreground: 200 20% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 200 20% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 200 20% 10%;
+
+    /* Indigo Accent */
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 10% 92%;
+    --secondary-foreground: 230 20% 10%;
+
+    --muted: 230 10% 90%;
+    --muted-foreground: 230 10% 40%;
+
+    --accent: 239 84% 67%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 10% 88%;
+    --input: 200 10% 88%;
+    --ring: 239 84% 67%;
+
+    --radius: 0.5rem;
+
+    /* Windows 11 Custom */
+    --taskbar: 200 15% 12%;
+    --taskbar-foreground: 0 0% 100%;
+    --surface: 0 0% 100%;
+    --surface-hover: 200 10% 97%;
+    --acrylic: 0 0% 100% / 0.7;
+    --shadow-subtle: 0 2px 8px hsl(200 10% 10% / 0.08);
+    --shadow-medium: 0 4px 16px hsl(200 10% 10% / 0.12);
+    --shadow-strong: 0 8px 32px hsl(200 10% 10% / 0.16);
+    
+    /* Cart & Products */
+    --success: 142 70% 45%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+  }
+
+  .dark {
+    --background: 200 15% 8%;
+    --foreground: 0 0% 95%;
+
+    --card: 200 15% 12%;
+    --card-foreground: 0 0% 95%;
+
+    --popover: 200 15% 12%;
+    --popover-foreground: 0 0% 95%;
+
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 230 15% 18%;
+    --secondary-foreground: 0 0% 95%;
+
+    --muted: 230 15% 20%;
+    --muted-foreground: 230 10% 60%;
+
+    --accent: 239 84% 67%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 200 15% 20%;
+    --input: 200 15% 20%;
+    --ring: 239 84% 67%;
+
+    --taskbar: 200 15% 6%;
+    --taskbar-foreground: 0 0% 100%;
+    --surface: 200 15% 14%;
+    --surface-hover: 200 15% 18%;
+    --acrylic: 200 15% 8% / 0.8;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+    -webkit-touch-callout: none;
+  }
+
+  input, textarea {
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+}
+
+@layer components {
+  .acrylic-surface {
+    @apply bg-card/80 backdrop-blur-xl;
+    box-shadow: var(--shadow-medium);
+  }
+
+  .fluent-card {
+    @apply bg-card rounded-lg border border-border/50;
+    box-shadow: var(--shadow-subtle);
+    transition: all 0.2s ease;
+  }
+
+  .fluent-card:hover {
+    box-shadow: var(--shadow-medium);
+    @apply border-border;
+  }
+
+  .fluent-button {
+    @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium;
+    @apply bg-secondary text-secondary-foreground;
+    @apply hover:bg-muted transition-all duration-150;
+  }
+
+  .fluent-button-primary {
+    @apply bg-primary text-primary-foreground;
+    @apply hover:bg-primary/90;
+  }
+
+  .fluent-button-subtle {
+    @apply bg-transparent hover:bg-secondary;
+  }
+
+  .taskbar-icon {
+    @apply p-2.5 rounded-md transition-all duration-150 relative;
+    @apply hover:bg-white/10;
+  }
+
+  .taskbar-icon.active {
+    @apply bg-white/15;
+  }
+
+  .taskbar-icon.active::after {
+    content: '';
+    @apply absolute bottom-0 left-1/2 -translate-x-1/2 w-4 h-[3px] rounded-full bg-primary;
+  }
+
+  .windows-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .windows-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .windows-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+
+  .windows-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted-foreground/50;
+  }
+
+  .product-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+  }
+
+  .cart-item {
+    @apply flex items-center gap-3 p-3 rounded-lg bg-secondary/50;
+    @apply hover:bg-secondary transition-colors;
+  }
+
+  .quantity-control {
+    @apply flex items-center gap-1;
+  }
+
+  .quantity-btn {
+    @apply w-7 h-7 rounded-md flex items-center justify-center;
+    @apply bg-secondary hover:bg-muted text-foreground;
+    @apply transition-colors text-sm font-medium;
+  }
+
+  .start-menu {
+    @apply fixed bottom-14 left-1/2 -translate-x-1/2;
+    @apply w-[580px] max-h-[70vh];
+    @apply acrylic-surface rounded-xl;
+    @apply border border-border/50;
+    animation: slideUp 0.2s ease-out;
+  }
+
+  @media (max-width: 640px) {
+    .start-menu {
+      @apply w-[calc(100%-2rem)] left-4 translate-x-0;
+      animation: slideUpMobile 0.2s ease-out;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 10px);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
+
+  @keyframes slideUpMobile {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+}
