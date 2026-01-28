@@ -135,41 +135,44 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       </nav>
 
       {/* Hero Section */}
-      <header id="home" className="relative w-full min-h-screen flex items-center pt-24 overflow-hidden">
+      <header id="home" className="relative w-full min-h-screen flex items-center pt-20 md:pt-24 overflow-hidden">
         {/* Background Image Container */}
         <div className="absolute inset-0 z-0">
           <img
             src="/hero.png"
             alt=""
-            className="w-full h-full object-cover grayscale-[10%] brightness-[0.9]"
+            className="w-full h-full object-cover object-top md:object-center"
             style={{ opacity: 1 }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/60 to-transparent" />
+          {/* Mobile: gradiente vertical (branco em cima, transparente embaixo) */}
+          <div className="absolute inset-0 bg-gradient-to-b from-white via-white/80 to-transparent md:hidden" />
+          {/* Desktop: gradiente horizontal (branco à esquerda, transparente à direita) */}
+          <div className="hidden md:block absolute inset-0 bg-gradient-to-r from-white via-white/60 to-transparent" />
         </div>
 
-        <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
-          <div className="max-w-4xl text-left space-y-8">
-            <div className="inline-flex items-center gap-3 px-5 py-2 rounded-2xl bg-primary shadow-2xl shadow-primary/50 text-[10px] font-black text-white tracking-[0.2em] uppercase mb-4 animate-bounce">
-              <Rocket24Regular className="w-5 h-5" />
+        <div className="container mx-auto px-4 md:px-6 relative z-10 w-full">
+          <div className="max-w-4xl text-left space-y-4 md:space-y-8">
+            <div className="inline-flex items-center gap-2 md:gap-3 px-3 md:px-5 py-1 md:py-2 rounded-xl md:rounded-2xl bg-primary shadow-xl md:shadow-2xl shadow-primary/50 text-[8px] md:text-[10px] font-black text-white tracking-[0.2em] uppercase mb-2 md:mb-4 animate-bounce">
+              <Rocket24Regular className="w-4 h-4 md:w-5 md:h-5" />
               BlueSpark Innovation 2026
             </div>
 
-            <h1 className="text-7xl md:text-8xl lg:text-[9rem] font-black tracking-tighter mb-8 leading-[0.85] text-foreground drop-shadow-2xl uppercase">
+            <h1 className="text-5xl md:text-7xl lg:text-[9rem] font-black tracking-tighter mb-4 md:mb-8 leading-[0.85] text-foreground drop-shadow-2xl uppercase">
               Venda como <br />
               <span className="bg-gradient-to-r from-primary via-indigo-500 to-blue-400 bg-clip-text text-transparent italic pr-2">
                 Gigante.
               </span>
             </h1>
 
-            <p className="text-xl md:text-3xl text-muted-foreground max-w-2xl leading-relaxed font-semibold italic border-l-4 border-primary pl-6">
+            <p className="text-base md:text-xl lg:text-3xl text-muted-foreground max-w-2xl leading-relaxed font-semibold italic border-l-4 border-primary pl-4 md:pl-6">
               SkyPDV: Elevando o padrão comercial de Moçambique com gestão em tempo real e inteligência nativa.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-6 items-start pt-6">
-              <Button size="lg" className="h-20 px-14 text-2xl font-black group rounded-[2.5rem] shadow-[0_40px_80px_-15px_rgba(79,70,229,0.5)] bg-primary hover:bg-primary/90 transition-all overflow-hidden relative active:scale-95 text-white" onClick={onLoginClick}>
-                <span className="relative z-10 flex items-center gap-3">
+            <div className="flex flex-col sm:flex-row gap-4 md:gap-6 items-start pt-4 md:pt-6">
+              <Button size="lg" className="h-12 md:h-16 lg:h-20 px-8 md:px-12 lg:px-14 text-base md:text-xl lg:text-2xl font-black group rounded-2xl md:rounded-[2.5rem] shadow-xl md:shadow-[0_40px_80px_-15px_rgba(79,70,229,0.5)] bg-primary hover:bg-primary/90 transition-all overflow-hidden relative active:scale-95 text-white w-full sm:w-auto" onClick={onLoginClick}>
+                <span className="relative z-10 flex items-center gap-2 md:gap-3 justify-center">
                   Iniciar Jornada
-                  <ArrowRight24Regular className="group-hover:translate-x-3 transition-transform h-8 w-8" />
+                  <ArrowRight24Regular className="group-hover:translate-x-3 transition-transform h-5 w-5 md:h-6 md:w-6 lg:h-8 lg:w-8" />
                 </span>
               </Button>
             </div>
