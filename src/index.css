@@ -105,7 +105,8 @@
   body {
     @apply bg-background text-foreground;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     -webkit-touch-callout: none;
   }
 
