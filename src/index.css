@@ -47,7 +47,7 @@
     --shadow-subtle: 0 2px 8px hsl(200 10% 10% / 0.08);
     --shadow-medium: 0 4px 16px hsl(200 10% 10% / 0.12);
     --shadow-strong: 0 8px 32px hsl(200 10% 10% / 0.16);
-    
+
     /* Cart & Products */
     --success: 142 70% 45%;
     --success-foreground: 0 0% 100%;
@@ -102,15 +102,19 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  html,
   body {
     @apply bg-background text-foreground;
     font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    height: auto !important;
+    min-height: 100%;
     -webkit-touch-callout: none;
   }
 
-  input, textarea {
+  input,
+  textarea {
     -webkit-user-select: text;
     -moz-user-select: text;
     -ms-user-select: text;
@@ -221,6 +225,7 @@
       opacity: 0;
       transform: translate(-50%, 10px);
     }
+
     to {
       opacity: 1;
       transform: translate(-50%, 0);
@@ -232,6 +237,7 @@
       opacity: 0;
       transform: translateY(10px);
     }
+
     to {
       opacity: 1;
       transform: translateY(0);
@@ -242,6 +248,7 @@
     from {
       opacity: 0;
     }
+
     to {
       opacity: 1;
     }

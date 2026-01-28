@@ -105,9 +105,9 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
   ];
 
   return (
-    <div className="min-h-screen bg-background text-foreground scroll-smooth select-none selection:bg-primary/30">
+    <div className="w-full bg-background text-foreground select-none selection:bg-primary/30" style={{ overflowY: 'auto', overflowX: 'hidden', minHeight: '100vh' }}>
       {/* Sticky Navigation */}
-      <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled ? "acrylic-surface border-b border-border/50 py-3 shadow-xl" : "bg-transparent py-6"
+      <nav className={`fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ${scrolled ? "acrylic-surface border-b border-border/50 py-3 shadow-xl" : "bg-transparent py-6"
         }`}>
         <div className="container mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
@@ -136,18 +136,19 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       </nav>
 
       {/* Hero Section */}
-      <header className="relative min-h-screen flex items-center pt-24 overflow-hidden">
-        <div className="absolute inset-0 -z-10">
+      <header id="home" className="relative w-full min-h-screen flex items-center pt-24 overflow-hidden">
+        {/* Background Image Container */}
+        <div className="absolute inset-0 z-0">
           <img
             src="/hero.png"
-            alt="Hero background"
-            className="w-full h-full object-cover grayscale-[20%] brightness-[0.7] contrast-[1.1]"
+            alt=""
+            className="w-full h-full object-cover grayscale-[20%] brightness-[0.7]"
+            style={{ opacity: 0.9 }}
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent"></div>
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent"></div>
+          <div className="absolute inset-0 bg-black/30" />
         </div>
 
-        <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
+        <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
           <div className="max-w-4xl text-left space-y-8">
             <div className="inline-flex items-center gap-3 px-5 py-2 rounded-2xl bg-primary shadow-2xl shadow-primary/50 text-[10px] font-black text-white tracking-[0.2em] uppercase mb-4 animate-bounce">
               <Rocket24Regular className="w-5 h-5" />
