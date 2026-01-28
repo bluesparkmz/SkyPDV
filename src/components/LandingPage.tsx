@@ -144,7 +144,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
             className="w-full h-full object-cover grayscale-[10%] brightness-[0.9]"
             style={{ opacity: 1 }}
           />
-          <div className="absolute inset-0 bg-white/70" />
+          <div className="absolute inset-0 bg-gradient-to-r from-white via-white/60 to-transparent" />
         </div>
 
         <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center relative z-10">
