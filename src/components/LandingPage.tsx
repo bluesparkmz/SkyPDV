@@ -139,7 +139,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
       <header className="relative min-h-screen flex items-center pt-24 overflow-hidden">
         <div className="absolute inset-0 -z-10">
           <img
-            src="hero.png"
+            src="/hero.png"
             alt="Hero background"
             className="w-full h-full object-cover grayscale-[20%] brightness-[0.7] contrast-[1.1]"
           />
@@ -232,7 +232,7 @@ export function LandingPage({ onLoginClick }: LandingPageProps) {
         <div className="container mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <div className="relative group grayscale-[20%] hover:grayscale-0 transition-all duration-700">
             <div className="absolute inset-0 bg-primary/10 blur-[100px] rounded-full"></div>
-            <img src="responsive.png" alt="Multi devices" className="relative z-10 w-full hover:scale-105 transition-transform duration-700 drop-shadow-2xl" />
+            <img src="/responsive.png" alt="Multi devices" className="relative z-10 w-full hover:scale-105 transition-transform duration-700 drop-shadow-2xl" />
           </div>
           <div className="space-y-8">
             <div className="text-primary font-black uppercase tracking-[0.4em] text-xs">Venda em qualquer lugar</div>
