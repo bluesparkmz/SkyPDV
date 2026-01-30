@@ -149,17 +149,6 @@ export function FastfoodAdminScreen() {
         };
     }, [orders]);
 
-    if (isLoading) {
-        return (
-            <div className="flex-1 flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                    <p className="text-sm text-muted-foreground">Carregando gestão Fastfood...</p>
-                </div>
-            </div>
-        );
-    }
-
     const renderDashboard = () => (
         <div className="space-y-6">
             {/* Stats Cards */}
@@ -167,9 +156,13 @@ export function FastfoodAdminScreen() {
                 {/* Revenue Card */}
                 <div className="fluent-card p-4 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-800">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                             <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase mb-1">Receita Hoje</p>
-                            <p className="text-2xl font-black text-orange-700 dark:text-orange-300">{stats.totalRevenue.toFixed(2)} MT</p>
+                            {isLoading ? (
+                                <div className="h-8 w-32 bg-orange-200/50 dark:bg-orange-800/50 rounded animate-pulse"></div>
+                            ) : (
+                                <p className="text-2xl font-black text-orange-700 dark:text-orange-300">{stats.totalRevenue.toFixed(2)} MT</p>
+                            )}
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
                             <Money24Regular className="w-6 h-6" />
@@ -180,9 +173,13 @@ export function FastfoodAdminScreen() {
                 {/* Today Orders */}
                 <div className="fluent-card p-4 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-amber-200 dark:border-amber-800">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                             <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase mb-1">Pedidos Hoje</p>
-                            <p className="text-2xl font-black text-amber-700 dark:text-amber-300">{stats.todayOrders}</p>
+                            {isLoading ? (
+                                <div className="h-8 w-20 bg-amber-200/50 dark:bg-amber-800/50 rounded animate-pulse"></div>
+                            ) : (
+                                <p className="text-2xl font-black text-amber-700 dark:text-amber-300">{stats.todayOrders}</p>
+                            )}
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
                             <ShoppingBag24Regular className="w-6 h-6" />
@@ -193,9 +190,13 @@ export function FastfoodAdminScreen() {
                 {/* Pending Orders */}
                 <div className="fluent-card p-4 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-red-200 dark:border-red-800">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                             <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase mb-1">Pendentes</p>
-                            <p className="text-2xl font-black text-red-700 dark:text-red-300">{stats.pendingOrders}</p>
+                            {isLoading ? (
+                                <div className="h-8 w-16 bg-red-200/50 dark:bg-red-800/50 rounded animate-pulse"></div>
+                            ) : (
+                                <p className="text-2xl font-black text-red-700 dark:text-red-300">{stats.pendingOrders}</p>
+                            )}
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30">
                             <Timer24Regular className="w-6 h-6" />
@@ -206,9 +207,13 @@ export function FastfoodAdminScreen() {
                 {/* Preparing Orders */}
                 <div className="fluent-card p-4 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-800">
                     <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                             <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 uppercase mb-1">Em Preparo</p>
-                            <p className="text-2xl font-black text-yellow-700 dark:text-yellow-300">{stats.preparingOrders}</p>
+                            {isLoading ? (
+                                <div className="h-8 w-16 bg-yellow-200/50 dark:bg-yellow-800/50 rounded animate-pulse"></div>
+                            ) : (
+                                <p className="text-2xl font-black text-yellow-700 dark:text-yellow-300">{stats.preparingOrders}</p>
+                            )}
                         </div>
                         <div className="w-12 h-12 rounded-xl bg-yellow-500 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
                             <Food24Regular className="w-6 h-6" />
@@ -224,7 +229,25 @@ export function FastfoodAdminScreen() {
                     <p className="text-sm text-muted-foreground">Últimos pedidos do dia</p>
                 </div>
                 <div className="p-4">
-                    {orders.slice(0, 5).length === 0 ? (
+                    {isLoading ? (
+                        <div className="space-y-2">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                                    <div className="flex items-center gap-3 flex-1">
+                                        <div className="w-10 h-10 rounded-full bg-orange-200/50 dark:bg-orange-800/50 animate-pulse"></div>
+                                        <div className="space-y-2 flex-1">
+                                            <div className="h-4 w-32 bg-secondary rounded animate-pulse"></div>
+                                            <div className="h-3 w-16 bg-secondary/70 rounded animate-pulse"></div>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <div className="h-5 w-24 bg-secondary rounded animate-pulse ml-auto"></div>
+                                        <div className="h-4 w-16 bg-secondary/70 rounded animate-pulse ml-auto"></div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : orders.slice(0, 5).length === 0 ? (
                         <div className="text-center py-12 text-muted-foreground">
                             <Timer24Regular className="w-12 h-12 mx-auto mb-4 opacity-20" />
                             <p>Nenhum pedido ainda hoje</p>
@@ -300,7 +323,29 @@ export function FastfoodAdminScreen() {
             </div>
 
             {/* Orders Grid */}
-            {filteredOrders.length === 0 ? (
+            {isLoading ? (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="fluent-card p-4 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div className="space-y-2 flex-1">
+                                    <div className="h-6 w-24 bg-secondary rounded animate-pulse"></div>
+                                    <div className="h-4 w-32 bg-secondary/70 rounded animate-pulse"></div>
+                                </div>
+                                <div className="space-y-2">
+                                    <div className="h-6 w-28 bg-secondary rounded animate-pulse ml-auto"></div>
+                                    <div className="h-3 w-16 bg-secondary/70 rounded animate-pulse ml-auto"></div>
+                                </div>
+                            </div>
+                            <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3 space-y-2 border border-orange-200/50 dark:border-orange-800/50">
+                                <div className="h-4 w-full bg-orange-200/50 dark:bg-orange-800/50 rounded animate-pulse"></div>
+                                <div className="h-4 w-3/4 bg-orange-200/50 dark:bg-orange-800/50 rounded animate-pulse"></div>
+                            </div>
+                            <div className="h-10 w-full bg-secondary rounded animate-pulse"></div>
+                        </div>
+                    ))}
+                </div>
+            ) : filteredOrders.length === 0 ? (
                 <div className="fluent-card p-8 text-center text-muted-foreground">
                     <Timer24Regular className="w-12 h-12 mx-auto mb-4 opacity-20" />
                     <p>Nenhum pedido encontrado</p>
