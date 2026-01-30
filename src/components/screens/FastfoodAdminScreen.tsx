@@ -633,18 +633,62 @@ export function FastfoodAdminScreen() {
     };
 
     const renderProducts = () => (
-        <div className="fluent-card">
-            <div className="p-4 border-b border-border">
-                <h3 className="text-lg font-bold text-foreground">Produtos Fastfood</h3>
-                <p className="text-sm text-muted-foreground">Produtos marcados como Fastfood no SkyPDV</p>
+        <div className="space-y-4">
+            {/* Info Card */}
+            <div className="fluent-card p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-2 border-orange-200 dark:border-orange-800">
+                <div className="flex items-center gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                        <Box24Regular className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-bold text-foreground">Produtos Fastfood</h3>
+                        <p className="text-sm text-muted-foreground">Produtos disponíveis no app de delivery</p>
+                    </div>
+                </div>
+                <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 space-y-2">
+                    <p className="text-sm text-foreground">
+                        ℹ️ <strong>Como funciona:</strong>
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                        <li>• Vá para a tela <strong>Produtos</strong> do SkyPDV</li>
+                        <li>• Ao criar/editar um produto, marque o toggle <strong>"Disponível no Fastfood"</strong></li>
+                        <li>• O produto aparecerá automaticamente no aplicativo de delivery</li>
+                    </ul>
+                </div>
             </div>
-            <div className="p-8 text-center">
-                <Box24Regular className="w-16 h-16 mx-auto mb-4 text-orange-500 opacity-20" />
-                <h4 className="font-bold mb-2">Sincronização Automática</h4>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    Seus produtos do SkyPDV marcados como 'Fastfood' aparecem automaticamente no aplicativo.
-                    Gerencie seus produtos na tela de Produtos do SkyPDV.
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="fluent-card p-4 text-center">
+                    <div className="text-3xl font-black text-orange-600">-</div>
+                    <p className="text-xs text-muted-foreground mt-1">Produtos Fastfood</p>
+                    <p className="text-[10px] text-muted-foreground">Configure na tela Produtos</p>
+                </div>
+                <div className="fluent-card p-4 text-center">
+                    <div className="text-3xl font-black text-blue-600">-</div>
+                    <p className="text-xs text-muted-foreground mt-1">Categorias</p>
+                    <p className="text-[10px] text-muted-foreground">Organize seu cardápio</p>
+                </div>
+                <div className="fluent-card p-4 text-center">
+                    <div className="text-3xl font-black text-emerald-600">-</div>
+                    <p className="text-xs text-muted-foreground mt-1">Em Estoque</p>
+                    <p className="text-[10px] text-muted-foreground">Produtos disponíveis</p>
+                </div>
+            </div>
+
+            {/* Action Button */}
+            <div className="fluent-card p-6 text-center">
+                <h4 className="font-bold mb-2 text-foreground">Gerencie seus Produtos</h4>
+                <p className="text-sm text-muted-foreground mb-4">
+                    Configure quais produtos aparecem no app de delivery
                 </p>
+                <button
+                    onClick={() => toast.info("Navegue para a tela Produtos para gerenciar")}
+                    className="fluent-button fluent-button-primary gap-2"
+                >
+                    <Box24Regular className="w-4 h-4" />
+                    Ir para Produtos
+                </button>
             </div>
         </div>
     );
