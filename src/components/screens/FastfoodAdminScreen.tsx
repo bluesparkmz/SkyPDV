@@ -17,7 +17,7 @@ import {
     Money24Regular,
     ShoppingBag24Regular,
     Star24Regular,
-    TrendingLines24Regular,
+    ArrowTrendingLines24Regular,
 } from "@fluentui/react-icons";
 import type { DrawerProps } from "@fluentui/react-components";
 import {
@@ -247,9 +247,9 @@ export function FastfoodAdminScreen() {
                                     <div className="text-right">
                                         <p className="font-bold text-orange-600">{Number(order.total_amount || 0).toFixed(2)} MT</p>
                                         <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${order.status === "pending" ? "bg-red-100 text-red-700" :
-                                                order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
-                                                    order.status === "ready" ? "bg-green-100 text-green-700" :
-                                                        "bg-gray-100 text-gray-700"
+                                            order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
+                                                order.status === "ready" ? "bg-green-100 text-green-700" :
+                                                    "bg-gray-100 text-gray-700"
                                             }`}>
                                             {order.status}
                                         </span>
@@ -314,9 +314,9 @@ export function FastfoodAdminScreen() {
                                     <div className="flex items-center gap-2">
                                         <span className="text-lg font-bold text-foreground">#{order.id}</span>
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${order.status === "pending" ? "bg-red-100 text-red-700" :
-                                                order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
-                                                    order.status === "ready" ? "bg-green-100 text-green-700" :
-                                                        "bg-gray-100 text-gray-700"
+                                            order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
+                                                order.status === "ready" ? "bg-green-100 text-green-700" :
+                                                    "bg-gray-100 text-gray-700"
                                             }`}>
                                             {order.status}
                                         </span>
@@ -379,7 +379,7 @@ export function FastfoodAdminScreen() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="fluent-card p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-800">
                     <div className="flex items-center gap-3 mb-2">
-                        <TrendingLines24Regular className="w-8 h-8 text-emerald-600" />
+                        <ArrowTrendingLines24Regular className="w-8 h-8 text-emerald-600" />
                         <p className="text-xs font-semibold text-emerald-600 uppercase">Vendas Totais</p>
                     </div>
                     <p className="text-3xl font-black text-emerald-700">{stats.totalRevenue.toFixed(2)} MT</p>
