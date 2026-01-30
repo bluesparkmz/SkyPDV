@@ -70,6 +70,12 @@ export function FastfoodAdminScreen() {
     const [searchQuery, setSearchQuery] = useState("");
     const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
 
+    // Fetch sales data for the sales view
+    const { data: salesData = [], isLoading: salesLoading } = useSales({
+        limit: 100,
+        status: "completed",
+    });
+
     useEffect(() => {
         setIsNavOpen(!isMobile);
     }, [isMobile]);
@@ -421,13 +427,7 @@ export function FastfoodAdminScreen() {
     );
 
     const renderSales = () => {
-        // Fetch sales data with online/offline distinction
-        const { data: salesData = [], isLoading: salesLoading } = useSales({
-            limit: 100,
-            status: "completed",
-        });
-
-        // Filter and categorize sales
+        // Filter and categorize sales (using salesData from component level hook)
         const onlineSales = salesData.filter(sale => sale.sale_type === "online" || sale.sale_type === "delivery");
         const offlineSales = salesData.filter(sale => sale.sale_type === "local");
 
