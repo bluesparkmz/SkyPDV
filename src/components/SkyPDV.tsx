@@ -23,6 +23,7 @@ import { CategoriesScreen } from "./screens/CategoriesScreen";
 import { TablesScreen } from "./screens/TablesScreen";
 import { TabsScreen } from "./screens/TabsScreen";
 import { SalesHistoryScreen } from "./screens/SalesHistoryScreen";
+import { FastfoodAdminScreen } from "./screens/FastfoodAdminScreen";
 import { useProducts } from "@/hooks/useProducts";
 import { useCashRegister } from "@/hooks/useCashRegister";
 import { useBattery } from "@/hooks/useBattery";
@@ -186,7 +187,7 @@ export function SkyPDV() {
     };
 
     setParkedSales((prev) => [...prev, newSale]);
-    
+
     setCurrentCustomerName("");
     toast.success("Venda colocada em espera.");
   };
@@ -239,6 +240,8 @@ export function SkyPDV() {
         return <TabsScreen />;
       case "sales":
         return <SalesHistoryScreen />;
+      case "fastfood":
+        return <FastfoodAdminScreen />;
       case "pdv":
       default:
         return (

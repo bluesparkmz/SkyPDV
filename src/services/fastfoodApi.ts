@@ -8,6 +8,15 @@ export interface FastFoodRestaurant {
   category: string | null;
   is_open: boolean;
   active: boolean;
+  phone?: string;
+  address?: string;
+}
+
+// Alias for consistency with Fastfood project type names
+export type Restaurant = FastFoodRestaurant;
+
+export interface OrderStatusUpdate {
+  status: "pending" | "preparing" | "ready" | "completed" | "cancelled" | "rejected";
 }
 
 export type TableShape = "square" | "rectangle" | "circle";
@@ -39,7 +48,11 @@ export interface Order {
   tab_id?: number;
   table_id?: number;
   created_at: string;
+  customer_name?: string;
+  items?: Array<{ product_name: string; quantity: number; price: string }>;
 }
+
+export type FastFoodOrder = Order;
 
 export interface Tab {
   id: number;
@@ -136,5 +149,12 @@ export const fastfoodApi = {
   },
   getTabOrders: (restaurantId: number, tabId: number) =>
     apiGet<Order[]>(`/fastfood/restaurants/${restaurantId}/tabs/${tabId}/orders`),
+
+  // Admin / Management
+  updateOrderStatus: (orderId: number, data: OrderStatusUpdate) =>
+    apiPut<Order>(`/fastfood/orders/${orderId}/status`, data),
+
+  toggleRestaurantStatus: (restaurantId: number) =>
+    apiPost<{ message: string; is_open: boolean }>(`/fastfood/restaurants/${restaurantId}/toggle`),
 };
 
