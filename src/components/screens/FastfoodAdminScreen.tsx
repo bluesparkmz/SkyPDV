@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     Food24Regular,
-    List24Regular,
+    ChartMultiple24Regular,
+    Receipt24Regular,
+    Box24Regular,
     Settings24Regular,
     ArrowSync24Regular,
     Timer24Regular,
@@ -10,21 +12,70 @@ import {
     Person24Regular,
     Phone24Regular,
     Location24Regular,
+    Search24Regular,
+    CalendarLtr24Regular,
+    Money24Regular,
+    ShoppingBag24Regular,
+    Star24Regular,
+    TrendingLines24Regular,
 } from "@fluentui/react-icons";
+import type { DrawerProps } from "@fluentui/react-components";
+import {
+    Hamburger,
+    NavDrawer,
+    NavDrawerBody,
+    NavDrawerHeader,
+    NavItem,
+    NavSectionHeader,
+    makeStyles,
+    Tooltip,
+    useRestoreFocusTarget,
+} from "@fluentui/react-components";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fastfoodApi, FastFoodOrder, Restaurant } from "@/services/fastfoodApi";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const useStyles = makeStyles({
+    root: {
+        overflow: "hidden",
+        display: "flex",
+        flex: 1,
+        minHeight: 0,
+    },
+    nav: {
+        minWidth: "260px",
+    },
+    content: {
+        flex: 1,
+        minWidth: 0,
+    },
+});
+
+type FastfoodView = "dashboard" | "orders" | "sales" | "products" | "settings";
 
 export function FastfoodAdminScreen() {
-    const [activeTab, setActiveTab] = useState<"orders" | "settings">("orders");
+    const styles = useStyles();
+    const isMobile = useIsMobile();
+    const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
+    const [isNavOpen, setIsNavOpen] = useState(false);
+    const restoreFocusTargetAttributes = useRestoreFocusTarget();
+    const [activeView, setActiveView] = useState<FastfoodView>("dashboard");
+
     const [orders, setOrders] = useState<FastFoodOrder[]>([]);
     const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
+
+    useEffect(() => {
+        setIsNavOpen(!isMobile);
+    }, [isMobile]);
 
     const fetchDashboard = async () => {
         try {
             setIsLoading(true);
-            // Pega o primeiro restaurante do usuário gerenciado
             const restaurants = await fastfoodApi.getMyRestaurants();
             if (restaurants.length > 0) {
                 const res = restaurants[0];
@@ -41,7 +92,6 @@ export function FastfoodAdminScreen() {
 
     useEffect(() => {
         fetchDashboard();
-        // Polling básico para pedidos a cada 30s
         const interval = setInterval(fetchDashboard, 30000);
         return () => clearInterval(interval);
     }, []);
@@ -67,170 +117,463 @@ export function FastfoodAdminScreen() {
         }
     };
 
-    return (
-        <div className="flex-1 flex flex-col h-full overflow-hidden">
-            {/* Header */}
-            <div className="p-4 md:p-6 border-b border-border bg-background/80 backdrop-blur-md">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
-                            <Food24Regular className="w-6 h-6" />
-                        </div>
+    const filteredOrders = useMemo(() => {
+        return orders.filter((order) => {
+            const matchesSearch =
+                !searchQuery ||
+                order.id.toString().includes(searchQuery.toLowerCase()) ||
+                order.customer_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+            const matchesDate =
+                !dateFilter ||
+                new Date(order.created_at).toLocaleDateString("pt-BR") ===
+                new Date(dateFilter).toLocaleDateString("pt-BR");
+
+            return matchesSearch && matchesDate;
+        });
+    }, [orders, searchQuery, dateFilter]);
+
+    // Calculate statistics
+    const stats = useMemo(() => {
+        const today = new Date().toLocaleDateString("pt-BR");
+        const todayOrders = orders.filter(o => new Date(o.created_at).toLocaleDateString("pt-BR") === today);
+        const totalRevenue = todayOrders.reduce((sum, o) => sum + Number(o.total_amount || 0), 0);
+        const pendingOrders = orders.filter(o => o.status === "pending").length;
+        const preparingOrders = orders.filter(o => o.status === "preparing").length;
+
+        return {
+            totalRevenue,
+            todayOrders: todayOrders.length,
+            pendingOrders,
+            preparingOrders,
+        };
+    }, [orders]);
+
+    if (isLoading) {
+        return (
+            <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-sm text-muted-foreground">Carregando gestão Fastfood...</p>
+                </div>
+            </div>
+        );
+    }
+
+    const renderDashboard = () => (
+        <div className="space-y-6">
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 md:gap-4">
+                {/* Revenue Card */}
+                <div className="fluent-card p-4 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-800">
+                    <div className="flex items-center justify-between">
                         <div>
-                            <h1 className="text-xl md:text-2xl font-bold">Gestão Fastfood</h1>
-                            <p className="text-sm text-muted-foreground">{restaurant?.name || "Carregando..."}</p>
+                            <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase mb-1">Receita Hoje</p>
+                            <p className="text-2xl font-black text-orange-700 dark:text-orange-300">{stats.totalRevenue.toFixed(2)} MT</p>
                         </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={fetchDashboard}
-                            className="fluent-button gap-2"
-                            disabled={isLoading}
-                        >
-                            <ArrowSync24Regular className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-                            <span className="hidden sm:inline">Atualizar</span>
-                        </button>
-                        <button
-                            onClick={handleToggleStatus}
-                            className={`fluent-button font-bold ${restaurant?.is_open ? "text-red-500" : "text-emerald-500"}`}
-                        >
-                            {restaurant?.is_open ? "Fechar Loja" : "Abrir Loja"}
-                        </button>
+                        <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                            <Money24Regular className="w-6 h-6" />
+                        </div>
                     </div>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex gap-4 mt-6">
-                    <button
-                        onClick={() => setActiveTab("orders")}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === "orders" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                    >
-                        <List24Regular className="w-5 h-5" />
-                        Pedidos Ativos
-                    </button>
-                    <button
-                        onClick={() => setActiveTab("settings")}
-                        className={`flex items-center gap-2 px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === "settings" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
-                            }`}
-                    >
-                        <Settings24Regular className="w-5 h-5" />
-                        Configurações
-                    </button>
+                {/* Today Orders */}
+                <div className="fluent-card p-4 bg-gradient-to-br from-amber-50 to-amber-100/50 dark:from-amber-950/20 dark:to-amber-900/10 border-amber-200 dark:border-amber-800">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase mb-1">Pedidos Hoje</p>
+                            <p className="text-2xl font-black text-amber-700 dark:text-amber-300">{stats.todayOrders}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center text-white shadow-lg shadow-amber-500/30">
+                            <ShoppingBag24Regular className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Pending Orders */}
+                <div className="fluent-card p-4 bg-gradient-to-br from-red-50 to-red-100/50 dark:from-red-950/20 dark:to-red-900/10 border-red-200 dark:border-red-800">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-red-600 dark:text-red-400 uppercase mb-1">Pendentes</p>
+                            <p className="text-2xl font-black text-red-700 dark:text-red-300">{stats.pendingOrders}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-red-500 flex items-center justify-center text-white shadow-lg shadow-red-500/30">
+                            <Timer24Regular className="w-6 h-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Preparing Orders */}
+                <div className="fluent-card p-4 bg-gradient-to-br from-yellow-50 to-yellow-100/50 dark:from-yellow-950/20 dark:to-yellow-900/10 border-yellow-200 dark:border-yellow-800">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-yellow-600 dark:text-yellow-400 uppercase mb-1">Em Preparo</p>
+                            <p className="text-2xl font-black text-yellow-700 dark:text-yellow-300">{stats.preparingOrders}</p>
+                        </div>
+                        <div className="w-12 h-12 rounded-xl bg-yellow-500 flex items-center justify-center text-white shadow-lg shadow-yellow-500/30">
+                            <Food24Regular className="w-6 h-6" />
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 p-4 md:p-6 overflow-auto windows-scrollbar">
-                {activeTab === "orders" ? (
-                    <div className="space-y-4">
-                        {orders.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-                                <Timer24Regular className="w-12 h-12 mb-4 opacity-20" />
-                                <p>Nenhum pedido ativo no momento</p>
+            {/* Recent Orders */}
+            <div className="fluent-card">
+                <div className="p-4 border-b border-border">
+                    <h3 className="text-lg font-bold text-foreground">Pedidos Recentes</h3>
+                    <p className="text-sm text-muted-foreground">Últimos pedidos do dia</p>
+                </div>
+                <div className="p-4">
+                    {orders.slice(0, 5).length === 0 ? (
+                        <div className="text-center py-12 text-muted-foreground">
+                            <Timer24Regular className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                            <p>Nenhum pedido ainda hoje</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {orders.slice(0, 5).map((order) => (
+                                <div key={order.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-orange-500/10 text-orange-600 flex items-center justify-center font-bold">
+                                            #{order.id}
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-foreground">{order.customer_name}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                {new Date(order.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-orange-600">{Number(order.total_amount || 0).toFixed(2)} MT</p>
+                                        <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${order.status === "pending" ? "bg-red-100 text-red-700" :
+                                                order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
+                                                    order.status === "ready" ? "bg-green-100 text-green-700" :
+                                                        "bg-gray-100 text-gray-700"
+                                            }`}>
+                                            {order.status}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderOrders = () => (
+        <div className="space-y-4">
+            {/* Filters */}
+            <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
+                <div className="relative flex-1">
+                    <Search24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar pedido, cliente..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
+                    />
+                </div>
+                <div className="flex gap-2">
+                    <div className="relative flex-1 sm:flex-none">
+                        <CalendarLtr24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+                        <Input
+                            type="date"
+                            value={dateFilter}
+                            onChange={(e) => setDateFilter(e.target.value)}
+                            className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
+                        />
+                    </div>
+                    {dateFilter && (
+                        <Button
+                            variant="outline"
+                            onClick={() => setDateFilter("")}
+                            size="sm"
+                            className="h-9 md:h-10"
+                        >
+                            Limpar
+                        </Button>
+                    )}
+                </div>
+            </div>
+
+            {/* Orders Grid */}
+            {filteredOrders.length === 0 ? (
+                <div className="fluent-card p-8 text-center text-muted-foreground">
+                    <Timer24Regular className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                    <p>Nenhum pedido encontrado</p>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {filteredOrders.map((order) => (
+                        <div key={order.id} className="fluent-card p-4 space-y-4">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg font-bold text-foreground">#{order.id}</span>
+                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${order.status === "pending" ? "bg-red-100 text-red-700" :
+                                                order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
+                                                    order.status === "ready" ? "bg-green-100 text-green-700" :
+                                                        "bg-gray-100 text-gray-700"
+                                            }`}>
+                                            {order.status}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                                        <Person24Regular className="w-4 h-4" />
+                                        <span>{order.customer_name}</span>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-lg font-black text-orange-600">{(Number(order.total_amount) || 0).toFixed(2)} MT</p>
+                                    <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString()}</p>
+                                </div>
                             </div>
-                        ) : (
-                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-                                {orders.map((order) => (
-                                    <div key={order.id} className="fluent-card p-4 space-y-4">
-                                        <div className="flex justify-between items-start">
-                                            <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-lg font-bold">#{order.id}</span>
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase bg-orange-100 text-orange-600">
-                                                        {order.status}
-                                                    </span>
-                                                </div>
-                                                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                                                    <Person24Regular className="w-4 h-4" />
-                                                    <span>{order.customer_name}</span>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className="text-lg font-black text-primary">{(Number(order.total_amount) || 0).toFixed(2)} MT</p>
-                                                <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString()}</p>
-                                            </div>
-                                        </div>
 
-                                        <div className="bg-secondary/30 rounded-lg p-3 space-y-2">
-                                            {order.items?.map((item, idx) => (
-                                                <div key={idx} className="flex justify-between text-sm">
-                                                    <span>{item.quantity}x {item.product_name}</span>
-                                                    <span className="font-medium">{(Number(item.price) * item.quantity).toFixed(2)}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-
-                                        <div className="flex gap-2">
-                                            {order.status === "pending" && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(order.id, "preparing")}
-                                                    className="flex-1 fluent-button fluent-button-primary"
-                                                >
-                                                    Aceitar Pedido
-                                                </button>
-                                            )}
-                                            {order.status === "preparing" && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(order.id, "ready")}
-                                                    className="flex-1 fluent-button bg-emerald-500 text-white"
-                                                >
-                                                    Marcar como Pronto
-                                                </button>
-                                            )}
-                                            {(order.status === "pending" || order.status === "preparing") && (
-                                                <button
-                                                    onClick={() => handleUpdateStatus(order.id, "cancelled")}
-                                                    className="p-2 rounded-lg bg-red-100 text-red-600"
-                                                >
-                                                    <DismissCircle24Regular className="w-6 h-6" />
-                                                </button>
-                                            )}
-                                        </div>
+                            <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3 space-y-2 border border-orange-200/50 dark:border-orange-800/50">
+                                {order.items?.map((item, idx) => (
+                                    <div key={idx} className="flex justify-between text-sm">
+                                        <span className="text-foreground">{item.quantity}x {item.product_name}</span>
+                                        <span className="font-medium text-orange-600">{(Number(item.price) * item.quantity).toFixed(2)} MT</span>
                                     </div>
                                 ))}
                             </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="max-w-2xl space-y-6">
-                        <div className="fluent-card p-6 space-y-4">
-                            <h3 className="text-lg font-bold">Detalhes do Restaurante</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase">Nome</label>
-                                    <p className="font-medium">{restaurant?.name}</p>
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="text-xs font-bold text-muted-foreground uppercase">Status Comercial</label>
-                                    <p className={`font-black ${restaurant?.is_open ? 'text-emerald-500' : 'text-red-500'}`}>
-                                        {restaurant?.is_open ? 'ABERTO' : 'FECHADO'}
-                                    </p>
-                                </div>
-                                <div className="space-y-1 flex items-center gap-2">
-                                    <Phone24Regular className="w-5 h-5 text-primary" />
-                                    <span>{restaurant?.phone || "Não informado"}</span>
-                                </div>
-                                <div className="space-y-1 flex items-center gap-2">
-                                    <Location24Regular className="w-5 h-5 text-primary" />
-                                    <span>{restaurant?.address || "Sem endereço"}</span>
-                                </div>
+
+                            <div className="flex gap-2">
+                                {order.status === "pending" && (
+                                    <button
+                                        onClick={() => handleUpdateStatus(order.id, "preparing")}
+                                        className="flex-1 fluent-button bg-orange-500 text-white hover:bg-orange-600 font-bold"
+                                    >
+                                        Aceitar Pedido
+                                    </button>
+                                )}
+                                {order.status === "preparing" && (
+                                    <button
+                                        onClick={() => handleUpdateStatus(order.id, "ready")}
+                                        className="flex-1 fluent-button bg-emerald-500 text-white hover:bg-emerald-600 font-bold"
+                                    >
+                                        Marcar como Pronto
+                                    </button>
+                                )}
+                                {(order.status === "pending" || order.status === "preparing") && (
+                                    <button
+                                        onClick={() => handleUpdateStatus(order.id, "cancelled")}
+                                        className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
+                                    >
+                                        <DismissCircle24Regular className="w-6 h-6" />
+                                    </button>
+                                )}
                             </div>
                         </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
 
-                        <div className="fluent-card p-6 bg-primary/5 border-primary/20">
-                            <div className="flex items-center gap-3">
-                                <div className="p-3 rounded-full bg-primary/10 text-primary">
-                                    <CheckmarkCircle24Regular className="w-6 h-6" />
+    const renderSales = () => (
+        <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="fluent-card p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-3 mb-2">
+                        <TrendingLines24Regular className="w-8 h-8 text-emerald-600" />
+                        <p className="text-xs font-semibold text-emerald-600 uppercase">Vendas Totais</p>
+                    </div>
+                    <p className="text-3xl font-black text-emerald-700">{stats.totalRevenue.toFixed(2)} MT</p>
+                    <p className="text-xs text-muted-foreground mt-1">Hoje</p>
+                </div>
+
+                <div className="fluent-card p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-800">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Receipt24Regular className="w-8 h-8 text-blue-600" />
+                        <p className="text-xs font-semibold text-blue-600 uppercase">Pedidos</p>
+                    </div>
+                    <p className="text-3xl font-black text-blue-700">{stats.todayOrders}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Hoje</p>
+                </div>
+
+                <div className="fluent-card p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200 dark:border-purple-800">
+                    <div className="flex items-center gap-3 mb-2">
+                        <Star24Regular className="w-8 h-8 text-purple-600" />
+                        <p className="text-xs font-semibold text-purple-600 uppercase">Ticket Médio</p>
+                    </div>
+                    <p className="text-3xl font-black text-purple-700">
+                        {stats.todayOrders > 0 ? (stats.totalRevenue / stats.todayOrders).toFixed(2) : "0.00"} MT
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">Por pedido</p>
+                </div>
+            </div>
+
+            <div className="fluent-card">
+                <div className="p-4 border-b border-border">
+                    <h3 className="text-lg font-bold text-foreground">Histórico de Vendas</h3>
+                </div>
+                <div className="p-4">
+                    <p className="text-sm text-muted-foreground text-center py-8">
+                        Implementação do histórico completo em breve
+                    </p>
+                </div>
+            </div>
+        </div>
+    );
+
+    const renderProducts = () => (
+        <div className="fluent-card">
+            <div className="p-4 border-b border-border">
+                <h3 className="text-lg font-bold text-foreground">Produtos Fastfood</h3>
+                <p className="text-sm text-muted-foreground">Produtos marcados como Fastfood no SkyPDV</p>
+            </div>
+            <div className="p-8 text-center">
+                <Box24Regular className="w-16 h-16 mx-auto mb-4 text-orange-500 opacity-20" />
+                <h4 className="font-bold mb-2">Sincronização Automática</h4>
+                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                    Seus produtos do SkyPDV marcados como 'Fastfood' aparecem automaticamente no aplicativo.
+                    Gerencie seus produtos na tela de Produtos do SkyPDV.
+                </p>
+            </div>
+        </div>
+    );
+
+    const renderSettings = () => (
+        <div className="max-w-2xl space-y-6">
+            <div className="fluent-card p-6 space-y-4">
+                <h3 className="text-lg font-bold text-foreground">Detalhes do Restaurante</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-muted-foreground uppercase">Nome</label>
+                        <p className="font-medium text-foreground">{restaurant?.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <label className="text-xs font-bold text-muted-foreground uppercase">Status Comercial</label>
+                        <p className={`font-black ${restaurant?.is_open ? 'text-emerald-500' : 'text-red-500'}`}>
+                            {restaurant?.is_open ? 'ABERTO' : 'FECHADO'}
+                        </p>
+                    </div>
+                    <div className="space-y-1 flex items-center gap-2">
+                        <Phone24Regular className="w-5 h-5 text-orange-500" />
+                        <span className="text-foreground">{restaurant?.phone || "Não informado"}</span>
+                    </div>
+                    <div className="space-y-1 flex items-center gap-2">
+                        <Location24Regular className="w-5 h-5 text-orange-500" />
+                        <span className="text-foreground">{restaurant?.address || "Sem endereço"}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div className="fluent-card p-6 bg-orange-50 dark:bg-orange-950/10 border-orange-200 dark:border-orange-800">
+                <div className="flex items-center gap-3">
+                    <div className="p-3 rounded-full bg-orange-500/10 text-orange-600">
+                        <CheckmarkCircle24Regular className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <h4 className="font-bold text-foreground">Sincronização Ativa</h4>
+                        <p className="text-sm text-muted-foreground">Seus produtos do SkyPDV marcados como 'Fastfood' aparecem automaticamente no aplicativo.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className={styles.root}>
+            <NavDrawer
+                selectedValue={activeView}
+                open={isNavOpen}
+                type={drawerType}
+                className={styles.nav}
+                onOpenChange={(_, data) => setIsNavOpen(data.open)}
+                onNavItemSelect={(_, data) => {
+                    setActiveView(data.value as FastfoodView);
+                    if (isMobile) setIsNavOpen(false);
+                }}
+            >
+                <NavDrawerHeader>
+                    <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
+                </NavDrawerHeader>
+                <NavDrawerBody>
+                    <NavSectionHeader>Fastfood Admin</NavSectionHeader>
+                    <NavItem value="dashboard" icon={<ChartMultiple24Regular />}>
+                        Dashboard
+                    </NavItem>
+                    <NavItem value="orders" icon={<Receipt24Regular />}>
+                        Pedidos
+                    </NavItem>
+                    <NavItem value="sales" icon={<Money24Regular />}>
+                        Vendas
+                    </NavItem>
+                    <NavItem value="products" icon={<Box24Regular />}>
+                        Produtos
+                    </NavItem>
+                    <NavItem value="settings" icon={<Settings24Regular />}>
+                        Configurações
+                    </NavItem>
+                </NavDrawerBody>
+            </NavDrawer>
+
+            <div className={styles.content + " flex flex-col h-full overflow-hidden"}>
+                {/* Fixed Header */}
+                <div className="p-3 md:p-6 border-b border-border bg-background/80 backdrop-blur-md z-10">
+                    <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            {(isMobile || !isNavOpen) && (
+                                <Tooltip content="Abrir menu" relationship="label">
+                                    <Hamburger
+                                        onClick={() => setIsNavOpen(true)}
+                                        {...restoreFocusTargetAttributes}
+                                        aria-expanded={isNavOpen}
+                                        className="md:hidden"
+                                    />
+                                </Tooltip>
+                            )}
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/20">
+                                    <Food24Regular className="w-5 h-5 md:w-6 md:h-6" />
                                 </div>
                                 <div>
-                                    <h4 className="font-bold">Sincronização Ativa</h4>
-                                    <p className="text-sm text-muted-foreground">Seus produtos do SkyPDV marcados como 'Fastfood' aparecem automaticamente no aplicativo.</p>
+                                    <h1 className="text-lg md:text-2xl font-bold text-foreground">Gestão Fastfood</h1>
+                                    <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">{restaurant?.name || "Carregando..."}</p>
                                 </div>
                             </div>
                         </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={fetchDashboard}
+                                className="fluent-button gap-2 px-3 justify-center h-10"
+                                disabled={isLoading}
+                            >
+                                <ArrowSync24Regular className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+                                <span className="hidden sm:inline">Atualizar</span>
+                            </button>
+                            <button
+                                onClick={handleToggleStatus}
+                                className={`fluent-button font-bold h-10 px-4 ${restaurant?.is_open ? "bg-red-500 text-white hover:bg-red-600" : "bg-emerald-500 text-white hover:bg-emerald-600"}`}
+                            >
+                                {restaurant?.is_open ? "Fechar" : "Abrir"}
+                            </button>
+                            {!isNavOpen && !isMobile && (
+                                <Tooltip content="Abrir menu" relationship="label">
+                                    <Hamburger
+                                        onClick={() => setIsNavOpen(true)}
+                                        {...restoreFocusTargetAttributes}
+                                        aria-expanded={isNavOpen}
+                                    />
+                                </Tooltip>
+                            )}
+                        </div>
                     </div>
-                )}
+                </div>
+
+                {/* Scrollable Content Area */}
+                <div className="flex-1 p-3 md:p-6 overflow-auto windows-scrollbar">
+                    {activeView === "dashboard" && renderDashboard()}
+                    {activeView === "orders" && renderOrders()}
+                    {activeView === "sales" && renderSales()}
+                    {activeView === "products" && renderProducts()}
+                    {activeView === "settings" && renderSettings()}
+                </div>
             </div>
         </div>
     );
