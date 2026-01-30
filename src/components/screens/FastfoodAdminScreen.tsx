@@ -9,7 +9,7 @@ import {
     DismissCircle24Regular,
     Person24Regular,
     Phone24Regular,
-    MapPin24Regular,
+    Location24Regular,
 } from "@fluentui/react-icons";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -212,7 +212,7 @@ export function FastfoodAdminScreen() {
                                     <span>{restaurant?.phone || "Não informado"}</span>
                                 </div>
                                 <div className="space-y-1 flex items-center gap-2">
-                                    <MapPin24Regular className="w-5 h-5 text-primary" />
+                                    <Location24Regular className="w-5 h-5 text-primary" />
                                     <span>{restaurant?.address || "Sem endereço"}</span>
                                 </div>
                             </div>
