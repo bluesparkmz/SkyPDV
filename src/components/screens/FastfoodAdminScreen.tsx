@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fastfoodApi, FastFoodOrder, Restaurant } from "@/services/fastfoodApi";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useSales } from "@/hooks/useSales";
 
 const useStyles = makeStyles({
     root: {
@@ -419,51 +420,217 @@ export function FastfoodAdminScreen() {
         </div>
     );
 
-    const renderSales = () => (
-        <div className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="fluent-card p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-800">
-                    <div className="flex items-center gap-3 mb-2">
-                        <ArrowTrendingLines24Regular className="w-8 h-8 text-emerald-600" />
-                        <p className="text-xs font-semibold text-emerald-600 uppercase">Vendas Totais</p>
+    const renderSales = () => {
+        // Fetch sales data with online/offline distinction
+        const { data: salesData = [], isLoading: salesLoading } = useSales({
+            limit: 100,
+            status: "completed",
+        });
+
+        // Filter and categorize sales
+        const onlineSales = salesData.filter(sale => sale.sale_type === "online" || sale.sale_type === "delivery");
+        const offlineSales = salesData.filter(sale => sale.sale_type === "local");
+
+        // Calculate stats
+        const onlineRevenue = onlineSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+        const offlineRevenue = offlineSales.reduce((sum, sale) => sum + Number(sale.total || 0), 0);
+        const totalRevenue = onlineRevenue + offlineRevenue;
+
+        return (
+            <div className="space-y-4">
+                {/* Stats Cards */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Online Sales - Highlighted */}
+                    <div className="fluent-card p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-orange-200 dark:border-orange-800 border-2">
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="p-2 rounded-lg bg-orange-500/10">
+                                <ShoppingBag24Regular className="w-6 h-6 text-orange-600" />
+                            </div>
+                            <div>
+                                <p className="text-xs font-semibold text-orange-600 dark:text-orange-400 uppercase">Vendas Online (Delivery)</p>
+                                <p className="text-[10px] text-orange-500">Foco Fastfood</p>
+                            </div>
+                        </div>
+                        {salesLoading ? (
+                            <div className="space-y-2">
+                                <div className="h-8 w-32 bg-orange-200/50 dark:bg-orange-800/50 rounded animate-pulse"></div>
+                                <div className="h-4 w-20 bg-orange-200/30 dark:bg-orange-800/30 rounded animate-pulse"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-3xl font-black text-orange-700 dark:text-orange-300">{onlineRevenue.toFixed(2)} MT</p>
+                                <p className="text-xs text-muted-foreground mt-1">{onlineSales.length} pedidos online</p>
+                            </>
+                        )}
                     </div>
-                    <p className="text-3xl font-black text-emerald-700">{stats.totalRevenue.toFixed(2)} MT</p>
-                    <p className="text-xs text-muted-foreground mt-1">Hoje</p>
+
+                    {/* Offline Sales */}
+                    <div className="fluent-card p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-800">
+                        <div className="flex items-center gap-3 mb-2">
+                            <Receipt24Regular className="w-8 h-8 text-blue-600" />
+                            <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase">Vendas Local (Offline)</p>
+                        </div>
+                        {salesLoading ? (
+                            <div className="space-y-2">
+                                <div className="h-8 w-32 bg-blue-200/50 dark:bg-blue-800/50 rounded animate-pulse"></div>
+                                <div className="h-4 w-20 bg-blue-200/30 dark:bg-blue-800/30 rounded animate-pulse"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-3xl font-black text-blue-700 dark:text-blue-300">{offlineRevenue.toFixed(2)} MT</p>
+                                <p className="text-xs text-muted-foreground mt-1">{offlineSales.length} vendas locais</p>
+                            </>
+                        )}
+                    </div>
+
+                    {/* Total Sales */}
+                    <div className="fluent-card p-6 bg-gradient-to-br from-emerald-50 to-emerald-100/50 dark:from-emerald-950/20 dark:to-emerald-900/10 border-emerald-200 dark:border-emerald-800">
+                        <div className="flex items-center gap-3 mb-2">
+                            <ArrowTrendingLines24Regular className="w-8 h-8 text-emerald-600" />
+                            <p className="text-xs font-semibold text-emerald-600 uppercase">Total Geral</p>
+                        </div>
+                        {salesLoading ? (
+                            <div className="space-y-2">
+                                <div className="h-8 w-32 bg-emerald-200/50 dark:bg-emerald-800/50 rounded animate-pulse"></div>
+                                <div className="h-4 w-20 bg-emerald-200/30 dark:bg-emerald-800/30 rounded animate-pulse"></div>
+                            </div>
+                        ) : (
+                            <>
+                                <p className="text-3xl font-black text-emerald-700 dark:text-emerald-300">{totalRevenue.toFixed(2)} MT</p>
+                                <p className="text-xs text-muted-foreground mt-1">{salesData.length} vendas totais</p>
+                            </>
+                        )}
+                    </div>
                 </div>
 
-                <div className="fluent-card p-6 bg-gradient-to-br from-blue-50 to-blue-100/50 dark:from-blue-950/20 dark:to-blue-900/10 border-blue-200 dark:border-blue-800">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Receipt24Regular className="w-8 h-8 text-blue-600" />
-                        <p className="text-xs font-semibold text-blue-600 uppercase">Pedidos</p>
+                {/* Online Sales Section - Highlighted */}
+                <div className="fluent-card border-2 border-orange-200 dark:border-orange-800">
+                    <div className="p-4 border-b border-border bg-orange-50/50 dark:bg-orange-950/20">
+                        <div className="flex items-center gap-2">
+                            <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse"></div>
+                            <h3 className="text-lg font-bold text-orange-700 dark:text-orange-400">Vendas Online - Delivery Fastfood</h3>
+                        </div>
+                        <p className="text-sm text-muted-foreground">Pedidos realizados via aplicativo</p>
                     </div>
-                    <p className="text-3xl font-black text-blue-700">{stats.todayOrders}</p>
-                    <p className="text-xs text-muted-foreground mt-1">Hoje</p>
+                    <div className="p-4">
+                        {salesLoading ? (
+                            <div className="space-y-2">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-950/10 border border-orange-200/50 dark:border-orange-800/50">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className="w-10 h-10 rounded-full bg-orange-200/50 dark:bg-orange-800/50 animate-pulse"></div>
+                                            <div className="space-y-2 flex-1">
+                                                <div className="h-4 w-32 bg-orange-200/50 dark:bg-orange-800/50 rounded animate-pulse"></div>
+                                                <div className="h-3 w-48 bg-orange-200/30 dark:bg-orange-800/30 rounded animate-pulse"></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="h-5 w-24 bg-orange-200/50 dark:bg-orange-800/50 rounded animate-pulse ml-auto"></div>
+                                            <div className="h-3 w-16 bg-orange-200/30 dark:bg-orange-800/30 rounded animate-pulse ml-auto"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : onlineSales.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <ShoppingBag24Regular className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                <p>Nenhuma venda online ainda</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {onlineSales.slice(0, 10).map((sale) => (
+                                    <div key={sale.id} className="flex items-center justify-between p-3 rounded-lg bg-orange-50 dark:bg-orange-950/10 border border-orange-200/50 dark:border-orange-800/50 hover:bg-orange-100 dark:hover:bg-orange-950/20 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white font-bold shadow-lg shadow-orange-500/30">
+                                                <ShoppingBag24Regular className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">
+                                                    {sale.customer_name || "Cliente"} • {sale.receipt_number || `#${sale.id}`}
+                                                </p>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <span>{sale.sale_type === "online" ? "🌐 Online" : "🛵 Delivery"}</span>
+                                                    <span>•</span>
+                                                    <span>{new Date(sale.created_at).toLocaleString("pt-BR")}</span>
+                                                    {sale.delivery_address && (
+                                                        <>
+                                                            <span>•</span>
+                                                            <span className="truncate max-w-[200px]">{sale.delivery_address}</span>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-orange-600">{Number(sale.total || 0).toFixed(2)} MT</p>
+                                            <p className="text-xs text-muted-foreground">{sale.items.length} itens</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
 
-                <div className="fluent-card p-6 bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-950/20 dark:to-purple-900/10 border-purple-200 dark:border-purple-800">
-                    <div className="flex items-center gap-3 mb-2">
-                        <Star24Regular className="w-8 h-8 text-purple-600" />
-                        <p className="text-xs font-semibold text-purple-600 uppercase">Ticket Médio</p>
+                {/* Offline Sales Section */}
+                <div className="fluent-card">
+                    <div className="p-4 border-b border-border">
+                        <h3 className="text-lg font-bold text-foreground">Vendas Local (Balcão)</h3>
+                        <p className="text-sm text-muted-foreground">Vendas realizadas no PDV local</p>
                     </div>
-                    <p className="text-3xl font-black text-purple-700">
-                        {stats.todayOrders > 0 ? (stats.totalRevenue / stats.todayOrders).toFixed(2) : "0.00"} MT
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">Por pedido</p>
+                    <div className="p-4">
+                        {salesLoading ? (
+                            <div className="space-y-2">
+                                {[1, 2].map((i) => (
+                                    <div key={i} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30">
+                                        <div className="flex items-center gap-3 flex-1">
+                                            <div className="w-10 h-10 rounded-full bg-secondary rounded animate-pulse"></div>
+                                            <div className="space-y-2 flex-1">
+                                                <div className="h-4 w-32 bg-secondary rounded animate-pulse"></div>
+                                                <div className="h-3 w-24 bg-secondary/70 rounded animate-pulse"></div>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="h-5 w-24 bg-secondary rounded animate-pulse ml-auto"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : offlineSales.length === 0 ? (
+                            <div className="text-center py-8 text-muted-foreground">
+                                <Receipt24Regular className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                                <p className="text-sm">Nenhuma venda local</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {offlineSales.slice(0, 5).map((sale) => (
+                                    <div key={sale.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/30 hover:bg-secondary/50 transition-colors">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-600 flex items-center justify-center font-bold">
+                                                <Receipt24Regular className="w-5 h-5" />
+                                            </div>
+                                            <div>
+                                                <p className="font-medium text-foreground">
+                                                    {sale.customer_name || "Cliente"} • {sale.receipt_number || `#${sale.id}`}
+                                                </p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {new Date(sale.created_at).toLocaleString("pt-BR")}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="font-bold text-primary">{Number(sale.total || 0).toFixed(2)} MT</p>
+                                            <p className="text-xs text-muted-foreground">{sale.items.length} itens</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-
-            <div className="fluent-card">
-                <div className="p-4 border-b border-border">
-                    <h3 className="text-lg font-bold text-foreground">Histórico de Vendas</h3>
-                </div>
-                <div className="p-4">
-                    <p className="text-sm text-muted-foreground text-center py-8">
-                        Implementação do histórico completo em breve
-                    </p>
-                </div>
-            </div>
-        </div>
-    );
+        );
+    };
 
     const renderProducts = () => (
         <div className="fluent-card">
