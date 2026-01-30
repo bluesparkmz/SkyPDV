@@ -13,8 +13,7 @@ import {
 } from "@fluentui/react-icons";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { fastfoodApi } from "@/services/fastfoodApi";
-import { FastFoodOrder, Restaurant } from "../services/fastfoodApi";
+import { fastfoodApi, FastFoodOrder, Restaurant } from "@/services/fastfoodApi";
 
 export function FastfoodAdminScreen() {
     const [activeTab, setActiveTab] = useState<"orders" | "settings">("orders");
