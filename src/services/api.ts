@@ -152,6 +152,7 @@ export const productsApi = {
     if (params?.search) query.append("search", params.search);
     if (params?.category) query.append("category", params.category);
     if (params?.source_type) query.append("source_type", params.source_type);
+    if (params?.is_fastfood !== undefined) query.append("is_fastfood", String(params.is_fastfood));
     if (params?.skip) query.append("skip", String(params.skip));
     if (params?.limit) query.append("limit", String(params.limit));
     const queryString = query.toString();
@@ -410,6 +411,7 @@ export interface ProductsParams {
   search?: string;
   category?: string;
   source_type?: string;
+  is_fastfood?: boolean;
   skip?: number;
   limit?: number;
 }
