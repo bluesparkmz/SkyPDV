@@ -56,6 +56,7 @@ export function ProductsScreen() {
     stock: number;
     image?: string;
     emoji?: string;
+    is_fastfood?: boolean;
   }) => {
     try {
       if (productData.id) {
@@ -69,6 +70,7 @@ export function ProductsScreen() {
             emoji: productData.emoji,
             image: productData.image,
             initial_stock: productData.stock.toString(),
+            is_fastfood: productData.is_fastfood,
           },
         });
       } else {
@@ -81,6 +83,7 @@ export function ProductsScreen() {
           image: productData.image,
           initial_stock: productData.stock.toString(),
           track_stock: true,
+          is_fastfood: productData.is_fastfood || false,
         });
       }
       setIsDialogOpen(false);

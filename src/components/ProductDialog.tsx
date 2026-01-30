@@ -30,6 +30,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     stock: "",
     image: "📦",
     emoji: "📦",
+    is_fastfood: false,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: categoriesList = [] } = useCategories();
@@ -52,6 +53,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         stock: product.stock.toString(),
         image: product.image || "📦",
         emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : "📦"),
+        is_fastfood: (product as any).is_fastfood || false,
       });
     } else {
       setFormData({
@@ -61,6 +63,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         stock: "",
         image: "📦",
         emoji: "📦",
+        is_fastfood: false,
       });
     }
   }, [product, isOpen]);
@@ -112,6 +115,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       stock: parseInt(formData.stock) || 0,
       image: finalImage,
       emoji: finalEmoji,
+      is_fastfood: formData.is_fastfood,
     } as any);
     onClose();
   };
@@ -255,6 +259,31 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                 <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
+          </div>
+
+          {/* Fastfood Toggle */}
+          <div className="flex items-center justify-between p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                🍔
+              </div>
+              <div>
+                <label htmlFor="is_fastfood" className="text-sm font-semibold text-foreground cursor-pointer">
+                  Disponível no Fastfood
+                </label>
+                <p className="text-xs text-muted-foreground">Produto aparecerá no app de delivery</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                id="is_fastfood"
+                checked={formData.is_fastfood}
+                onChange={(e) => setFormData({ ...formData, is_fastfood: e.target.checked })}
+                className="sr-only peer"
+              />
+              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
+            </label>
           </div>
 
           {/* Actions */}
