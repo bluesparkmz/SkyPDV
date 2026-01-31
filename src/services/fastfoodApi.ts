@@ -110,6 +110,18 @@ export interface TablePositionUpdate {
   position_y: number;
 }
 
+export interface FastFoodProduct {
+  id: number;
+  name: string;
+  category: string | null;
+  price: number;
+  image: string | null;
+  emoji: string | null;
+  description: string | null;
+  is_active: boolean;
+  is_fastfood: boolean;
+}
+
 export const fastfoodApi = {
   getMyRestaurants: () => apiGet<FastFoodRestaurant[]>("/fastfood/restaurants/mine"),
   getRestaurant: (id: number) => apiGet<FastFoodRestaurant>(`/fastfood/restaurants/${id}`),
@@ -156,5 +168,9 @@ export const fastfoodApi = {
 
   toggleRestaurantStatus: (restaurantId: number) =>
     apiPost<{ message: string; is_open: boolean }>(`/fastfood/restaurants/${restaurantId}/toggle`),
+
+  // Products
+  getFastfoodProducts: (restaurantId: number) =>
+    apiGet<FastFoodProduct[]>(`/fastfood/restaurants/${restaurantId}/fastfood-products`),
 };
 
