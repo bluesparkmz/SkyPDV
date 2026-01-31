@@ -5,6 +5,7 @@ export interface Product {
   category: string;
   image: string;
   stock: number;
+  is_fastfood?: boolean;
 }
 
 export interface CartItem extends Product {

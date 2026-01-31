@@ -152,6 +152,7 @@ export function ProductsScreen() {
     stock: selectedProduct.inventory ? parseFloat(selectedProduct.inventory.quantity) : 0,
     image: selectedProduct.image || selectedProduct.emoji || "📦",
     emoji: selectedProduct.emoji || "📦",
+    is_fastfood: selectedProduct.is_fastfood || false,
   } : null;
 
   return (

@@ -357,6 +357,7 @@ export interface Product {
   promotional_price: string | null;
   image: string | null;
   emoji: string | null;
+  is_fastfood: boolean;
   track_stock: boolean;
   allow_decimal_quantity: boolean;
   is_active: boolean;
@@ -383,6 +384,7 @@ export interface CreateProduct {
   promotional_price?: string;
   image?: string;
   emoji?: string;
+  is_fastfood?: boolean;
   track_stock?: boolean;
   allow_decimal_quantity?: boolean;
   supplier_id?: number;
@@ -400,6 +402,7 @@ export interface UpdateProduct {
   promotional_price?: string;
   image?: string;
   emoji?: string;
+  is_fastfood?: boolean;
   track_stock?: boolean;
   allow_decimal_quantity?: boolean;
   supplier_id?: number;
