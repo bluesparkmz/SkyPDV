@@ -657,29 +657,6 @@ export function FastfoodAdminScreen() {
 
         return (
             <div className="space-y-4">
-                {/* Info Card */}
-                <div className="fluent-card p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-2 border-orange-200 dark:border-orange-800">
-                    <div className="flex items-center gap-4 mb-4">
-                        <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-                            <Box24Regular className="w-6 h-6" />
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-foreground">Produtos Fastfood</h3>
-                            <p className="text-sm text-muted-foreground">Produtos disponíveis no app de delivery</p>
-                        </div>
-                    </div>
-                    <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 space-y-2">
-                        <p className="text-sm text-foreground">
-                            ℹ️ <strong>Como funciona:</strong>
-                        </p>
-                        <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                            <li>• Vá para a tela <strong>Produtos</strong> do SkyPDV</li>
-                            <li>• Ao criar/editar um produto, marque o toggle <strong>"Disponível no Fastfood"</strong></li>
-                            <li>• O produto aparecerá automaticamente no aplicativo de delivery</li>
-                        </ul>
-                    </div>
-                </div>
-
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="fluent-card p-4 text-center">
