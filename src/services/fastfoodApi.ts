@@ -45,10 +45,16 @@ export interface Order {
   user_id: number;
   status: string;
   total_value: string;
+  order_type: "local" | "distance";
+  payment_method: string;
+  payment_status: string;
+  delivery_address?: string;
+  estimated_delivery_time?: number;
   tab_id?: number;
   table_id?: number;
   created_at: string;
   customer_name?: string;
+  customer_phone?: string;
   items?: Array<{ product_name: string; quantity: number; price: string }>;
 }
 
@@ -165,6 +171,30 @@ export const fastfoodApi = {
   // Admin / Management
   updateOrderStatus: (orderId: number, data: OrderStatusUpdate) =>
     apiPut<Order>(`/fastfood/orders/${orderId}/status`, data),
+
+  acceptOrder: (orderId: number) =>
+    apiPut<Order>(`/fastfood/orders/${orderId}/accept`),
+
+  completeOrder: (orderId: number) =>
+    apiPut<Order>(`/fastfood/orders/${orderId}/complete`),
+
+  rejectOrder: (orderId: number) =>
+    apiPut<Order>(`/fastfood/orders/${orderId}/reject`),
+
+  getDashboard: () =>
+    apiGet<{
+      restaurant: FastFoodRestaurant;
+      sales_overview: {
+        total_orders: number;
+        total_revenue: number;
+        average_order_value: number;
+        pending_orders: number;
+        completed_orders: number;
+        cancelled_orders: number;
+      };
+      recent_orders: Order[];
+      pdv_connected: boolean;
+    }>("/fastfood/manage"),
 
   toggleRestaurantStatus: (restaurantId: number) =>
     apiPost<{ message: string; is_open: boolean }>(`/fastfood/restaurants/${restaurantId}/toggle`),

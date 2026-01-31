@@ -33,6 +33,15 @@ import {
 } from "@fluentui/react-components";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+    Sheet,
+    SheetContent,
+    SheetHeader,
+    SheetTitle,
+    SheetDescription,
+} from "@/components/ui/sheet";
 import { toast } from "sonner";
 import { fastfoodApi, FastFoodOrder, Restaurant, FastFoodProduct } from "@/services/fastfoodApi";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -71,6 +80,8 @@ export function FastfoodAdminScreen() {
     const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
     const [products, setProducts] = useState<FastFoodProduct[]>([]);
     const [productsLoading, setProductsLoading] = useState(false);
+    const [selectedOrder, setSelectedOrder] = useState<FastFoodOrder | null>(null);
+    const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
     // Fetch sales data for the sales view
     const { data: salesData = [], isLoading: salesLoading } = useSales({
@@ -124,7 +135,15 @@ export function FastfoodAdminScreen() {
 
     const handleUpdateStatus = async (orderId: number, status: string) => {
         try {
-            await fastfoodApi.updateOrderStatus(orderId, { status: status as any });
+            if (status === "preparing") {
+                await fastfoodApi.acceptOrder(orderId);
+            } else if (status === "completed") {
+                await fastfoodApi.completeOrder(orderId);
+            } else if (status === "rejected") {
+                await fastfoodApi.rejectOrder(orderId);
+            } else {
+                await fastfoodApi.updateOrderStatus(orderId, { status: status as any });
+            }
             toast.success(`Pedido #${orderId} atualizado para ${status}`);
             fetchDashboard();
         } catch (error) {
@@ -132,15 +151,20 @@ export function FastfoodAdminScreen() {
         }
     };
 
-    const handleToggleStatus = async () => {
-        if (!restaurant) return;
-        try {
-            const res = await fastfoodApi.toggleRestaurantStatus(restaurant.id);
-            setRestaurant(prev => prev ? { ...prev, is_open: res.is_open } : null);
-            toast.success(res.is_open ? "Restaurante Aberto" : "Restaurante Fechado");
-        } catch (error) {
-            toast.error("Erro ao alterar status");
+    const handleToggleStatus = () => {
+        if (restaurant) {
+            fastfoodApi.toggleRestaurantStatus(restaurant.id)
+                .then(res => {
+                    setRestaurant(prev => prev ? { ...prev, is_open: res.is_open } : null);
+                    toast.success(res.is_open ? "Restaurante aberto" : "Restaurante fechado");
+                })
+                .catch(() => toast.error("Erro ao mudar status do restaurante"));
         }
+    };
+
+    const handleViewDetails = (order: FastFoodOrder) => {
+        setSelectedOrder(order);
+        setIsDetailsOpen(true);
     };
 
     const filteredOrders = useMemo(() => {
@@ -174,6 +198,209 @@ export function FastfoodAdminScreen() {
             preparingOrders,
         };
     }, [orders]);
+
+    const renderOrderDetailsSheet = () => {
+        if (!selectedOrder) return null;
+
+        const statusColors = {
+            pending: "bg-red-100 text-red-700",
+            preparing: "bg-yellow-100 text-yellow-700",
+            ready: "bg-green-100 text-green-700",
+            delivering: "bg-blue-100 text-blue-700",
+            completed: "bg-emerald-100 text-emerald-700",
+            cancelled: "bg-gray-100 text-gray-700",
+            rejected: "bg-gray-100 text-gray-700",
+        };
+
+        return (
+            <Sheet open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+                <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
+                    <SheetHeader className="text-left">
+                        <div className="flex justify-between items-center pr-8">
+                            <SheetTitle className="text-2xl font-black">Pedido #{selectedOrder.id}</SheetTitle>
+                            <div className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${statusColors[selectedOrder.status as keyof typeof statusColors]}`}>
+                                {selectedOrder.status.toUpperCase()}
+                            </div>
+                        </div>
+                        <SheetDescription>
+                            Realizado em {new Date(selectedOrder.created_at).toLocaleString()}
+                        </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="mt-8 space-y-6">
+                        {/* Customer Info */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Cliente</h3>
+                            <div className="fluent-card p-4 space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <Person24Regular className="w-5 h-5 text-orange-500" />
+                                    <div>
+                                        <p className="text-sm font-bold">{selectedOrder.customer_name || "N/A"}</p>
+                                        <p className="text-xs text-muted-foreground">Nome do Cliente</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Phone24Regular className="w-5 h-5 text-orange-500" />
+                                    <div className="flex-1 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-sm font-bold">{selectedOrder.customer_phone || "N/A"}</p>
+                                            <p className="text-xs text-muted-foreground">Telefone</p>
+                                        </div>
+                                        {selectedOrder.customer_phone && (
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => window.open(`https://wa.me/${selectedOrder.customer_phone?.replace(/\D/g, '')}`, '_blank')}
+                                                className="h-8 gap-1"
+                                            >
+                                                <Person24Regular className="w-4 h-4" /> WhatsApp
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                {selectedOrder.order_type === "distance" && (
+                                    <div className="flex items-start gap-3">
+                                        <Location24Regular className="w-5 h-5 text-orange-500 mt-0.5" />
+                                        <div>
+                                            <p className="text-sm font-bold">{selectedOrder.delivery_address || "Endereço não informado"}</p>
+                                            <p className="text-xs text-muted-foreground">Endereço de Entrega</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Order Items */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Itens do Pedido</h3>
+                            <div className="fluent-card p-0 overflow-hidden">
+                                <div className="p-4 space-y-4">
+                                    {selectedOrder.items?.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-start">
+                                            <div className="flex gap-3">
+                                                <div className="w-10 h-10 rounded-lg bg-orange-100 dark:bg-orange-950/40 flex items-center justify-center text-lg">
+                                                    📦
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold">{item.product_name}</p>
+                                                    <p className="text-xs text-muted-foreground">{item.quantity}x {item.price} MT</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-sm font-bold text-orange-600">
+                                                {(Number(item.price) * item.quantity).toFixed(2)} MT
+                                            </p>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="bg-secondary/30 p-4 border-t border-border">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm font-bold">Total</span>
+                                        <span className="text-xl font-black text-orange-600">
+                                            {(Number(selectedOrder.total_value) || 0).toFixed(2)} MT
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Payment & Status */}
+                        <div className="space-y-4">
+                            <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider">Pagamento e Tipo</h3>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="fluent-card p-3">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black">Tipo</p>
+                                    <p className="text-sm font-bold flex items-center gap-1 mt-1">
+                                        {selectedOrder.order_type === "distance" ? <ShoppingBag24Regular className="w-4 h-4" /> : <Food24Regular className="w-4 h-4" />}
+                                        {selectedOrder.order_type === "distance" ? "Delivery" : "Local"}
+                                    </p>
+                                </div>
+                                <div className="fluent-card p-3">
+                                    <p className="text-[10px] text-muted-foreground uppercase font-black">Pagamento</p>
+                                    <p className="text-sm font-bold mt-1 uppercase">{selectedOrder.payment_method}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="pt-4 flex flex-col gap-2">
+                            {selectedOrder.status === "pending" && (
+                                <div className="flex gap-2">
+                                    <Button
+                                        className="flex-1 bg-orange-500 hover:bg-orange-600 h-12 text-md font-bold"
+                                        onClick={() => {
+                                            handleUpdateStatus(selectedOrder.id, "preparing");
+                                            setIsDetailsOpen(false);
+                                        }}
+                                    >
+                                        Aceitar Pedido
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100 h-12 font-bold"
+                                        onClick={() => {
+                                            handleUpdateStatus(selectedOrder.id, "rejected");
+                                            setIsDetailsOpen(false);
+                                        }}
+                                    >
+                                        Rejeitar
+                                    </Button>
+                                </div>
+                            )}
+
+                            {selectedOrder.status === "preparing" && (
+                                <Button
+                                    className="w-full bg-emerald-500 hover:bg-emerald-600 h-12 text-md font-bold"
+                                    onClick={() => {
+                                        handleUpdateStatus(selectedOrder.id, "ready");
+                                        setIsDetailsOpen(false);
+                                    }}
+                                >
+                                    Marcar como Pronto
+                                </Button>
+                            )}
+
+                            {selectedOrder.status === "ready" && (
+                                <Button
+                                    className="w-full bg-blue-500 hover:bg-blue-600 h-12 text-md font-bold"
+                                    onClick={() => {
+                                        handleUpdateStatus(selectedOrder.id, "delivering");
+                                        setIsDetailsOpen(false);
+                                    }}
+                                >
+                                    Saiu para Entrega
+                                </Button>
+                            )}
+
+                            {selectedOrder.status === "delivering" && (
+                                <Button
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 h-12 text-md font-bold text-white shadow-lg"
+                                    onClick={() => {
+                                        handleUpdateStatus(selectedOrder.id, "completed");
+                                        setIsDetailsOpen(false);
+                                    }}
+                                >
+                                    Confirmar Entrega
+                                </Button>
+                            )}
+
+                            {(selectedOrder.status === "pending" || selectedOrder.status === "preparing") && (
+                                <Button
+                                    variant="ghost"
+                                    className="w-full h-10 text-xs font-bold text-muted-foreground hover:text-red-500"
+                                    onClick={() => {
+                                        handleUpdateStatus(selectedOrder.id, "cancelled");
+                                        setIsDetailsOpen(false);
+                                    }}
+                                >
+                                    Cancelar Pedido
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+        );
+    };
 
     const renderDashboard = () => (
         <div className="space-y-6">
@@ -379,7 +606,7 @@ export function FastfoodAdminScreen() {
             ) : (
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
                     {filteredOrders.map((order) => (
-                        <div key={order.id} className="fluent-card p-4 space-y-4">
+                        <div key={order.id} className="fluent-card p-4 space-y-4 hover:shadow-md transition-shadow cursor-pointer border-transparent hover:border-orange-200 dark:hover:border-orange-800" onClick={() => handleViewDetails(order)}>
                             <div className="flex justify-between items-start">
                                 <div>
                                     <div className="flex items-center gap-2">
@@ -387,54 +614,65 @@ export function FastfoodAdminScreen() {
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${order.status === "pending" ? "bg-red-100 text-red-700" :
                                             order.status === "preparing" ? "bg-yellow-100 text-yellow-700" :
                                                 order.status === "ready" ? "bg-green-100 text-green-700" :
-                                                    "bg-gray-100 text-gray-700"
+                                                    order.status === "delivering" ? "bg-blue-100 text-blue-700" :
+                                                        order.status === "completed" ? "bg-emerald-100 text-emerald-700" :
+                                                            "bg-gray-100 text-gray-700"
                                             }`}>
                                             {order.status}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
                                         <Person24Regular className="w-4 h-4" />
-                                        <span>{order.customer_name}</span>
+                                        <span>{order.customer_name || "N/A"}</span>
                                     </div>
+                                    {order.order_type === "distance" && (
+                                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-orange-600 font-bold uppercase">
+                                            <ShoppingBag24Regular className="w-3 h-3" />
+                                            <span>Delivery</span>
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-lg font-black text-orange-600">{(Number(order.total_amount) || 0).toFixed(2)} MT</p>
+                                    <p className="text-lg font-black text-orange-600">{(Number(order.total_value) || 0).toFixed(2)} MT</p>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleTimeString()}</p>
                                 </div>
                             </div>
 
                             <div className="bg-orange-50 dark:bg-orange-950/20 rounded-lg p-3 space-y-2 border border-orange-200/50 dark:border-orange-800/50">
-                                {order.items?.map((item, idx) => (
+                                {order.items?.slice(0, 2).map((item, idx) => (
                                     <div key={idx} className="flex justify-between text-sm">
                                         <span className="text-foreground">{item.quantity}x {item.product_name}</span>
                                         <span className="font-medium text-orange-600">{(Number(item.price) * item.quantity).toFixed(2)} MT</span>
                                     </div>
                                 ))}
+                                {order.items && order.items.length > 2 && (
+                                    <p className="text-xs text-muted-foreground text-center pt-1 border-t border-orange-200/30">
+                                        + {order.items.length - 2} outros itens
+                                    </p>
+                                )}
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                                <button
+                                    onClick={() => handleViewDetails(order)}
+                                    className="flex-1 fluent-button bg-secondary text-secondary-foreground hover:bg-secondary/70 font-bold text-xs"
+                                >
+                                    Ver Detalhes
+                                </button>
                                 {order.status === "pending" && (
                                     <button
                                         onClick={() => handleUpdateStatus(order.id, "preparing")}
-                                        className="flex-1 fluent-button bg-orange-500 text-white hover:bg-orange-600 font-bold"
+                                        className="flex-1 fluent-button bg-orange-500 text-white hover:bg-orange-600 font-bold text-xs"
                                     >
-                                        Aceitar Pedido
+                                        Aceitar
                                     </button>
                                 )}
                                 {order.status === "preparing" && (
                                     <button
                                         onClick={() => handleUpdateStatus(order.id, "ready")}
-                                        className="flex-1 fluent-button bg-emerald-500 text-white hover:bg-emerald-600 font-bold"
+                                        className="flex-1 fluent-button bg-emerald-500 text-white hover:bg-emerald-600 font-bold text-xs"
                                     >
-                                        Marcar como Pronto
-                                    </button>
-                                )}
-                                {(order.status === "pending" || order.status === "preparing") && (
-                                    <button
-                                        onClick={() => handleUpdateStatus(order.id, "cancelled")}
-                                        className="p-2 rounded-lg bg-red-100 text-red-600 hover:bg-red-200"
-                                    >
-                                        <DismissCircle24Regular className="w-6 h-6" />
+                                        Pronto
                                     </button>
                                 )}
                             </div>
@@ -866,6 +1104,8 @@ export function FastfoodAdminScreen() {
                     {activeView === "sales" && renderSales()}
                     {activeView === "products" && renderProducts()}
                     {activeView === "settings" && renderSettings()}
+
+                    {renderOrderDetailsSheet()}
                 </div>
             </div>
         </div>
