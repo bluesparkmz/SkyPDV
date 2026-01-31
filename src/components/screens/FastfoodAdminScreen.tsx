@@ -34,7 +34,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import { fastfoodApi, FastFoodOrder, Restaurant } from "@/services/fastfoodApi";
+import { fastfoodApi, FastFoodOrder, Restaurant, FastFoodProduct } from "@/services/fastfoodApi";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSales } from "@/hooks/useSales";
 
@@ -69,6 +69,8 @@ export function FastfoodAdminScreen() {
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [products, setProducts] = useState<FastFoodProduct[]>([]);
+    const [productsLoading, setProductsLoading] = useState(false);
 
     // Fetch sales data for the sales view
     const { data: salesData = [], isLoading: salesLoading } = useSales({
@@ -102,6 +104,23 @@ export function FastfoodAdminScreen() {
         const interval = setInterval(fetchDashboard, 30000);
         return () => clearInterval(interval);
     }, []);
+
+    useEffect(() => {
+        if (activeView === "products" && restaurant) {
+            const fetchProducts = async () => {
+                try {
+                    setProductsLoading(true);
+                    const prods = await fastfoodApi.getFastfoodProducts(restaurant.id);
+                    setProducts(prods);
+                } catch (error) {
+                    toast.error("Erro ao carregar produtos");
+                } finally {
+                    setProductsLoading(false);
+                }
+            };
+            fetchProducts();
+        }
+    }, [activeView, restaurant]);
 
     const handleUpdateStatus = async (orderId: number, status: string) => {
         try {
@@ -632,66 +651,107 @@ export function FastfoodAdminScreen() {
         );
     };
 
-    const renderProducts = () => (
-        <div className="space-y-4">
-            {/* Info Card */}
-            <div className="fluent-card p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-2 border-orange-200 dark:border-orange-800">
-                <div className="flex items-center gap-4 mb-4">
-                    <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
-                        <Box24Regular className="w-6 h-6" />
-                    </div>
-                    <div>
-                        <h3 className="text-lg font-bold text-foreground">Produtos Fastfood</h3>
-                        <p className="text-sm text-muted-foreground">Produtos disponíveis no app de delivery</p>
-                    </div>
-                </div>
-                <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 space-y-2">
-                    <p className="text-sm text-foreground">
-                        ℹ️ <strong>Como funciona:</strong>
-                    </p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                        <li>• Vá para a tela <strong>Produtos</strong> do SkyPDV</li>
-                        <li>• Ao criar/editar um produto, marque o toggle <strong>"Disponível no Fastfood"</strong></li>
-                        <li>• O produto aparecerá automaticamente no aplicativo de delivery</li>
-                    </ul>
-                </div>
-            </div>
+    const renderProducts = () => {
+        const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
+        const activeProducts = products.filter(p => p.is_active);
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="fluent-card p-4 text-center">
-                    <div className="text-3xl font-black text-orange-600">-</div>
-                    <p className="text-xs text-muted-foreground mt-1">Produtos Fastfood</p>
-                    <p className="text-[10px] text-muted-foreground">Configure na tela Produtos</p>
+        return (
+            <div className="space-y-4">
+                {/* Info Card */}
+                <div className="fluent-card p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 dark:from-orange-950/20 dark:to-orange-900/10 border-2 border-orange-200 dark:border-orange-800">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="w-12 h-12 rounded-full bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+                            <Box24Regular className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-foreground">Produtos Fastfood</h3>
+                            <p className="text-sm text-muted-foreground">Produtos disponíveis no app de delivery</p>
+                        </div>
+                    </div>
+                    <div className="bg-white/50 dark:bg-black/20 rounded-lg p-4 space-y-2">
+                        <p className="text-sm text-foreground">
+                            ℹ️ <strong>Como funciona:</strong>
+                        </p>
+                        <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                            <li>• Vá para a tela <strong>Produtos</strong> do SkyPDV</li>
+                            <li>• Ao criar/editar um produto, marque o toggle <strong>"Disponível no Fastfood"</strong></li>
+                            <li>• O produto aparecerá automaticamente no aplicativo de delivery</li>
+                        </ul>
+                    </div>
                 </div>
-                <div className="fluent-card p-4 text-center">
-                    <div className="text-3xl font-black text-blue-600">-</div>
-                    <p className="text-xs text-muted-foreground mt-1">Categorias</p>
-                    <p className="text-[10px] text-muted-foreground">Organize seu cardápio</p>
-                </div>
-                <div className="fluent-card p-4 text-center">
-                    <div className="text-3xl font-black text-emerald-600">-</div>
-                    <p className="text-xs text-muted-foreground mt-1">Em Estoque</p>
-                    <p className="text-[10px] text-muted-foreground">Produtos disponíveis</p>
-                </div>
-            </div>
 
-            {/* Action Button */}
-            <div className="fluent-card p-6 text-center">
-                <h4 className="font-bold mb-2 text-foreground">Gerencie seus Produtos</h4>
-                <p className="text-sm text-muted-foreground mb-4">
-                    Configure quais produtos aparecem no app de delivery
-                </p>
-                <button
-                    onClick={() => toast.info("Navegue para a tela Produtos para gerenciar")}
-                    className="fluent-button fluent-button-primary gap-2"
-                >
-                    <Box24Regular className="w-4 h-4" />
-                    Ir para Produtos
-                </button>
+                {/* Quick Stats */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="fluent-card p-4 text-center">
+                        <div className="text-3xl font-black text-orange-600">{products.length}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Produtos Fastfood</p>
+                        <p className="text-[10px] text-muted-foreground">Total configurados</p>
+                    </div>
+                    <div className="fluent-card p-4 text-center">
+                        <div className="text-3xl font-black text-blue-600">{categories.length}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Categorias</p>
+                        <p className="text-[10px] text-muted-foreground">Organize seu cardápio</p>
+                    </div>
+                    <div className="fluent-card p-4 text-center">
+                        <div className="text-3xl font-black text-emerald-600">{activeProducts.length}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Ativos</p>
+                        <p className="text-[10px] text-muted-foreground">Disponíveis para pedidos</p>
+                    </div>
+                </div>
+
+                {/* Products List */}
+                <div className="fluent-card">
+                    <div className="p-4 border-b border-border">
+                        <h3 className="text-lg font-bold text-foreground">Lista de Produtos</h3>
+                        <p className="text-sm text-muted-foreground">Produtos marcados para o FastFood</p>
+                    </div>
+                    <div className="p-4">
+                        {productsLoading ? (
+                            <div className="space-y-2">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-secondary/30">
+                                        <div className="w-16 h-16 rounded-lg bg-orange-200/50 dark:bg-orange-800/50 animate-pulse"></div>
+                                        <div className="flex-1 space-y-2">
+                                            <div className="h-4 w-32 bg-secondary rounded animate-pulse"></div>
+                                            <div className="h-3 w-24 bg-secondary/70 rounded animate-pulse"></div>
+                                        </div>
+                                        <div className="h-6 w-20 bg-secondary rounded animate-pulse"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : products.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <Box24Regular className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                <p className="font-medium mb-2">Nenhum produto FastFood configurado</p>
+                                <p className="text-sm">Configure produtos na tela Produtos do SkyPDV</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+                                {products.map((product) => (
+                                    <div key={product.id} className="fluent-card p-4 hover:bg-secondary/30 transition-colors">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-16 h-16 rounded-lg bg-orange-100 dark:bg-orange-950 flex items-center justify-center text-4xl flex-shrink-0">
+                                                {product.emoji || "📦"}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-foreground truncate">{product.name}</h4>
+                                                {product.category && (
+                                                    <p className="text-xs text-muted-foreground capitalize">{product.category}</p>
+                                                )}
+                                                <p className="text-lg font-black text-orange-600 mt-1">
+                                                    {product.price.toFixed(2)} MT
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     const renderSettings = () => (
         <div className="max-w-2xl space-y-6">
