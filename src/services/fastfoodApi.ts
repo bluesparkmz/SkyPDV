@@ -133,11 +133,11 @@ export const fastfoodApi = {
   getRestaurant: (id: number) => apiGet<FastFoodRestaurant>(`/fastfood/restaurants/${id}`),
   getMenus: (restaurantId: number) =>
     apiGet<Array<{ id: number; name: string; items: Array<{ id: number; name: string; price: string; emoji?: string }> }>>(
-      `/fastfood/restaurants/${restaurantId}/menus/`
+      `/fastfood/restaurants/${restaurantId}/menus`
     ),
   getDrinks: (restaurantId: number) =>
     apiGet<Array<{ id: number; name: string; price: string; stock: number; emoji?: string }>>(
-      `/fastfood/restaurants/${restaurantId}/drinks/`
+      `/fastfood/restaurants/${restaurantId}/drinks`
     ),
   // Tables
   getTables: (restaurantId: number) => apiGet<RestaurantTable[]>(`/fastfood/restaurants/${restaurantId}/tables`),
@@ -151,9 +151,9 @@ export const fastfoodApi = {
     apiDelete<{ message: string; success: boolean }>(`/fastfood/restaurants/${restaurant_id}/tables/${tableId}`),
 
   // Orders
-  createOrder: (data: OrderCreate) => apiPost<Order>("/fastfood/orders/", data),
+  createOrder: (data: OrderCreate) => apiPost<Order>("/fastfood/orders", data),
   getRestaurantOrders: (restaurantId: number) =>
-    apiGet<Order[]>(`/fastfood/restaurants/${restaurantId}/orders/`),
+    apiGet<Order[]>(`/fastfood/restaurants/${restaurantId}/orders`),
 
   // Tabs
   getTabs: (restaurantId: number, status?: "open" | "closed" | null) =>
@@ -203,4 +203,3 @@ export const fastfoodApi = {
   getFastfoodProducts: (restaurantId: number) =>
     apiGet<FastFoodProduct[]>(`/fastfood/restaurants/${restaurantId}/fastfood-products`),
 };
-

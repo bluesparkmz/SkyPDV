@@ -133,6 +133,46 @@ export function FastfoodAdminScreen() {
         }
     }, [activeView, restaurant]);
 
+    // Real-time notification handler
+    useEffect(() => {
+        const handleNewOrder = (event: any) => {
+            const data = event.detail;
+            console.log("Real-time: New order received!", data);
+
+            // Play notification sound
+            try {
+                const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3");
+                audio.play().catch(e => console.warn("Could not play notification sound:", e));
+            } catch (e) {
+                console.warn("Audio error:", e);
+            }
+
+            toast.info("Novo pedido recebido!", {
+                description: `Pedido #${data.data?.order_id || 'FastFood'}`,
+                action: {
+                    label: "Ver Pedidos",
+                    onClick: () => setActiveView("orders") // Changed to setActiveView
+                }
+            });
+
+            // Refresh data
+            fetchDashboard();
+        };
+
+        const handleStatusUpdate = (event: any) => {
+            // Refresh dashboard on any notification that might affect sales/orders
+            fetchDashboard();
+        };
+
+        window.addEventListener('fastfood-new-order' as any, handleNewOrder);
+        window.addEventListener('new-notification' as any, handleStatusUpdate);
+
+        return () => {
+            window.removeEventListener('fastfood-new-order' as any, handleNewOrder);
+            window.removeEventListener('new-notification' as any, handleStatusUpdate);
+        };
+    }, []);
+
     const handleUpdateStatus = async (orderId: number, status: string) => {
         try {
             if (status === "preparing") {

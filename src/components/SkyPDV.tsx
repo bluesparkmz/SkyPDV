@@ -29,6 +29,7 @@ import { useCashRegister } from "@/hooks/useCashRegister";
 import { useBattery } from "@/hooks/useBattery";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
+import { useSkyWebsocket } from "@/hooks/useSkyWebsocket";
 import { Product } from "@/services/api";
 import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
@@ -60,6 +61,9 @@ export function SkyPDV() {
   const { level: batteryLevel, charging: isCharging, isSupported: batterySupported } = useBattery();
   const { qualityLabel, qualityColor, isOnline } = useNetworkQuality();
   const { isConnected: hardwareConnected, isConnecting: hardwareConnecting } = useHardwarePlugin();
+
+  // Initialize global WebSocket for notifications
+  useSkyWebsocket();
 
   // Fetch products from API
   const { data: products = [], isLoading: productsLoading } = useProducts({
