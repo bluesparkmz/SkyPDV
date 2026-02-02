@@ -2,22 +2,38 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateTerminal, terminalApi } from "@/services/api";
 import { BuildingShop24Regular } from "@fluentui/react-icons";
 
 type Props = { onSuccess: () => void };
 
+type BusinessType = "store" | "pharmacy" | "restaurant" | "cafeteria" | "snackbar" | "";
+
 export function TerminalSetup({ onSuccess }: Props) {
   const [name, setName] = useState("");
   const [currency, setCurrency] = useState("MZN");
   const [taxRate, setTaxRate] = useState("16");
   const [description, setDescription] = useState("");
+  const [businessType, setBusinessType] = useState<BusinessType>("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!businessType) {
+      setError("Por favor, selecione o tipo de estabelecimento");
+      return;
+    }
+    
     setError("");
     setIsLoading(true);
     try {
@@ -26,7 +42,7 @@ export function TerminalSetup({ onSuccess }: Props) {
         description: description.trim() ? description.trim() : null,
         currency: currency.trim() || "MZN",
         tax_rate: taxRate.trim() || "0",
-        settings: {},
+        settings: { business_type: businessType },
       };
       await terminalApi.setup(payload);
       onSuccess();
@@ -57,11 +73,43 @@ export function TerminalSetup({ onSuccess }: Props) {
               )}
 
               <div className="space-y-2">
+                <Label htmlFor="business-type" className="text-sm font-medium">
+                  Tipo de Estabelecimento <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  value={businessType}
+                  onValueChange={(value) => setBusinessType(value as BusinessType)}
+                  disabled={isLoading}
+                  required
+                >
+                  <SelectTrigger id="business-type" className="h-11">
+                    <SelectValue placeholder="Selecione o tipo de estabelecimento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="restaurant">🍽️ Restaurante</SelectItem>
+                    <SelectItem value="cafeteria">☕ Cafetaria</SelectItem>
+                    <SelectItem value="snackbar">🍔 Lanchonete</SelectItem>
+                    <SelectItem value="pharmacy">💊 Farmácia</SelectItem>
+                    <SelectItem value="store">🏪 Loja</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Restaurante, Lanchonete e Cafetaria criam automaticamente um estabelecimento FastFood
+                </p>
+              </div>
+
+              <div className="space-y-2">
                 <Label htmlFor="terminal-name" className="text-sm font-medium">Nome da Loja/Balcão</Label>
                 <Input
                   id="terminal-name"
                   type="text"
-                  placeholder="Ex: Farmácia Central"
+                  placeholder={
+                    businessType === "restaurant" ? "Ex: Restaurante Central" :
+                    businessType === "cafeteria" ? "Ex: Cafetaria do Centro" :
+                    businessType === "snackbar" ? "Ex: Lanchonete Express" :
+                    businessType === "pharmacy" ? "Ex: Farmácia Central" :
+                    "Ex: Loja Central"
+                  }
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="h-11"

@@ -135,7 +135,8 @@ export function FastfoodAdminScreen() {
     useEffect(() => {
         const handleNewOrder = (event: any) => {
             const data = event.detail;
-            console.log("Real-time: New order received!", data);
+            const orderId = data.data?.reference_id || data.data?.order_id || data.order_id;
+            console.log("Real-time: New order received!", data, "Order ID:", orderId);
 
             // Play notification sound
             try {
@@ -146,28 +147,72 @@ export function FastfoodAdminScreen() {
             }
 
             toast.info("Novo pedido recebido!", {
-                description: `Pedido #${data.data?.order_id || 'FastFood'}`,
+                description: `Pedido #${orderId || 'FastFood'}`,
                 action: {
                     label: "Ver Pedidos",
-                    onClick: () => setActiveView("orders") // Changed to setActiveView
+                    onClick: () => setActiveView("orders")
                 }
             });
 
-            // Refresh data
+            // Refresh data to get the new order
             fetchDashboard();
         };
 
-        const handleStatusUpdate = (event: any) => {
-            // Refresh dashboard on any notification that might affect sales/orders
-            fetchDashboard();
+        const handleOrderStatusUpdate = (event: any) => {
+            const data = event.detail;
+            const orderId = data.data?.reference_id || data.data?.order_id || data.order_id;
+            const newStatus = data.new_status || data.data?.notification_type?.replace('order_', '');
+            
+            console.log("Real-time: Order status update!", { orderId, newStatus, data });
+
+            if (orderId && newStatus) {
+                // Update the order in the local state without full refresh
+                setOrders(prevOrders => {
+                    const orderIndex = prevOrders.findIndex(o => o.id === Number(orderId));
+                    if (orderIndex !== -1) {
+                        const updatedOrders = [...prevOrders];
+                        updatedOrders[orderIndex] = {
+                            ...updatedOrders[orderIndex],
+                            status: newStatus
+                        };
+                        return updatedOrders;
+                    }
+                    // If order not found, refresh to get it
+                    fetchDashboard();
+                    return prevOrders;
+                });
+
+                // Show toast notification
+                toast.success(`Pedido #${orderId} atualizado para: ${newStatus}`, {
+                    duration: 3000
+                });
+            } else {
+                // Fallback: refresh if we can't identify the order
+                fetchDashboard();
+            }
+        };
+
+        const handleGenericNotification = (event: any) => {
+            const data = event.detail;
+            const notificationType = data.data?.notification_type || data.data?.type || data.tipo || '';
+            
+            // Only refresh if it's an order-related notification
+            if (notificationType?.startsWith('order_') || data.data?.reference_type === 'FastFoodOrder') {
+                console.log("Real-time: Order-related notification received, refreshing...");
+                fetchDashboard();
+            }
         };
 
         window.addEventListener('fastfood-new-order' as any, handleNewOrder);
-        window.addEventListener('new-notification' as any, handleStatusUpdate);
+        window.addEventListener('fastfood-order-status-update' as any, handleOrderStatusUpdate);
+        window.addEventListener('fastfood-order-update' as any, handleGenericNotification);
+        window.addEventListener('new-notification' as any, handleGenericNotification);
 
         return () => {
             window.removeEventListener('fastfood-new-order' as any, handleNewOrder);
-            window.removeEventListener('new-notification' as any, handleStatusUpdate);
+            window.removeEventListener('fastfood-order-status-update' as any, handleOrderStatusUpdate);
+            window.removeEventListener('fastfood-order-update' as any, handleGenericNotification);
+            window.removeEventListener('new-notification' as any, handleGenericNotification);
         };
     }, []);
 
