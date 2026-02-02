@@ -112,8 +112,6 @@ export function FastfoodAdminScreen() {
 
     useEffect(() => {
         fetchDashboard();
-        const interval = setInterval(fetchDashboard, 30000);
-        return () => clearInterval(interval);
     }, []);
 
     useEffect(() => {
