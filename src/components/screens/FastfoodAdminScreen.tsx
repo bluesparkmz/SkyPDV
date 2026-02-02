@@ -77,7 +77,7 @@ export function FastfoodAdminScreen() {
     const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
+    const [dateFilter, setDateFilter] = useState<string>("");
     const [products, setProducts] = useState<FastFoodProduct[]>([]);
     const [productsLoading, setProductsLoading] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<FastFoodOrder | null>(null);
@@ -214,10 +214,8 @@ export function FastfoodAdminScreen() {
                 order.id.toString().includes(searchQuery.toLowerCase()) ||
                 order.customer_name?.toLowerCase().includes(searchQuery.toLowerCase());
 
-            const matchesDate =
-                !dateFilter ||
-                new Date(order.created_at).toLocaleDateString("pt-BR") ===
-                new Date(dateFilter).toLocaleDateString("pt-BR");
+            const orderDateStr = new Date(order.created_at).toISOString().split('T')[0];
+            const matchesDate = !dateFilter || orderDateStr === dateFilter;
 
             return matchesSearch && matchesDate;
         });
