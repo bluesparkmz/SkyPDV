@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,10 +27,87 @@ export function TerminalSetup({ onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [restaurantDetails, setRestaurantDetails] = useState<Record<string, any>>({});
+  const isFastFoodBusiness = businessType === "restaurant" || businessType === "cafeteria" || businessType === "snackbar";
+
+  const normalizeProvince = (addr: any): string => {
+    const state = addr?.state || addr?.region || addr?.province || "";
+    const lowercaseState = String(state).toLowerCase();
+
+    if (lowercaseState.includes("maputo cidade") || lowercaseState === "maputo capital") return "Maputo Cidade";
+    if (lowercaseState.includes("maputo")) return "Maputo Provincia";
+    if (lowercaseState.includes("gaza")) return "Gaza";
+    if (lowercaseState.includes("inhambane")) return "Inhambane";
+    if (lowercaseState.includes("sofala")) return "Sofala";
+    if (lowercaseState.includes("manica")) return "Manica";
+    if (lowercaseState.includes("tete")) return "Tete";
+    if (lowercaseState.includes("zambezia")) return "Zambézia";
+    if (lowercaseState.includes("nampula")) return "Nampula";
+    if (lowercaseState.includes("niassa")) return "Niassa";
+    if (lowercaseState.includes("cabo delgado")) return "Cabo Delgado";
+
+    return "";
+  };
 
   const handleRestaurantDetailChange = (key: string, value: any) => {
     setRestaurantDetails(prev => ({ ...prev, [key]: value }));
   };
+
+  useEffect(() => {
+    if (!isFastFoodBusiness) return;
+    if (!navigator.geolocation) return;
+
+    const hasProvince = Boolean(restaurantDetails?.province);
+    const hasDistrict = Boolean(restaurantDetails?.district);
+    if (hasProvince && hasDistrict) return;
+
+    const getPosition = (options: PositionOptions): Promise<GeolocationPosition> => {
+      return new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, options);
+      });
+    };
+
+    let cancelled = false;
+
+    (async () => {
+      try {
+        let position: GeolocationPosition;
+        try {
+          position = await getPosition({ enableHighAccuracy: true, timeout: 5000, maximumAge: 0 });
+        } catch {
+          position = await getPosition({ enableHighAccuracy: false, timeout: 10000, maximumAge: Infinity });
+        }
+
+        if (cancelled) return;
+
+        const { latitude, longitude } = position.coords;
+        const res = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&zoom=10`
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const addr = data?.address;
+        if (!addr) return;
+
+        const province = normalizeProvince(addr);
+        const district = addr.city || addr.town || addr.village || addr.suburb || addr.municipality || "";
+
+        if (cancelled) return;
+
+        setRestaurantDetails(prev => {
+          const next = { ...prev };
+          if (province && !next.province) next.province = province;
+          if (district && !next.district) next.district = district;
+          return next;
+        });
+      } catch {
+        return;
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [businessType, restaurantDetails?.province, restaurantDetails?.district]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,8 +120,6 @@ export function TerminalSetup({ onSuccess }: Props) {
     setError("");
     setIsLoading(true);
     try {
-      const isFastFoodBusiness = businessType === "restaurant" || businessType === "cafeteria" || businessType === "snackbar";
-
       if (isFastFoodBusiness) {
         const form = new FormData();
         form.append("name", name.trim());
@@ -114,7 +189,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                 <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">{error}</div>
               )}
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className={`grid grid-cols-1 gap-6 ${isFastFoodBusiness ? "md:grid-cols-2" : "md:grid-cols-1"}`}>
                 <div className="space-y-4">
                   <h3 className="font-semibold text-lg border-b pb-2">Dados do Balcão</h3>
 
@@ -139,7 +214,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                         <SelectItem value="store">🏪 Loja</SelectItem>
                       </SelectContent>
                     </Select>
-                    {(businessType === "restaurant" || businessType === "cafeteria" || businessType === "snackbar") && (
+                    {isFastFoodBusiness && (
                       <p className="text-xs text-green-600 font-medium flex items-center gap-1">
                         ✓ Estabelecimento FastFood será criado automaticamente
                       </p>
@@ -205,14 +280,18 @@ export function TerminalSetup({ onSuccess }: Props) {
                   </div>
                 </div>
 
-                {(businessType === "restaurant" || businessType === "cafeteria" || businessType === "snackbar") && (
+                {isFastFoodBusiness && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-500">
                     <h3 className="font-semibold text-lg border-b pb-2">Detalhes do Restaurante</h3>
 
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label htmlFor="rest-province" className="text-sm font-medium">Província</Label>
-                        <Select disabled={isLoading} onValueChange={(v) => handleRestaurantDetailChange("province", v)}>
+                        <Select
+                          disabled={isLoading}
+                          value={restaurantDetails?.province || ""}
+                          onValueChange={(v) => handleRestaurantDetailChange("province", v)}
+                        >
                           <SelectTrigger id="rest-province" className="h-11">
                             <SelectValue placeholder="Selecione" />
                           </SelectTrigger>
@@ -237,6 +316,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                           id="rest-district"
                           className="h-11"
                           placeholder="Ex: Kampfumo"
+                          value={restaurantDetails?.district || ""}
                           onChange={(e) => handleRestaurantDetailChange("district", e.target.value)}
                         />
                       </div>
@@ -248,6 +328,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                         id="rest-address"
                         className="h-11"
                         placeholder="Ex: Polana Cimento, Av. 24 de Julho"
+                        value={restaurantDetails?.neighborhood || ""}
                         onChange={(e) => handleRestaurantDetailChange("neighborhood", e.target.value)}
                       />
                     </div>
@@ -258,6 +339,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                         id="rest-avenue"
                         className="h-11"
                         placeholder="Ex: Av. Julius Nyerere"
+                        value={restaurantDetails?.avenue || ""}
                         onChange={(e) => handleRestaurantDetailChange("avenue", e.target.value)}
                       />
                     </div>
@@ -268,6 +350,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                         id="rest-maps"
                         className="h-11"
                         placeholder="https://maps.google.com/..."
+                        value={restaurantDetails?.location_google_maps || ""}
                         onChange={(e) => handleRestaurantDetailChange("location_google_maps", e.target.value)}
                       />
                     </div>
@@ -279,6 +362,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                           id="rest-open"
                           type="time"
                           className="h-11"
+                          value={restaurantDetails?.opening_time || ""}
                           onChange={(e) => handleRestaurantDetailChange("opening_time", e.target.value)}
                         />
                       </div>
@@ -288,6 +372,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                           id="rest-close"
                           type="time"
                           className="h-11"
+                          value={restaurantDetails?.closing_time || ""}
                           onChange={(e) => handleRestaurantDetailChange("closing_time", e.target.value)}
                         />
                       </div>
@@ -300,6 +385,7 @@ export function TerminalSetup({ onSuccess }: Props) {
                         type="number"
                         className="h-11"
                         placeholder="0.00"
+                        value={restaurantDetails?.min_delivery_value ?? ""}
                         onChange={(e) => handleRestaurantDetailChange("min_delivery_value", Number(e.target.value))}
                       />
                     </div>
