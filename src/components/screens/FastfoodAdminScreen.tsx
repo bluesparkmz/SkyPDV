@@ -18,6 +18,7 @@ import {
     ShoppingBag24Regular,
     Star24Regular,
     ArrowTrendingLines24Regular,
+    BuildingShop24Regular,
 } from "@fluentui/react-icons";
 import type { DrawerProps } from "@fluentui/react-components";
 import {
@@ -162,7 +163,7 @@ export function FastfoodAdminScreen() {
             const data = event.detail;
             const orderId = data.data?.reference_id || data.data?.order_id || data.order_id;
             const newStatus = data.new_status || data.data?.notification_type?.replace('order_', '');
-            
+
             console.log("Real-time: Order status update!", { orderId, newStatus, data });
 
             if (orderId && newStatus) {
@@ -195,7 +196,7 @@ export function FastfoodAdminScreen() {
         const handleGenericNotification = (event: any) => {
             const data = event.detail;
             const notificationType = data.data?.notification_type || data.data?.type || data.tipo || '';
-            
+
             // Only refresh if it's an order-related notification
             if (notificationType?.startsWith('order_') || data.data?.reference_type === 'FastFoodOrder') {
                 console.log("Real-time: Order-related notification received, refreshing...");
@@ -1049,42 +1050,204 @@ export function FastfoodAdminScreen() {
         );
     };
 
-    const renderSettings = () => (
-        <div className="max-w-2xl space-y-6">
-            <div className="fluent-card p-6 space-y-4">
-                <h3 className="text-lg font-bold text-foreground">Detalhes do Restaurante</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-muted-foreground uppercase">Nome</label>
-                        <p className="font-medium text-foreground">{restaurant?.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                        <label className="text-xs font-bold text-muted-foreground uppercase">Status Comercial</label>
-                        <p className={`font-black ${restaurant?.is_open ? 'text-emerald-500' : 'text-red-500'}`}>
-                            {restaurant?.is_open ? 'ABERTO' : 'FECHADO'}
-                        </p>
-                    </div>
-                    <div className="space-y-1 flex items-center gap-2">
-                        <Phone24Regular className="w-5 h-5 text-orange-500" />
-                        <span className="text-foreground">{restaurant?.phone || "Não informado"}</span>
-                    </div>
-                    <div className="space-y-1 flex items-center gap-2">
-                        <Location24Regular className="w-5 h-5 text-orange-500" />
-                        <span className="text-foreground">{restaurant?.address || "Sem endereço"}</span>
-                    </div>
-                </div>
-            </div>
+    const [settingsForm, setSettingsForm] = useState<any>({});
+    const [settingsLoading, setSettingsLoading] = useState(false);
 
-            <div className="fluent-card p-6 bg-orange-50 dark:bg-orange-950/10 border-orange-200 dark:border-orange-800">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-full bg-orange-500/10 text-orange-600">
-                        <CheckmarkCircle24Regular className="w-6 h-6" />
-                    </div>
+    useEffect(() => {
+        if (restaurant) {
+            setSettingsForm({
+                name: restaurant.name,
+                phone: restaurant.phone,
+                address: restaurant.address,
+                province: (restaurant as any).province,
+                district: (restaurant as any).district,
+                neighborhood: (restaurant as any).neighborhood,
+                avenue: (restaurant as any).avenue,
+                location_google_maps: (restaurant as any).location_google_maps,
+                opening_time: (restaurant as any).opening_time,
+                closing_time: (restaurant as any).closing_time,
+                min_delivery_value: (restaurant as any).min_delivery_value,
+            });
+        }
+    }, [restaurant]);
+
+    const handleSettingsChange = (key: string, value: any) => {
+        setSettingsForm(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleSaveSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!restaurant) return;
+
+        try {
+            setSettingsLoading(true);
+            const formData = new FormData();
+            Object.keys(settingsForm).forEach(key => {
+                if (settingsForm[key] !== null && settingsForm[key] !== undefined) {
+                    formData.append(key, settingsForm[key]);
+                }
+            });
+
+            // Handle file uploads (basic implementation)
+            const coverInput = document.getElementById('cover-image') as HTMLInputElement;
+            if (coverInput?.files?.[0]) {
+                formData.append('cover_image', coverInput.files[0]);
+            }
+
+            await fastfoodApi.updateRestaurant(restaurant.id, formData);
+            toast.success("Configurações atualizadas com sucesso!");
+            fetchDashboard(); // Refresh data
+        } catch (error) {
+            toast.error("Erro ao atualizar configurações");
+        } finally {
+            setSettingsLoading(false);
+        }
+    };
+
+    const renderSettings = () => (
+        <div className="max-w-4xl space-y-6 pb-20">
+            <div className="fluent-card p-6 space-y-6">
+                <div className="flex justify-between items-center border-b border-border pb-4">
                     <div>
-                        <h4 className="font-bold text-foreground">Sincronização Ativa</h4>
-                        <p className="text-sm text-muted-foreground">Seus produtos do SkyPDV marcados como 'Fastfood' aparecem automaticamente no aplicativo.</p>
+                        <h3 className="text-xl font-bold text-foreground">Configurações do Restaurante</h3>
+                        <p className="text-sm text-muted-foreground">Gerencie informações visíveis no aplicativo</p>
                     </div>
+                    <Button onClick={handleSaveSettings} disabled={settingsLoading} className="bg-orange-500 hover:bg-orange-600 font-bold">
+                        {settingsLoading ? "Salvando..." : "Salvar Alterações"}
+                    </Button>
                 </div>
+
+                <form onSubmit={handleSaveSettings} className="space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <h4 className="font-semibold text-lg flex items-center gap-2"><BuildingShop24Regular className="text-orange-500" /> Informações Básicas</h4>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Nome do Restaurante</label>
+                                <Input
+                                    value={settingsForm.name || ''}
+                                    onChange={e => handleSettingsChange('name', e.target.value)}
+                                    placeholder="Ex: Restaurante Saboroso"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Telefone de Contato</label>
+                                <Input
+                                    value={settingsForm.phone || ''}
+                                    onChange={e => handleSettingsChange('phone', e.target.value)}
+                                    placeholder="Ex: +258 84 123 4567"
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Abertura</label>
+                                    <Input
+                                        type="time"
+                                        value={settingsForm.opening_time || ''}
+                                        onChange={e => handleSettingsChange('opening_time', e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Fecho</label>
+                                    <Input
+                                        type="time"
+                                        value={settingsForm.closing_time || ''}
+                                        onChange={e => handleSettingsChange('closing_time', e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Taxa Mínima de Entrega (MT)</label>
+                                <Input
+                                    type="number"
+                                    value={settingsForm.min_delivery_value || ''}
+                                    onChange={e => handleSettingsChange('min_delivery_value', e.target.value)}
+                                    placeholder="0.00"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-4">
+                            <h4 className="font-semibold text-lg flex items-center gap-2"><Location24Regular className="text-orange-500" /> Localização</h4>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Província</label>
+                                    <Input
+                                        value={settingsForm.province || ''}
+                                        onChange={e => handleSettingsChange('province', e.target.value)}
+                                        placeholder="Ex: Maputo Cidade"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-sm font-medium">Distrito</label>
+                                    <Input
+                                        value={settingsForm.district || ''}
+                                        onChange={e => handleSettingsChange('district', e.target.value)}
+                                        placeholder="Ex: Kampfumo"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Bairro</label>
+                                <Input
+                                    value={settingsForm.neighborhood || ''}
+                                    onChange={e => handleSettingsChange('neighborhood', e.target.value)}
+                                    placeholder="Ex: Polana Cimento"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Avenida / Rua / Endereço</label>
+                                <Input
+                                    value={settingsForm.address || settingsForm.avenue || ''}
+                                    onChange={e => {
+                                        handleSettingsChange('address', e.target.value);
+                                        handleSettingsChange('avenue', e.target.value);
+                                    }}
+                                    placeholder="Ex: Av. Julius Nyerere, nº 123"
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Link Google Maps</label>
+                                <Input
+                                    value={settingsForm.location_google_maps || ''}
+                                    onChange={e => handleSettingsChange('location_google_maps', e.target.value)}
+                                    placeholder="https://maps.goo..."
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border">
+                        <h4 className="font-semibold text-lg flex items-center gap-2 mb-4"><Box24Regular className="text-orange-500" /> Mídia</h4>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Imagem de Capa</label>
+                            <Input id="cover-image" type="file" accept="image/*" className="cursor-pointer" />
+                            <p className="text-xs text-muted-foreground">Recomendado: 800x400px ou maior.</p>
+                        </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border mt-6">
+                        <div className="p-4 bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-lg flex items-start gap-3">
+                            <div className="mt-1 p-1 bg-orange-500 rounded-full text-white">
+                                <CheckmarkCircle24Regular className="w-4 h-4" />
+                            </div>
+                            <div>
+                                <h5 className="font-bold text-orange-800 dark:text-orange-400">Sincronização Automática</h5>
+                                <p className="text-sm text-orange-700/80 dark:text-orange-400/80">
+                                    Você pode controlar o Status (Aberto/Fechado) usando o botão no topo da página.
+                                    Produtos marcados como 'Fastfood' no inventário do SkyPDV aparecerão automaticamente.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     );

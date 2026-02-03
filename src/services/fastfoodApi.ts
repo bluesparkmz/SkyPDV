@@ -129,7 +129,40 @@ export interface FastFoodProduct {
 }
 
 export const fastfoodApi = {
+  createRestaurant: (data: FormData) => {
+    // Note: When sending FormData, we should NOT set Content-Type header manually
+    // The browser will set it to multipart/form-data with the correct boundary
+    return fetch("https://api.skyvenda.com/fastfood/restaurants", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
+      },
+      body: data,
+    }).then(async (res) => {
+      if (!res.ok) {
+        throw new Error("Failed to create restaurant");
+      }
+      return res.json();
+    });
+  },
   getMyRestaurants: () => apiGet<FastFoodRestaurant[]>("/fastfood/restaurants/mine"),
+  updateRestaurant: (id: number, data: FormData) => {
+    // Note: When sending FormData, we should NOT set Content-Type header manually
+    // The browser will set it to multipart/form-data with the correct boundary
+    // We need to bypass the default JSON behavior of apiPut
+    return fetch(`https://api.skyvenda.com/fastfood/restaurants/${id}`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
+      },
+      body: data,
+    }).then(async (res) => {
+      if (!res.ok) {
+        throw new Error("Failed to update restaurant");
+      }
+      return res.json();
+    });
+  },
   getRestaurant: (id: number) => apiGet<FastFoodRestaurant>(`/fastfood/restaurants/${id}`),
   getMenus: (restaurantId: number) =>
     apiGet<Array<{ id: number; name: string; items: Array<{ id: number; name: string; price: string; emoji?: string }> }>>(

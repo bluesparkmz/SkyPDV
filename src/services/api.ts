@@ -339,6 +339,19 @@ export interface CreateTerminal {
   tax_rate?: string;
   currency?: string;
   settings?: Record<string, unknown> | null;
+  restaurant_details?: {
+    province?: string;
+    district?: string;
+    neighborhood?: string;
+    avenue?: string;
+    location_google_maps?: string;
+    opening_time?: string;
+    closing_time?: string;
+    open_days?: string;
+    min_delivery_value?: number;
+    latitude?: number;
+    longitude?: number;
+  };
 }
 
 export interface Product {
