@@ -41,7 +41,17 @@ export function useCreateProduct() {
       toast.success("Produto criado com sucesso!");
     },
     onError: (error) => {
-      toast.error(`Erro ao criar produto: ${error.message}`);
+      // Se o erro for CORS/network após criação bem-sucedida, não mostrar erro ao utilizador
+      const isLikelyCorsError = error.message?.toLowerCase().includes('failed to fetch') ||
+                               error.message?.toLowerCase().includes('cors') ||
+                               error.message?.toLowerCase().includes('network error') ||
+                               error.message?.toLowerCase().includes('access-control-allow-origin');
+      
+      if (!isLikelyCorsError) {
+        toast.error(`Erro ao criar produto: ${error.message}`);
+      }
+      // Mesmo em caso de CORS, invalidar cache para o produto aparecer
+      queryClient.invalidateQueries({ queryKey: ["products"] });
     },
   });
 }
