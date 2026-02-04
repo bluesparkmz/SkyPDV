@@ -1052,6 +1052,7 @@ export function FastfoodAdminScreen() {
 
     const [settingsForm, setSettingsForm] = useState<any>({});
     const [settingsLoading, setSettingsLoading] = useState(false);
+    const [isUpdatingLocation, setIsUpdatingLocation] = useState(false);
 
     useEffect(() => {
         if (restaurant) {
@@ -1067,12 +1068,40 @@ export function FastfoodAdminScreen() {
                 opening_time: (restaurant as any).opening_time,
                 closing_time: (restaurant as any).closing_time,
                 min_delivery_value: (restaurant as any).min_delivery_value,
+                latitude: (restaurant as any).latitude,
+                longitude: (restaurant as any).longitude,
             });
         }
     }, [restaurant]);
 
     const handleSettingsChange = (key: string, value: any) => {
         setSettingsForm(prev => ({ ...prev, [key]: value }));
+    };
+
+    const handleUpdateLocation = () => {
+        if (!navigator.geolocation) {
+            toast.error("Geolocalização não é suportada pelo navegador.");
+            return;
+        }
+
+        setIsUpdatingLocation(true);
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                const { latitude, longitude } = position.coords;
+                setSettingsForm(prev => ({
+                    ...prev,
+                    latitude,
+                    longitude,
+                }));
+                toast.success("Localização do restaurante atualizada. Clique em salvar para aplicar.");
+                setIsUpdatingLocation(false);
+            },
+            () => {
+                toast.error("Erro ao obter localização. Verifique as permissões do navegador.");
+                setIsUpdatingLocation(false);
+            },
+            { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
     };
 
     const handleSaveSettings = async (e: React.FormEvent) => {
@@ -1220,6 +1249,28 @@ export function FastfoodAdminScreen() {
                                     onChange={e => handleSettingsChange('location_google_maps', e.target.value)}
                                     placeholder="https://maps.goo..."
                                 />
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">Coordenadas (Latitude / Longitude)</label>
+                                <div className="text-xs text-muted-foreground">
+                                    {settingsForm.latitude != null && settingsForm.longitude != null
+                                        ? `${settingsForm.latitude}, ${settingsForm.longitude}`
+                                        : "Ainda não definido"}
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleUpdateLocation}
+                                    disabled={settingsLoading || isUpdatingLocation}
+                                    className="mt-1"
+                                >
+                                    {isUpdatingLocation ? "Capturando localização..." : "Atualizar localização"}
+                                </Button>
+                                <p className="text-[11px] text-muted-foreground">
+                                    Use este botão apenas quando estiver fisicamente no restaurante. A localização será a do dispositivo.
+                                </p>
                             </div>
                         </div>
                     </div>

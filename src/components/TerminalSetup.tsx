@@ -94,9 +94,12 @@ export function TerminalSetup({ onSuccess }: Props) {
         if (cancelled) return;
 
         setRestaurantDetails(prev => {
-          const next = { ...prev };
+          const next: any = { ...prev };
           if (province && !next.province) next.province = province;
           if (district && !next.district) next.district = district;
+          // salvar coordenadas apenas se ainda não existirem
+          if (next.latitude == null) next.latitude = latitude;
+          if (next.longitude == null) next.longitude = longitude;
           return next;
         });
       } catch {
