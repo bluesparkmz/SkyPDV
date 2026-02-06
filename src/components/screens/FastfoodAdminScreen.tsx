@@ -1121,7 +1121,7 @@ export function FastfoodAdminScreen() {
                         <div key={ad.id} className="fluent-card overflow-hidden group border-transparent hover:border-orange-500 transition-all">
                             <div className="relative h-40 bg-secondary/30">
                                 {ad.photo ? (
-                                    <img src={ad.photo} alt={ad.name} className="w-full h-full object-cover" />
+                                    <img src={ad.photo?.startsWith('http') ? ad.photo : `https://api.skyvenda.com${ad.photo}`} alt={ad.name} className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center opacity-20">
                                         <Food24Regular className="w-12 h-12" />
