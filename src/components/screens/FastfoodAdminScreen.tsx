@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, FormEvent } from "react";
 import {
     Food24Regular,
     ChartMultiple24Regular,
@@ -64,7 +64,7 @@ const useStyles = makeStyles({
     },
 });
 
-type FastfoodView = "dashboard" | "orders" | "sales" | "products" | "settings";
+type FastfoodView = "dashboard" | "orders" | "sales" | "products" | "ads" | "settings";
 
 export function FastfoodAdminScreen() {
     const styles = useStyles();
@@ -81,6 +81,17 @@ export function FastfoodAdminScreen() {
     const [dateFilter, setDateFilter] = useState<string>("");
     const [products, setProducts] = useState<FastFoodProduct[]>([]);
     const [productsLoading, setProductsLoading] = useState(false);
+    const [ads, setAds] = useState<any[]>([]);
+    const [adsLoading, setAdsLoading] = useState(false);
+    const [isAdSheetOpen, setIsAdSheetOpen] = useState(false);
+    const [adForm, setAdForm] = useState({
+        name: "",
+        description: "",
+        days: 7,
+        price: "" as string | number,
+        link: "",
+    });
+    const [isCreatingAd, setIsCreatingAd] = useState(false);
     const [selectedOrder, setSelectedOrder] = useState<FastFoodOrder | null>(null);
     const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
@@ -129,6 +140,21 @@ export function FastfoodAdminScreen() {
                 }
             };
             fetchProducts();
+        }
+
+        if (activeView === "ads" && restaurant) {
+            const fetchAds = async () => {
+                try {
+                    setAdsLoading(true);
+                    const restaurantAds = await fastfoodApi.getRestaurantAds(restaurant.id);
+                    setAds(restaurantAds);
+                } catch (error) {
+                    toast.error("Erro ao carregar anúncios");
+                } finally {
+                    setAdsLoading(false);
+                }
+            };
+            fetchAds();
         }
     }, [activeView, restaurant]);
 
@@ -249,6 +275,67 @@ export function FastfoodAdminScreen() {
     const handleViewDetails = (order: FastFoodOrder) => {
         setSelectedOrder(order);
         setIsDetailsOpen(true);
+    };
+
+    const handleDeleteAd = async (adId: number) => {
+        if (!confirm("Tem certeza que deseja deletar este anúncio?")) return;
+        try {
+            await fastfoodApi.deleteAd(adId);
+            toast.success("Anúncio deletado");
+            if (restaurant) {
+                const restaurantAds = await fastfoodApi.getRestaurantAds(restaurant.id);
+                setAds(restaurantAds);
+            }
+        } catch (error) {
+            toast.error("Erro ao deletar anúncio");
+        }
+    };
+
+    const handleRenewAd = async (adId: number, days: number) => {
+        try {
+            await fastfoodApi.renewAd(adId, days);
+            toast.success(`Anúncio renovado por ${days} dias`);
+            if (restaurant) {
+                const restaurantAds = await fastfoodApi.getRestaurantAds(restaurant.id);
+                setAds(restaurantAds);
+            }
+        } catch (error) {
+            toast.error("Erro ao renovar anúncio");
+        }
+    };
+
+    const handleCreateAd = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!restaurant) return;
+
+        try {
+            setIsCreatingAd(true);
+            const formData = new FormData();
+            formData.append("restaurant_id", String(restaurant.id));
+            formData.append("name", adForm.name);
+            formData.append("description", adForm.description);
+            formData.append("days", String(adForm.days));
+            if (adForm.price) formData.append("price", String(adForm.price));
+            if (adForm.link) formData.append("link", adForm.link);
+
+            const fileInput = document.getElementById("ad-image") as HTMLInputElement;
+            if (fileInput?.files?.[0]) {
+                formData.append("image", fileInput.files[0]);
+            }
+
+            await fastfoodApi.createRestaurantAd(formData);
+            toast.success("Anúncio criado com sucesso!");
+            setIsAdSheetOpen(false);
+            setAdForm({ name: "", description: "", days: 7, price: "", link: "" });
+
+            // Refresh ads
+            const restaurantAds = await fastfoodApi.getRestaurantAds(restaurant.id);
+            setAds(restaurantAds);
+        } catch (error: any) {
+            toast.error(error.message || "Erro ao criar anúncio");
+        } finally {
+            setIsCreatingAd(false);
+        }
     };
 
     const filteredOrders = useMemo(() => {
@@ -971,6 +1058,186 @@ export function FastfoodAdminScreen() {
         );
     };
 
+    const renderAds = () => (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <div>
+                    <h3 className="text-xl font-black text-foreground">Anúncios e Promoções</h3>
+                    <p className="text-sm text-muted-foreground">Promova seu restaurante no app Fastfood</p>
+                </div>
+                <Button
+                    className="bg-orange-500 hover:bg-orange-600 font-bold gap-2"
+                    onClick={() => setIsAdSheetOpen(true)}
+                >
+                    <ArrowTrendingLines24Regular className="w-5 h-5" />
+                    Promover Restaurante
+                </Button>
+            </div>
+
+            {adsLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3].map(i => (
+                        <div key={i} className="fluent-card p-4 space-y-3">
+                            <div className="h-32 bg-secondary/50 rounded-lg animate-pulse" />
+                            <div className="h-6 bg-secondary w-3/4 animate-pulse" />
+                            <div className="h-4 bg-secondary w-1/2 animate-pulse" />
+                        </div>
+                    ))}
+                </div>
+            ) : ads.length === 0 ? (
+                <div className="fluent-card p-12 text-center text-muted-foreground">
+                    <ArrowTrendingLines24Regular className="w-16 h-16 mx-auto mb-4 opacity-10" />
+                    <h4 className="text-lg font-bold mb-2">Sem Anúncios Ativos</h4>
+                    <p className="max-w-md mx-auto mb-6">Aumente sua visibilidade e receba mais pedidos aparecendo nos destaques do nosso aplicativo.</p>
+                    <Button variant="outline" onClick={() => setIsAdSheetOpen(true)}>Criar meu primeiro anúncio</Button>
+                </div>
+            ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {ads.map(ad => (
+                        <div key={ad.id} className="fluent-card overflow-hidden group border-transparent hover:border-orange-500 transition-all">
+                            <div className="relative h-40 bg-secondary/30">
+                                {ad.photo ? (
+                                    <img src={ad.photo} alt={ad.name} className="w-full h-full object-cover" />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center opacity-20">
+                                        <Food24Regular className="w-12 h-12" />
+                                    </div>
+                                )}
+                                <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-black uppercase shadow-lg ${ad.status === 'approved' ? 'bg-emerald-500 text-white' :
+                                        ad.status === 'pending' ? 'bg-yellow-500 text-white' :
+                                            'bg-red-500 text-white'
+                                    }`}>
+                                    {ad.status === 'approved' && ad.days_remaining && ad.days_remaining <= 0 ? 'Expirado' : ad.status}
+                                </div>
+                            </div>
+                            <div className="p-4 space-y-3">
+                                <div>
+                                    <h4 className="font-bold text-foreground truncate">{ad.name}</h4>
+                                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{ad.description}</p>
+                                </div>
+
+                                <div className="flex justify-between items-center text-sm pt-2 border-t border-border">
+                                    <div className="flex items-center gap-1 text-muted-foreground">
+                                        <Timer24Regular className="w-4 h-4" />
+                                        <span className="text-xs">
+                                            {ad.days_remaining != null
+                                                ? `${ad.days_remaining} dias restantes`
+                                                : 'Duração não definida'}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 font-bold text-orange-600">
+                                        <ArrowSync24Regular className="w-4 h-4" />
+                                        <span>{ad.clicks || 0} cliques</span>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-2 pt-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="flex-1 text-xs"
+                                        onClick={() => handleRenewAd(ad.id, 7)}
+                                    >
+                                        Renovar (7d)
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="text-red-500 hover:text-red-600 border-red-100 hover:bg-red-50"
+                                        onClick={() => handleDeleteAd(ad.id)}
+                                    >
+                                        <DismissCircle24Regular className="w-4 h-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            <Sheet open={isAdSheetOpen} onOpenChange={setIsAdSheetOpen}>
+                <SheetContent side="right" className="sm:max-w-md overflow-y-auto">
+                    <SheetHeader>
+                        <SheetTitle className="text-2xl font-black">Promover Restaurante</SheetTitle>
+                        <SheetDescription>Seu anúncio aparecerá nos destaques do aplicativo Fastfood.</SheetDescription>
+                    </SheetHeader>
+
+                    <form onSubmit={handleCreateAd} className="mt-8 space-y-5">
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Nome da Campanha</label>
+                            <Input
+                                required
+                                value={adForm.name}
+                                onChange={e => setAdForm({ ...adForm, name: e.target.value })}
+                                placeholder="Ex: Promoção de Verão"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Descrição</label>
+                            <textarea
+                                required
+                                className="w-full min-h-[100px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                value={adForm.description}
+                                onChange={e => setAdForm({ ...adForm, description: e.target.value })}
+                                placeholder="Descreva sua promoção em poucas palavras..."
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Duração (Dias)</label>
+                                <Input
+                                    type="number"
+                                    required
+                                    min={1}
+                                    value={adForm.days}
+                                    onChange={e => setAdForm({ ...adForm, days: parseInt(e.target.value) })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Preço Destaque (Opt)</label>
+                                <Input
+                                    type="number"
+                                    value={adForm.price || ""}
+                                    onChange={e => setAdForm({ ...adForm, price: e.target.value })}
+                                    placeholder="MT"
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Link Adicional (Opt)</label>
+                            <Input
+                                value={adForm.link}
+                                onChange={e => setAdForm({ ...adForm, link: e.target.value })}
+                                placeholder="https://..."
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Imagem do Anúncio</label>
+                            <Input id="ad-image" type="file" accept="image/*" className="cursor-pointer" />
+                            <p className="text-[10px] text-muted-foreground italic">Se não selecionar, usaremos sua foto de capa.</p>
+                        </div>
+
+                        <div className="bg-orange-50 dark:bg-orange-950/20 p-4 rounded-lg border border-orange-200 dark:border-orange-800">
+                            <div className="flex justify-between items-center text-orange-800 dark:text-orange-400">
+                                <span className="font-bold">Total Estimado:</span>
+                                <span className="text-xl font-black">{(Number(adForm.days) * 115).toFixed(2)} MT</span>
+                            </div>
+                            <p className="text-[10px] text-orange-600 mt-1">* Sujeito a taxas de serviço e promoções vigentes.</p>
+                        </div>
+
+                        <Button
+                            type="submit"
+                            className="w-full bg-orange-500 hover:bg-orange-600 h-12 text-md font-bold"
+                            disabled={isCreatingAd}
+                        >
+                            {isCreatingAd ? "Criando Anúncio..." : "Confirmar e Promover"}
+                        </Button>
+                    </form>
+                </SheetContent>
+            </Sheet>
+        </div>
+    );
+
     const renderProducts = () => {
         const categories = [...new Set(products.map(p => p.category).filter(Boolean))];
         const activeProducts = products.filter(p => p.is_active);
@@ -1333,6 +1600,9 @@ export function FastfoodAdminScreen() {
                     <NavItem value="products" icon={<Box24Regular />}>
                         Produtos
                     </NavItem>
+                    <NavItem value="ads" icon={<ArrowTrendingLines24Regular />}>
+                        Anúncios
+                    </NavItem>
                     <NavItem value="settings" icon={<Settings24Regular />}>
                         Configurações
                     </NavItem>
@@ -1398,6 +1668,7 @@ export function FastfoodAdminScreen() {
                     {activeView === "orders" && renderOrders()}
                     {activeView === "sales" && renderSales()}
                     {activeView === "products" && renderProducts()}
+                    {activeView === "ads" && renderAds()}
                     {activeView === "settings" && renderSettings()}
 
                     {renderOrderDetailsSheet()}

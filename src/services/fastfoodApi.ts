@@ -128,6 +128,22 @@ export interface FastFoodProduct {
   is_fastfood: boolean;
 }
 
+export interface UserAd {
+  id: number;
+  type: string;
+  name: string;
+  description: string;
+  price: number | null;
+  link: string | null;
+  photo: string | null;
+  status: "pending" | "approved" | "rejected" | "expired";
+  created_at: string;
+  expires_at: string | null;
+  days_remaining: number | null;
+  clicks: number;
+  restaurant_id?: number;
+}
+
 export const fastfoodApi = {
   createRestaurant: (data: FormData) => {
     // Note: When sending FormData, we should NOT set Content-Type header manually
@@ -235,4 +251,44 @@ export const fastfoodApi = {
   // Products
   getFastfoodProducts: (restaurantId: number) =>
     apiGet<FastFoodProduct[]>(`/fastfood/restaurants/${restaurantId}/fastfood-products`),
+
+  // Ads
+  getRestaurantAds: (restaurantId: number) =>
+    apiGet<{ ads: UserAd[] }>(`/ads/my-ads?restaurant_only=true`).then(res => res.ads.filter(ad => ad.restaurant_id === restaurantId)),
+
+  createRestaurantAd: (data: FormData) => {
+    return fetch("https://api.skyvenda.com/ads/send/restaurant", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
+      },
+      body: data,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Failed to create ad" }));
+        throw new Error(err.detail || "Failed to create ad");
+      }
+      return res.json();
+    });
+  },
+
+  deleteAd: (adId: number) => apiDelete<{ message: string }>(`/ads/${adId}`),
+
+  renewAd: (adId: number, days: number) => {
+    const formData = new FormData();
+    formData.append("dias", String(days));
+    return fetch(`https://api.skyvenda.com/ads/${adId}/renew`, {
+      method: "PUT",
+      headers: {
+        "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
+      },
+      body: formData,
+    }).then(async (res) => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: "Failed to renew ad" }));
+        throw new Error(err.detail || "Failed to renew ad");
+      }
+      return res.json();
+    });
+  },
 };
