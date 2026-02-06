@@ -1075,6 +1075,7 @@ export function FastfoodAdminScreen() {
                                 description: restaurant.category
                                     ? `O melhor de ${restaurant.category} em ${restaurant.neighborhood || 'sua região'}! Aproveite nossas ofertas.`
                                     : `Peça o melhor do ${restaurant.name} agora mesmo pelo Fastfood!`,
+                                link: `https://fastfood.skyvenda.com/${restaurant.slug}`,
                             }));
                         }
                         setIsAdSheetOpen(true);
@@ -1108,6 +1109,7 @@ export function FastfoodAdminScreen() {
                                 description: restaurant.category
                                     ? `O melhor de ${restaurant.category} em ${restaurant.neighborhood || 'sua região'}! Aproveite nossas ofertas.`
                                     : `Peça o melhor do ${restaurant.name} agora mesmo pelo Fastfood!`,
+                                link: `https://fastfood.skyvenda.com/${restaurant.slug}`,
                             }));
                         }
                         setIsAdSheetOpen(true);
