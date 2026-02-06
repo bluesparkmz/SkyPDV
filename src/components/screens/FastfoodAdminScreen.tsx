@@ -1067,7 +1067,18 @@ export function FastfoodAdminScreen() {
                 </div>
                 <Button
                     className="bg-orange-500 hover:bg-orange-600 font-bold gap-2"
-                    onClick={() => setIsAdSheetOpen(true)}
+                    onClick={() => {
+                        if (restaurant) {
+                            setAdForm(prev => ({
+                                ...prev,
+                                name: `Promover ${restaurant.name}`,
+                                description: restaurant.category
+                                    ? `O melhor de ${restaurant.category} em ${restaurant.neighborhood || 'sua região'}! Aproveite nossas ofertas.`
+                                    : `Peça o melhor do ${restaurant.name} agora mesmo pelo Fastfood!`,
+                            }));
+                        }
+                        setIsAdSheetOpen(true);
+                    }}
                 >
                     <ArrowTrendingLines24Regular className="w-5 h-5" />
                     Promover Restaurante
@@ -1089,7 +1100,18 @@ export function FastfoodAdminScreen() {
                     <ArrowTrendingLines24Regular className="w-16 h-16 mx-auto mb-4 opacity-10" />
                     <h4 className="text-lg font-bold mb-2">Sem Anúncios Ativos</h4>
                     <p className="max-w-md mx-auto mb-6">Aumente sua visibilidade e receba mais pedidos aparecendo nos destaques do nosso aplicativo.</p>
-                    <Button variant="outline" onClick={() => setIsAdSheetOpen(true)}>Criar meu primeiro anúncio</Button>
+                    <Button variant="outline" onClick={() => {
+                        if (restaurant) {
+                            setAdForm(prev => ({
+                                ...prev,
+                                name: `Promover ${restaurant.name}`,
+                                description: restaurant.category
+                                    ? `O melhor de ${restaurant.category} em ${restaurant.neighborhood || 'sua região'}! Aproveite nossas ofertas.`
+                                    : `Peça o melhor do ${restaurant.name} agora mesmo pelo Fastfood!`,
+                            }));
+                        }
+                        setIsAdSheetOpen(true);
+                    }}>Criar meu primeiro anúncio</Button>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1104,8 +1126,8 @@ export function FastfoodAdminScreen() {
                                     </div>
                                 )}
                                 <div className={`absolute top-2 right-2 px-2 py-0.5 rounded-full text-[10px] font-black uppercase shadow-lg ${ad.status === 'approved' ? 'bg-emerald-500 text-white' :
-                                        ad.status === 'pending' ? 'bg-yellow-500 text-white' :
-                                            'bg-red-500 text-white'
+                                    ad.status === 'pending' ? 'bg-yellow-500 text-white' :
+                                        'bg-red-500 text-white'
                                     }`}>
                                     {ad.status === 'approved' && ad.days_remaining && ad.days_remaining <= 0 ? 'Expirado' : ad.status}
                                 </div>
