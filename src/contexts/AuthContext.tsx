@@ -160,7 +160,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const loginWithBlueSpark = (nextPath: string = "/") => {
     const callbackUrl = `${window.location.origin}/auth/skypdv?next=${encodeURIComponent(nextPath)}`;
-    const loginUrl = `${ACCOUNTS_URL}/login?product_code=${encodeURIComponent(PRODUCT_CODE)}&redirect_uri=${encodeURIComponent(callbackUrl)}`;
+    const loginUrl =
+      `${ACCOUNTS_URL}/auth/google/start` +
+      `?product_code=${encodeURIComponent(PRODUCT_CODE)}` +
+      `&next=${encodeURIComponent(callbackUrl)}`;
     window.location.href = loginUrl;
   };
 
@@ -213,4 +216,3 @@ export function useAuth() {
   }
   return context;
 }
-
