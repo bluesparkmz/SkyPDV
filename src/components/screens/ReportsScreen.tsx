@@ -206,6 +206,30 @@ export function ReportsScreen() {
     return labels[method] || method;
   };
 
+  const handleDownloadReport = async (type: "pdf" | "excel") => {
+    try {
+      const { blob, filename: apiFilename } =
+        type === "pdf"
+          ? await dashboardApi.downloadSalesSummaryPdf(startDate, endDate, selectedCashierId)
+          : await dashboardApi.downloadSalesSummaryExcel(startDate, endDate, selectedCashierId);
+
+      const filename =
+        apiFilename ||
+        `relatorio-${type === "pdf" ? "pdf" : "excel"}-${startDate || "inicio"}-${endDate || "fim"}.${
+          type === "pdf" ? "pdf" : "xlsx"
+        }`;
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err?.message || `Erro ao baixar ${type === "pdf" ? "PDF" : "Excel"}`);
+    }
+  };
+
   const handleSelectDay = (date: string) => {
     setSelectedDate(date);
     setActiveView("daily");
@@ -216,18 +240,17 @@ export function ReportsScreen() {
     setIsSaleDetailOpen(true);
   };
 
-  const handleExportPDF = async () => {
+  const handleExport = async (type: "pdf" | "excel") => {
     try {
       // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
       const isDailyView = activeView === "daily" && selectedDate;
       const exportStart = isDailyView ? selectedDate : startDate;
       const exportEnd = isDailyView ? selectedDate : endDate;
 
-      const { blob, filename: apiFilename } = await dashboardApi.downloadSalesSummaryPdf(
-        exportStart!,
-        exportEnd!,
-        selectedCashierId
-      );
+      const { blob, filename: apiFilename } =
+        type === "pdf"
+          ? await dashboardApi.downloadSalesSummaryPdf(exportStart!, exportEnd!, selectedCashierId)
+          : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
       // Formata o período para o nome do arquivo
@@ -235,7 +258,8 @@ export function ReportsScreen() {
         ? format(parseISO(selectedDate!), 'dd-MM-yyyy')
         : `${format(parseISO(startDate), 'dd-MM-yyyy')}_a_${format(parseISO(endDate), 'dd-MM-yyyy')}`;
 
-      const filename = `Relatório_${todayStr}_Ref_${periodStr}.pdf`;
+      const ext = type === "pdf" ? "pdf" : "xlsx";
+      const filename = `Relatório_${todayStr}_Ref_${periodStr}.${ext}`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -246,7 +270,7 @@ export function ReportsScreen() {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (e: any) {
-      toast.error(e?.message || "Falha ao gerar o PDF");
+      toast.error(e?.message || `Falha ao gerar o ${type === "pdf" ? "PDF" : "Excel"}`);
     }
   };
 
@@ -443,17 +467,23 @@ export function ReportsScreen() {
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" onClick={() => handleQuickFilter('today')} size="sm">Hoje</Button>
-              <Button variant="outline" onClick={() => handleQuickFilter('yesterday')} size="sm">Ontem</Button>
-              <Button variant="outline" onClick={() => handleQuickFilter('week')} size="sm">7 Dias</Button>
-              <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
-              {(selectedDate || activeView === "all-sales") && (
-                <Button onClick={handleExportPDF} className="gap-2">
-                  <Print24Regular className="w-4 h-4" />
-                  Imprimir
-                </Button>
-              )}
-            </div>
-          </div>
+          <Button variant="outline" onClick={() => handleQuickFilter('yesterday')} size="sm">Ontem</Button>
+          <Button variant="outline" onClick={() => handleQuickFilter('week')} size="sm">7 Dias</Button>
+          <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
+          {(selectedDate || activeView === "all-sales") && (
+            <>
+              <Button onClick={() => handleExport("pdf")} className="gap-2" variant="outline">
+                <Print24Regular className="w-4 h-4" />
+                PDF
+              </Button>
+              <Button onClick={() => handleExport("excel")} className="gap-2" variant="outline">
+                <Document24Regular className="w-4 h-4" />
+                Excel
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
 
           {/* Content based on active view */}
           <div className="flex-1 overflow-y-auto">
