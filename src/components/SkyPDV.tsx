@@ -25,6 +25,7 @@ import { TablesScreen } from "./screens/TablesScreen";
 import { TabsScreen } from "./screens/TabsScreen";
 import { SalesHistoryScreen } from "./screens/SalesHistoryScreen";
 import { FastfoodAdminScreen } from "./screens/FastfoodAdminScreen";
+import { FinanceScreen } from "./screens/FinanceScreen";
 import { useProducts } from "@/hooks/useProducts";
 import { useCashRegister } from "@/hooks/useCashRegister";
 import { useBattery } from "@/hooks/useBattery";
@@ -407,7 +408,10 @@ export function SkyPDV() {
             />
           </>
         );
-    }
+    case "finance":
+      return <FinanceScreen />;
+    default:
+      return <OverviewScreen />;
   };
 
   return (
