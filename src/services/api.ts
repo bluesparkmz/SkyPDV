@@ -1,7 +1,5 @@
 // Configuração base da API
-import { API_URL } from "@/config";
-
-const BASE_URL = API_URL;
+const BASE_URL = "https://skypdvmz.bluesparkmz.com";
 
 export class ApiError<T = unknown> extends Error {
   status: number;
