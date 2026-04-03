@@ -1,5 +1,6 @@
 // FastFood API endpoints needed by SkyPDV
 import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from "./api";
+import { API_URL } from "@/config";
 
 export interface FastFoodRestaurant {
   id: number;
@@ -148,7 +149,7 @@ export const fastfoodApi = {
   createRestaurant: (data: FormData) => {
     // Note: When sending FormData, we should NOT set Content-Type header manually
     // The browser will set it to multipart/form-data with the correct boundary
-    return fetch("https://api.skyvenda.com/fastfood/restaurants", {
+    return fetch(`${API_URL}/fastfood/restaurants`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
@@ -166,7 +167,7 @@ export const fastfoodApi = {
     // Note: When sending FormData, we should NOT set Content-Type header manually
     // The browser will set it to multipart/form-data with the correct boundary
     // We need to bypass the default JSON behavior of apiPut
-    return fetch(`https://api.skyvenda.com/fastfood/restaurants/${id}`, {
+    return fetch(`${API_URL}/fastfood/restaurants/${id}`, {
       method: "PUT",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
@@ -257,7 +258,7 @@ export const fastfoodApi = {
     apiGet<{ ads: UserAd[] }>(`/ads/my-ads?restaurant_only=true`).then(res => res.ads.filter(ad => ad.restaurant_id === restaurantId)),
 
   createRestaurantAd: (data: FormData) => {
-    return fetch("https://api.skyvenda.com/ads/send/restaurant", {
+    return fetch(`${API_URL}/ads/send/restaurant`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
@@ -277,7 +278,7 @@ export const fastfoodApi = {
   renewAd: (adId: number, days: number) => {
     const formData = new FormData();
     formData.append("dias", String(days));
-    return fetch(`https://api.skyvenda.com/ads/${adId}/renew`, {
+    return fetch(`${API_URL}/ads/${adId}/renew`, {
       method: "PUT",
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("skypdv_token")}`,
