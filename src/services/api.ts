@@ -229,6 +229,14 @@ export const dashboardApi = {
     const queryString = query.toString();
     return apiGetBlob(`/skypdv/reports/sales-summary.pdf${queryString ? `?${queryString}` : ""}`);
   },
+  downloadSalesSummaryExcel: (startDate?: string, endDate?: string, userId?: number) => {
+    const query = new URLSearchParams();
+    if (startDate) query.append("start_date", startDate);
+    if (endDate) query.append("end_date", endDate);
+    if (userId) query.append("user_id", String(userId));
+    const queryString = query.toString();
+    return apiGetBlob(`/skypdv/reports/sales-summary.xlsx${queryString ? `?${queryString}` : ""}`);
+  },
   downloadProductsPdf: () => {
     return apiGetBlob("/skypdv/reports/products.pdf");
   },
