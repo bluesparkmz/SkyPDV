@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { buildWsUrl } from '@/config';
-import { toast } from 'sonner';
 
 /**
  * Global WebSocket hook for SkyPDV
  * Connects to the main backend and listens for notifications
+ *
+ * For SkyPDV standalone we are disabling backend websocket notifications
+ * to avoid noisy logs and 403s. Hardware plugin websocket (localhost:8000)
+ * keeps working via src/lib/hardwarePlugin.ts.
  */
 export function useSkyWebsocket() {
     const { token, isAuthenticated } = useAuth();
@@ -13,7 +16,19 @@ export function useSkyWebsocket() {
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectTimeoutRef = useRef<any>();
 
+    // Flag to keep compatibility if we ever need to re-enable
+    const ENABLE_REMOTE_WS = import.meta.env.VITE_ENABLE_REMOTE_WS === 'true';
+
     useEffect(() => {
+        // Skip entirely unless explicitly enabled
+        if (!ENABLE_REMOTE_WS) {
+            if (wsRef.current) {
+                wsRef.current.close();
+            }
+            setIsConnected(false);
+            return;
+        }
+
         if (!isAuthenticated || !token) {
             if (wsRef.current) {
                 wsRef.current.close();
