@@ -11,7 +11,7 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const { login } = useAuth();
+  const { login, loginWithBlueSpark } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,14 +55,14 @@ export function Login() {
 
               <div className="space-y-2">
                 <Label htmlFor="username" className="text-sm font-medium">
-                  Usuário
+                  Email ou utilizador
                 </Label>
                 <div className="relative">
                   <Person24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     id="username"
                     type="text"
-                    placeholder="Digite seu usuário"
+                    placeholder="Digite seu email ou utilizador"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="pl-10 h-11"
@@ -107,12 +107,11 @@ export function Login() {
                 className="w-full h-11 text-base font-medium"
                 onClick={() => {
                   const next = "/";
-                  const loginUrl = `https://skyvenda.com/login?redirect_uri=${encodeURIComponent("/skypdv?next=" + encodeURIComponent(next) + "&sso=true")}`;
-                  window.location.href = loginUrl;
+                  loginWithBlueSpark(next);
                 }}
                 disabled={isLoading}
               >
-                Entrar com SkyVenda
+                Entrar com BlueSpark Accounts
               </Button>
             </form>
           </CardContent>
@@ -125,4 +124,3 @@ export function Login() {
     </div>
   );
 }
-

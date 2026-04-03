@@ -1,9 +1,8 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from "react";
+import React, { createContext, useContext, ReactNode, useEffect, useState } from "react";
+import { ACCOUNTS_URL, API_URL, PRODUCT_CODE } from "@/config";
 
-// Configuração
-const BASE_URL = "https://api.skyvenda.com";
+const BASE_URL = API_URL;
 
-// Types for unified profile response from /user/profile
 export type ProfileStats = {
   total_products: number;
   total_followers: number;
@@ -27,12 +26,12 @@ export type ProfileUser = {
   page_name?: string | null;
   active?: boolean | null;
   profile_image?: string | null;
-  verification_status?: 'approved' | 'pending' | 'rejected' | 'verified' | 'unverified' | null;
+  verification_status?: "approved" | "pending" | "rejected" | "verified" | "unverified" | null;
   wallet_balance?: number | null;
 };
 
 export type UnifiedProfile = {
-  context: 'public' | 'self' | string;
+  context: "public" | "self" | string;
   is_authenticated: boolean;
   is_me: boolean;
   can_edit: boolean;
@@ -52,9 +51,11 @@ interface AuthContextType {
   token: string | null;
   user: UnifiedProfile | null;
   baseUrl: string;
+  accountsUrl: string;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
+  loginWithBlueSpark: (nextPath?: string) => void;
   logout: () => void;
   getAuthHeaders: () => HeadersInit;
   refreshUser: () => Promise<void>;
@@ -73,17 +74,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<UnifiedProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const baseUrl = BASE_URL;
+  const accountsUrl = ACCOUNTS_URL;
 
   const fetchUser = async (authToken: string) => {
     try {
       const response = await fetch(`${BASE_URL}/user/profile`, {
         headers: {
-          "Authorization": `Bearer ${authToken}`
-        }
+          Authorization: `Bearer ${authToken}`,
+        },
       });
+
       if (response.ok) {
         const data = await response.json();
         setUser(data);
+        return;
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        setToken(null);
+        setUser(null);
+        localStorage.removeItem(TOKEN_STORAGE_KEY);
       }
     } catch (error) {
       console.error("Failed to fetch user profile:", error);
@@ -96,68 +106,62 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
-  // Carregar token do localStorage na inicialização
   useEffect(() => {
     const storedToken = localStorage.getItem(TOKEN_STORAGE_KEY);
     if (storedToken) {
       setToken(storedToken);
-      fetchUser(storedToken);
+      void fetchUser(storedToken);
     }
     setIsLoading(false);
   }, []);
 
   const login = async (username: string, password: string): Promise<void> => {
-    try {
-      // Use x-www-form-urlencoded format as required by OAuth2PasswordRequestForm
-      const params = new URLSearchParams();
-      params.append('grant_type', 'password');
-      params.append('username', username);
-      params.append('password', password);
-      params.append('scope', '');
-      params.append('client_id', 'string');
-      params.append('client_secret', 'string');
-
-      const response = await fetch(`${BASE_URL}/user/token`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: params.toString(),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        let errorMessage = errorData.detail || errorData.message;
-
-        if (response.status === 401 || response.status === 403) {
-          errorMessage = "Credenciais inválidas. Verifique seu usuário e senha.";
-        } else if (response.status === 404) {
-          errorMessage = "Usuário não encontrado";
-        } else if (response.status === 422) {
-          errorMessage = "Dados inválidos. Verifique seu usuário e senha.";
-        } else if (!errorMessage) {
-          errorMessage = `Erro ao fazer login: ${response.status} ${response.statusText}`;
-        }
-
-        throw new Error(errorMessage);
-      }
-
-      const data: LoginResponse = await response.json();
-      const accessToken = data.access_token;
-
-      if (!accessToken) {
-        throw new Error("Token de acesso não recebido");
-      }
-
-      setToken(accessToken);
-      localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
-      await fetchUser(accessToken);
-    } catch (error) {
-      if (error instanceof Error) {
-        throw error;
-      }
-      throw new Error("Erro desconhecido ao fazer login");
+    const identifier = username.trim();
+    if (!identifier || !password.trim()) {
+      throw new Error("Informe o email/utilizador e a senha.");
     }
+
+    const response = await fetch(`${ACCOUNTS_URL}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        identifier,
+        password,
+        product_code: PRODUCT_CODE,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      let errorMessage = errorData.detail || errorData.message;
+
+      if (response.status === 401 || response.status === 403) {
+        errorMessage = "Credenciais inválidas. Verifique seu email/utilizador e senha.";
+      } else if (!errorMessage) {
+        errorMessage = `Erro ao fazer login: ${response.status} ${response.statusText}`;
+      }
+
+      throw new Error(errorMessage);
+    }
+
+    const data: LoginResponse = await response.json();
+    const accessToken = data.access_token;
+
+    if (!accessToken) {
+      throw new Error("Token de acesso não recebido");
+    }
+
+    setToken(accessToken);
+    localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    await fetchUser(accessToken);
+  };
+
+  const loginWithBlueSpark = (nextPath: string = "/") => {
+    const callbackUrl = `${window.location.origin}/auth/skypdv?next=${encodeURIComponent(nextPath)}`;
+    const loginUrl = `${ACCOUNTS_URL}/login?product_code=${encodeURIComponent(PRODUCT_CODE)}&redirect_uri=${encodeURIComponent(callbackUrl)}`;
+    window.location.href = loginUrl;
   };
 
   const logout = () => {
@@ -172,8 +176,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
         "Content-Type": "application/json",
       };
     }
+
     return {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     };
   };
@@ -186,9 +191,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
         token,
         user,
         baseUrl,
+        accountsUrl,
         isAuthenticated,
         isLoading,
         login,
+        loginWithBlueSpark,
         logout,
         getAuthHeaders,
         refreshUser,
@@ -206,3 +213,4 @@ export function useAuth() {
   }
   return context;
 }
+

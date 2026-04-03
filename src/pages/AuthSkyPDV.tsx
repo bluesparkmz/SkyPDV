@@ -6,7 +6,10 @@ export default function AuthSkyPDV() {
   const [searchParams] = useSearchParams();
 
   useEffect(() => {
-    const token = searchParams.get("token");
+    const token =
+      searchParams.get("token") ||
+      searchParams.get("access_token") ||
+      searchParams.get("auth_token");
     const next = searchParams.get("next") || "/";
 
     if (token) {

@@ -1,5 +1,7 @@
 // Configuração base da API
-const BASE_URL = "https://api.skyvenda.com";
+import { API_URL } from "@/config";
+
+const BASE_URL = API_URL;
 
 export class ApiError<T = unknown> extends Error {
   status: number;

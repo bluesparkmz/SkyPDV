@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { buildWsUrl } from '@/config';
 import { toast } from 'sonner';
 
 /**
@@ -21,9 +22,8 @@ export function useSkyWebsocket() {
         }
 
         const connect = () => {
-            // Convert https://api.skyvenda.com to wss://api.skyvenda.com
-            const wsRoot = "wss://api.skyvenda.com";
-            const wsUrl = `${wsRoot}/ws?token=${token}&app_type=SkyPDV`;
+            const wsRoot = buildWsUrl("/ws");
+            const wsUrl = `${wsRoot}?token=${encodeURIComponent(token)}&app_type=SkyPDV`;
 
             console.log('Connecting to SkyWebsocket...');
             const ws = new WebSocket(wsUrl);
