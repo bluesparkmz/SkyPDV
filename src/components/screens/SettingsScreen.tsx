@@ -44,6 +44,7 @@ import { getHardwarePlugin } from "@/lib/hardwarePlugin";
 import { toast } from "sonner";
 import { TerminalUsersSettings } from "./TerminalUsersSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { BuildingShop24Regular } from "@fluentui/react-icons";
 
 const useStyles = makeStyles({
   root: {
@@ -81,7 +82,11 @@ const useStyles = makeStyles({
 
 type SettingsTab = "general" | "company" | "receipt" | "printer" | "appearance" | "security" | "users";
 
-export function SettingsScreen() {
+type Props = {
+  onOpenSetup?: () => void;
+};
+
+export function SettingsScreen({ onOpenSetup }: Props) {
   const styles = useStyles();
   const isMobile = useIsMobile();
   const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
@@ -117,7 +122,7 @@ export function SettingsScreen() {
   }, [isMobile]);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 flex flex-col">
       <div className={styles.root}>
         <NavDrawer
           selectedValue={activeTab}
@@ -171,6 +176,19 @@ export function SettingsScreen() {
                 <h1 className="text-lg md:text-xl font-bold text-foreground">Configurações</h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">Personalize o sistema</p>
               </div>
+              {onOpenSetup && (
+                <div className="ml-auto">
+                  <Button
+                    size="sm"
+                    variant="default"
+                    className="flex items-center gap-2"
+                    onClick={onOpenSetup}
+                  >
+                    <Building24Regular className="w-4 h-4" />
+                    Abrir Setup do PDV
+                  </Button>
+                </div>
+              )}
             </div>
 
             <div className="flex-1 fluent-card p-4 md:p-6 min-w-0">

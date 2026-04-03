@@ -19,6 +19,7 @@ import { ProductsScreen } from "./screens/ProductsScreen";
 import { StockScreen } from "./screens/StockScreen";
 import { ReportsScreen } from "./screens/ReportsScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
+import { TerminalSetup } from "./TerminalSetup";
 import { CategoriesScreen } from "./screens/CategoriesScreen";
 import { TablesScreen } from "./screens/TablesScreen";
 import { TabsScreen } from "./screens/TabsScreen";
@@ -56,6 +57,7 @@ export function SkyPDV() {
   const [cashRegisterDialogOpen, setCashRegisterDialogOpen] = useState(false);
   const [currentCustomerName, setCurrentCustomerName] = useState<string>("");
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
+  const [showSetup, setShowSetup] = useState(false);
 
   const { data: currentRegister } = useCashRegister();
   const { level: batteryLevel, charging: isCharging, isSupported: batterySupported } = useBattery();
@@ -79,6 +81,17 @@ export function SkyPDV() {
       return matchesCategory && matchesSearch && product.is_active;
     });
   }, [products, activeCategory, searchQuery]);
+
+  if (showSetup) {
+    return (
+      <TerminalSetup
+        onSuccess={() => {
+          setShowSetup(false);
+          window.location.reload();
+        }}
+      />
+    );
+  }
 
   const addToCart = (product: Product, quantity: number = 1) => {
     setCart((prev) => {
@@ -235,7 +248,7 @@ export function SkyPDV() {
       case "reports":
         return <ReportsScreen />;
       case "settings":
-        return <SettingsScreen />;
+        return <SettingsScreen onOpenSetup={() => setShowSetup(true)} />;
       case "categories":
         return <CategoriesScreen />;
       case "tables":
