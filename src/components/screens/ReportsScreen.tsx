@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ChartMultiple24Regular,
   Money24Regular,
@@ -124,6 +124,15 @@ export function ReportsScreen() {
   // Verificar se é admin
   const isAdmin = useIsAdmin();
   const { data: terminalUsers = [] } = useTerminalUsers();
+  const cashierNameByUserId = useMemo(() => {
+    const map = new Map<number, string>();
+    terminalUsers.forEach((u) => {
+      if (typeof u.user_id === "number") {
+        map.set(u.user_id, u.user_name || u.user_email || `#${u.user_id}`);
+      }
+    });
+    return map;
+  }, [terminalUsers]);
 
   // Filtrar apenas caixas (cashier) para o seletor
   const cashiers = terminalUsers.filter(u => u.role === "cashier" && u.is_active);
@@ -194,6 +203,46 @@ export function ReportsScreen() {
   const formatTime = (dateString: string) => {
     return format(parseISO(dateString), "HH:mm", { locale: ptBR });
   };
+
+  const cashierTotals = useMemo(() => {
+    const map = new Map<number | string, { name: string; total: number; count: number }>();
+    allSales.forEach((sale) => {
+      const id = sale.created_by ?? "desconhecido";
+      const name = typeof id === "number" ? cashierNameByUserId.get(id) || `#${id}` : "Sem caixa";
+      if (!map.has(id)) map.set(id, { name, total: 0, count: 0 });
+      const entry = map.get(id)!;
+      entry.total += parseFloat(sale.total);
+      entry.count += 1;
+    });
+    return Array.from(map.values()).sort((a, b) => b.total - a.total);
+  }, [allSales, cashierNameByUserId]);
+
+  const monthlyTotals = useMemo(() => {
+    const map = new Map<string, { label: string; total: number; count: number }>();
+    allSales.forEach((sale) => {
+      const d = parseISO(sale.created_at);
+      const key = format(d, "yyyy-MM");
+      const label = format(d, "MMM/yyyy", { locale: ptBR });
+      if (!map.has(key)) map.set(key, { label, total: 0, count: 0 });
+      const entry = map.get(key)!;
+      entry.total += parseFloat(sale.total);
+      entry.count += 1;
+    });
+    return Array.from(map.values()).sort((a, b) => (a.label < b.label ? 1 : -1));
+  }, [allSales]);
+
+  const yearlyTotals = useMemo(() => {
+    const map = new Map<string, { label: string; total: number; count: number }>();
+    allSales.forEach((sale) => {
+      const d = parseISO(sale.created_at);
+      const key = format(d, "yyyy");
+      if (!map.has(key)) map.set(key, { label: key, total: 0, count: 0 });
+      const entry = map.get(key)!;
+      entry.total += parseFloat(sale.total);
+      entry.count += 1;
+    });
+    return Array.from(map.values()).sort((a, b) => (a.label < b.label ? 1 : -1));
+  }, [allSales]);
 
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
@@ -517,6 +566,9 @@ export function ReportsScreen() {
                 sales={allSales}
                 isLoading={allSalesLoading}
                 paymentMethodsSummary={paymentMethodsSummary}
+                cashierTotals={cashierTotals}
+                monthlyTotals={monthlyTotals}
+                yearlyTotals={yearlyTotals}
                 onViewSale={handleViewSaleDetails}
                 formatCurrency={formatCurrency}
                 formatTime={formatTime}
@@ -954,6 +1006,9 @@ function AllSalesView({
   sales,
   isLoading,
   paymentMethodsSummary,
+  cashierTotals,
+  monthlyTotals,
+  yearlyTotals,
   onViewSale,
   formatCurrency,
   formatTime,
@@ -961,6 +1016,83 @@ function AllSalesView({
 }: any) {
   return (
     <div className="space-y-6">
+      {/* Resumo por Caixa */}
+      {cashierTotals?.length > 0 && (
+        <div className="fluent-card p-4">
+          <h3 className="text-lg font-semibold mb-4">Resumo por Caixa/Vendedor</h3>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Caixa</TableHead>
+                <TableHead>Vendas</TableHead>
+                <TableHead>Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cashierTotals.map((c: any) => (
+                <TableRow key={c.name}>
+                  <TableCell className="font-medium">{c.name}</TableCell>
+                  <TableCell>{c.count}</TableCell>
+                  <TableCell className="font-semibold text-primary">{formatCurrency(c.total)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+
+      {/* Resumo Mensal / Anual */}
+      {(monthlyTotals?.length || yearlyTotals?.length) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {monthlyTotals?.length > 0 && (
+            <div className="fluent-card p-4">
+              <h3 className="text-lg font-semibold mb-3">Resumo Mensal</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mês</TableHead>
+                    <TableHead>Vendas</TableHead>
+                    <TableHead>Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthlyTotals.map((m: any) => (
+                    <TableRow key={m.label}>
+                      <TableCell className="font-medium">{m.label}</TableCell>
+                      <TableCell>{m.count}</TableCell>
+                      <TableCell className="font-semibold text-primary">{formatCurrency(m.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+          {yearlyTotals?.length > 0 && (
+            <div className="fluent-card p-4">
+              <h3 className="text-lg font-semibold mb-3">Resumo Anual</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Ano</TableHead>
+                    <TableHead>Vendas</TableHead>
+                    <TableHead>Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {yearlyTotals.map((y: any) => (
+                    <TableRow key={y.label}>
+                      <TableCell className="font-medium">{y.label}</TableCell>
+                      <TableCell>{y.count}</TableCell>
+                      <TableCell className="font-semibold text-primary">{formatCurrency(y.total)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Resumo de Métodos de Pagamento */}
       {Object.keys(paymentMethodsSummary).length > 0 && (
         <div className="fluent-card p-4">
