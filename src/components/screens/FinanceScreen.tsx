@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
-import { Money24Regular, ReceiptMoney24Regular, CalligraphyPen20Regular, AlertOff24Regular } from "@fluentui/react-icons";
+import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear } from "date-fns";
+import { Money24Regular, ReceiptMoney24Regular, CalligraphyPen20Regular, AlertOff24Regular, Print24Regular, Document24Regular } from "@fluentui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense } from "@/hooks/useFinance";
+import { dashboardApi } from "@/services/api";
 import { PDVExpense } from "@/services/api";
 import { toast } from "sonner";
 
@@ -89,6 +90,43 @@ export function FinanceScreen() {
     return new Intl.NumberFormat("pt-MZ", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(num) + " MT";
   };
 
+  const applyQuickRange = (range: "day" | "week" | "month" | "year") => {
+    const now = new Date();
+    if (range === "day") {
+      const d = format(now, "yyyy-MM-dd");
+      setStartDate(d);
+      setEndDate(d);
+    } else if (range === "week") {
+      setStartDate(format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"));
+      setEndDate(format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"));
+    } else if (range === "month") {
+      setStartDate(format(startOfMonth(now), "yyyy-MM-dd"));
+      setEndDate(format(endOfMonth(now), "yyyy-MM-dd"));
+    } else if (range === "year") {
+      setStartDate(format(startOfYear(now), "yyyy-MM-dd"));
+      setEndDate(format(endOfYear(now), "yyyy-MM-dd"));
+    }
+  };
+
+  const handleExport = async (type: "pdf" | "excel") => {
+    try {
+      const { blob, filename } =
+        type === "pdf"
+          ? await dashboardApi.downloadSalesSummaryPdf(startDate, endDate)
+          : await dashboardApi.downloadSalesSummaryExcel(startDate, endDate);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download =
+        filename ||
+        `finance-${type}-${startDate || "inicio"}-${endDate || "fim"}.${type === "pdf" ? "pdf" : "xlsx"}`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error(e?.message || `Falha ao gerar ${type === "pdf" ? "PDF" : "Excel"}`);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 p-4 md:p-6 h-full overflow-auto">
       <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
@@ -97,6 +135,10 @@ export function FinanceScreen() {
           <p className="text-sm text-muted-foreground">Controle simples de entradas (vendas) e saídas (despesas).</p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => applyQuickRange("day")}>Hoje</Button>
+          <Button variant="outline" size="sm" onClick={() => applyQuickRange("week")}>Semana</Button>
+          <Button variant="outline" size="sm" onClick={() => applyQuickRange("month")}>Mês</Button>
+          <Button variant="outline" size="sm" onClick={() => applyQuickRange("year")}>Ano</Button>
           <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
           <Select value={selectedCategory ? String(selectedCategory) : "todas"} onValueChange={(v) => setSelectedCategory(v === "todas" ? undefined : Number(v))}>
@@ -113,6 +155,12 @@ export function FinanceScreen() {
             </SelectContent>
           </Select>
           <Button onClick={openNew}>Registrar despesa</Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")} className="gap-2">
+            <Print24Regular className="w-4 h-4" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => handleExport("excel")} className="gap-2">
+            <Document24Regular className="w-4 h-4" /> Excel
+          </Button>
         </div>
       </div>
 
