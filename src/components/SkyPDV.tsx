@@ -32,6 +32,7 @@ import { useBattery } from "@/hooks/useBattery";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { useSkyWebsocket } from "@/hooks/useSkyWebsocket";
+import { usePermissions } from "@/hooks/usePermissions";
 import { Product } from "@/services/api";
 import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,7 @@ export function SkyPDV() {
   const { level: batteryLevel, charging: isCharging, isSupported: batterySupported } = useBattery();
   const { qualityLabel, qualityColor, isOnline } = useNetworkQuality();
   const { isConnected: hardwareConnected, isConnecting: hardwareConnecting } = useHardwarePlugin();
+  const perms = usePermissions();
 
   // Initialize global WebSocket for notifications
   useSkyWebsocket();
@@ -238,11 +240,11 @@ export function SkyPDV() {
     setIsStartOpen(false);
   };
 
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case "overview":
-        return <OverviewScreen />;
-      case "products":
+const renderScreen = () => {
+  switch (currentScreen) {
+    case "overview":
+      return <OverviewScreen />;
+    case "products":
         return <ProductsScreen />;
       case "stock":
         return <StockScreen />;
@@ -256,13 +258,15 @@ export function SkyPDV() {
         return <TablesScreen />;
       case "tabs":
         return <TabsScreen />;
-      case "sales":
-        return <SalesHistoryScreen />;
-      case "fastfood":
-        return <FastfoodAdminScreen />;
-      case "pdv":
-      default:
-        return (
+    case "sales":
+      return <SalesHistoryScreen />;
+    case "fastfood":
+      return <FastfoodAdminScreen />;
+    case "finance":
+      return <FinanceScreen />;
+    case "pdv":
+    default:
+      return (
           <>
             {/* Main Content */}
             <div className="flex-1 flex flex-col p-3 md:p-4 overflow-hidden">
@@ -285,6 +289,7 @@ export function SkyPDV() {
                     size="sm"
                     onClick={() => setCashRegisterDialogOpen(true)}
                     className="gap-2"
+                    disabled={perms.can_open_cash_register === false}
                   >
                     <Money24Regular className="w-5 h-5" />
                     <div className="flex items-center gap-2">
@@ -395,6 +400,7 @@ export function SkyPDV() {
               onClear={clearCart}
               onSaleComplete={handleSaleComplete}
               isCashRegisterOpen={currentRegister?.status === "open"}
+              canSell={perms.can_sell}
               parkedSales={parkedSales.map(({ id, label, createdAt, customerName }) => ({
                 id,
                 label,

@@ -34,6 +34,7 @@ interface CartSidebarProps {
   onClear: () => void;
   onSaleComplete?: () => void;
   isCashRegisterOpen?: boolean;
+  canSell?: boolean;
   // Vendas em espera (PDV local, não FastFood)
   parkedSales?: ParkedSaleSummary[];
   customerName?: string;
@@ -44,7 +45,24 @@ interface CartSidebarProps {
 
 const IVA_RATE = 0.16;
 
-function CartContent({ items, onUpdateQuantity, onRemove, onClear, subtotal, ivaAmount, total, totalItems, onSaleComplete, isCashRegisterOpen, parkedSales, customerName, onCustomerNameChange, onParkSale, onLoadParkedSale }: {
+function CartContent({
+  items,
+  onUpdateQuantity,
+  onRemove,
+  onClear,
+  subtotal,
+  ivaAmount,
+  total,
+  totalItems,
+  onSaleComplete,
+  isCashRegisterOpen,
+  canSell,
+  parkedSales,
+  customerName,
+  onCustomerNameChange,
+  onParkSale,
+  onLoadParkedSale,
+}: {
   items: CartItem[];
   onUpdateQuantity: (id: string, quantity: number) => void;
   onRemove: (id: string) => void;
@@ -55,6 +73,7 @@ function CartContent({ items, onUpdateQuantity, onRemove, onClear, subtotal, iva
   totalItems: number;
   onSaleComplete?: () => void;
   isCashRegisterOpen?: boolean;
+  canSell?: boolean;
   parkedSales?: ParkedSaleSummary[];
   customerName?: string;
   onCustomerNameChange?: (name: string) => void;
@@ -71,6 +90,10 @@ function CartContent({ items, onUpdateQuantity, onRemove, onClear, subtotal, iva
   const handleFinalizeSale = () => {
     if (!isCashRegisterOpen) {
       toast.error("O caixa precisa estar aberto para realizar vendas. Abra o caixa primeiro.");
+      return;
+    }
+    if (canSell === false) {
+      toast.error("Seu perfil não tem permissão para vender.");
       return;
     }
     setSaleDialogOpen(true);
