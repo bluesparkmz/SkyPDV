@@ -101,11 +101,14 @@ export function SalesHistoryScreen() {
     return map;
   }, [terminalUsers]);
 
+  const startIso = filterStart ? new Date(`${filterStart}T00:00:00`).toISOString() : undefined;
+  const endIso = filterEnd ? new Date(`${filterEnd}T23:59:59.999`).toISOString() : undefined;
+
   const { data: sales = [], isLoading } = useSales({
     limit: 100,
     status: activeView === "all" ? "all" : activeView,
-    start_date: filterStart,
-    end_date: filterEnd,
+    start_date: startIso,
+    end_date: endIso,
     user_id: selectedCashierId === "all" ? undefined : selectedCashierId,
   });
 
