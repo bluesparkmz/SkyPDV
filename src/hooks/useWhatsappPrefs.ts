@@ -1,6 +1,6 @@
-import { useMemo } from "react";
-import { useLocalStorage } from "./use-local-storage";
+import { useMemo, useState, useEffect } from "react";
 import { profileApi } from "@/services/api";
+import { useAuth } from "@/contexts/AuthContext";
 
 export type WhatsappPrefs = {
   enabled: boolean;
@@ -8,10 +8,16 @@ export type WhatsappPrefs = {
   saved?: boolean;
 };
 
-const DEFAULT_PREFS: WhatsappPrefs = { enabled: false, phone: "" };
-
 export function useWhatsappPrefs() {
-  const [prefs, setPrefs] = useLocalStorage<WhatsappPrefs>("whatsapp_prefs", DEFAULT_PREFS);
+  const { user, refreshUser } = useAuth();
+  const [prefs, setPrefs] = useState<WhatsappPrefs>({ enabled: false, phone: "", saved: false });
+
+  useEffect(() => {
+    const phone = user?.user?.phone || "";
+    if (phone) {
+      setPrefs((p) => ({ ...p, phone, saved: true }));
+    }
+  }, [user?.user?.phone]);
 
   const update = (partial: Partial<WhatsappPrefs>) => {
     setPrefs({ ...prefs, ...partial });
@@ -23,6 +29,7 @@ export function useWhatsappPrefs() {
     try {
       await profileApi.updatePhone(phone);
       setPrefs({ ...prefs, phone, saved: true });
+      await refreshUser();
     } catch {
       // ignore errors
     }

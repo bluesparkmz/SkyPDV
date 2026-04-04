@@ -115,7 +115,7 @@ export function FinanceScreen() {
 
   const handleExport = async (type: "pdf" | "excel") => {
     try {
-      if (whatsappPrefs.enabled && !whatsappPrefs.phone) {
+      if (!whatsappPrefs.phone) {
         setPendingExport(type);
         setShowWhatsappDialog(true);
         return;

@@ -296,7 +296,7 @@ export function ReportsScreen() {
 
   const handleExport = async (type: "pdf" | "excel") => {
     try {
-      if (whatsappPrefs.enabled && !whatsappPrefs.phone) {
+      if (!whatsappPrefs.phone) {
         setPendingExportType(type);
         setShowWhatsappDialog(true);
         return;
