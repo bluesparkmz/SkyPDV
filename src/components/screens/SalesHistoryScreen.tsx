@@ -49,6 +49,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const useStyles = makeStyles({
   root: {
@@ -80,7 +81,10 @@ export function SalesHistoryScreen() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isVoidDialogOpen, setIsVoidDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [dateFilter, setDateFilter] = useState<string>(new Date().toISOString().split('T')[0]);
+  const todayStr = new Date().toISOString().split("T")[0];
+  const [filterStart, setFilterStart] = useState<string>(todayStr);
+  const [filterEnd, setFilterEnd] = useState<string>(todayStr);
+  const [selectedCashierId, setSelectedCashierId] = useState<number | "all">("all");
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -100,6 +104,9 @@ export function SalesHistoryScreen() {
   const { data: sales = [], isLoading } = useSales({
     limit: 100,
     status: activeView === "all" ? "all" : activeView,
+    start_date: filterStart,
+    end_date: filterEnd,
+    user_id: selectedCashierId === "all" ? undefined : selectedCashierId,
   });
 
   const voidSale = useVoidSale();
@@ -111,12 +118,7 @@ export function SalesHistoryScreen() {
       sale.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       sale.customer_phone?.includes(searchQuery);
 
-    const matchesDate =
-      !dateFilter ||
-      new Date(sale.created_at).toLocaleDateString("pt-BR") ===
-      new Date(dateFilter).toLocaleDateString("pt-BR");
-
-    return matchesSearch && matchesDate;
+    return matchesSearch;
   });
 
   const handleViewDetails = (sale: Sale) => {
@@ -164,11 +166,13 @@ export function SalesHistoryScreen() {
   const handlePrint = async () => {
     try {
       const { blob, filename: apiFilename } = await dashboardApi.downloadSalesSummaryPdf(
-        dateFilter,
-        dateFilter
+        filterStart,
+        filterEnd,
+        selectedCashierId === "all" ? undefined : selectedCashierId
       );
 
-      const filename = apiFilename || `vendas-${dateFilter}.pdf`;
+      const filename =
+        apiFilename || `vendas-${filterStart || "inicio"}-${filterEnd || "fim"}.pdf`;
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -277,26 +281,67 @@ export function SalesHistoryScreen() {
                 className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
               />
             </div>
-            <div className="flex gap-2">
-              <div className="relative flex-1 sm:flex-none">
+            <div className="flex flex-wrap gap-2 items-center">
+              <div className="relative">
                 <CalendarLtr24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
                 <Input
                   type="date"
-                  value={dateFilter}
-                  onChange={(e) => setDateFilter(e.target.value)}
-                  className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
+                  value={filterStart}
+                  onChange={(e) => setFilterStart(e.target.value)}
+                  className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm min-w-[150px]"
                 />
               </div>
-              {dateFilter && (
-                <Button
-                  variant="outline"
-                  onClick={() => setDateFilter("")}
-                  size="sm"
-                  className="h-9 md:h-10"
-                >
-                  Limpar
-                </Button>
-              )}
+              <div className="relative">
+                <CalendarLtr24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+                <Input
+                  type="date"
+                  value={filterEnd}
+                  onChange={(e) => setFilterEnd(e.target.value)}
+                  className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm min-w-[150px]"
+                />
+              </div>
+              <Select
+                value={selectedCashierId === "all" ? "all" : String(selectedCashierId)}
+                onValueChange={(v) => setSelectedCashierId(v === "all" ? "all" : Number(v))}
+              >
+                <SelectTrigger className="w-[180px] h-9 md:h-10 text-xs md:text-sm">
+                  <SelectValue placeholder="Todos os caixas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os caixas</SelectItem>
+                  {terminalUsers.map((u) => (
+                    <SelectItem key={u.id} value={String(u.user_id)}>
+                      {u.user_name || u.user_email || `#${u.user_id}`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <div className="flex gap-1 flex-wrap">
+                <Button size="sm" variant="outline" onClick={() => {
+                  const today = new Date().toISOString().split("T")[0];
+                  setFilterStart(today); setFilterEnd(today);
+                }}>Hoje</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const d=new Date(); d.setDate(d.getDate()-1);
+                  const y=d.toISOString().split("T")[0];
+                  setFilterStart(y); setFilterEnd(y);
+                }}>Ontem</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const end=new Date(); const start=new Date(); start.setDate(end.getDate()-6);
+                  setFilterStart(start.toISOString().split("T")[0]); setFilterEnd(end.toISOString().split("T")[0]);
+                }}>Semana</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const now=new Date();
+                  const start=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
+                  const end=now.toISOString().split("T")[0];
+                  setFilterStart(start); setFilterEnd(end);
+                }}>MÃªs</Button>
+                <Button size="sm" variant="outline" onClick={() => {
+                  const now=new Date();
+                  setFilterStart(`${now.getFullYear()}-01-01`);
+                  setFilterEnd(now.toISOString().split("T")[0]);
+                }}>Ano</Button>
+              </div>
             </div>
           </div>
 

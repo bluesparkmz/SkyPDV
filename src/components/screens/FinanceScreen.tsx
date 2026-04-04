@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense } from "@/hooks/useFinance";
-import { dashboardApi } from "@/services/api";
+import { financeApi } from "@/services/api";
 import { PDVExpense } from "@/services/api";
 import { toast } from "sonner";
 
@@ -112,8 +112,8 @@ export function FinanceScreen() {
     try {
       const { blob, filename } =
         type === "pdf"
-          ? await dashboardApi.downloadSalesSummaryPdf(startDate, endDate)
-          : await dashboardApi.downloadSalesSummaryExcel(startDate, endDate);
+          ? await financeApi.downloadSummaryPdf(startDate, endDate)
+          : await financeApi.downloadSummaryExcel(startDate, endDate);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

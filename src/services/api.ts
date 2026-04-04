@@ -205,6 +205,52 @@ export const salesApi = {
   void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`),
 };
 
+// Finanças
+export const financeApi = {
+  summary: (start_date?: string, end_date?: string, user_id?: number) => {
+    const query = new URLSearchParams();
+    if (start_date) query.append("start_date", start_date);
+    if (end_date) query.append("end_date", end_date);
+    if (user_id) query.append("user_id", String(user_id));
+    const qs = query.toString();
+    return apiGet<FinancialSummary>(`/skypdv/finance/summary${qs ? `?${qs}` : ""}`);
+  },
+  listCategories: () => apiGet<PDVExpenseCategory[]>("/skypdv/finance/expense-categories"),
+  createCategory: (data: PDVExpenseCategoryCreate) =>
+    apiPost<PDVExpenseCategory>("/skypdv/finance/expense-categories", data),
+  updateCategory: (id: number, data: PDVExpenseCategoryUpdate) =>
+    apiPut<PDVExpenseCategory>(`/skypdv/finance/expense-categories/${id}`, data),
+  deleteCategory: (id: number) => apiDelete(`/skypdv/finance/expense-categories/${id}`),
+  listExpenses: (start_date?: string, end_date?: string, category_id?: number) => {
+    const query = new URLSearchParams();
+    if (start_date) query.append("start_date", start_date);
+    if (end_date) query.append("end_date", end_date);
+    if (category_id) query.append("category_id", String(category_id));
+    const qs = query.toString();
+    return apiGet<PDVExpense[]>(`/skypdv/finance/expenses${qs ? `?${qs}` : ""}`);
+  },
+  createExpense: (data: PDVExpenseCreate) => apiPost<PDVExpense>("/skypdv/finance/expenses", data),
+  updateExpense: (id: number, data: PDVExpenseUpdate) =>
+    apiPut<PDVExpense>(`/skypdv/finance/expenses/${id}`, data),
+  deleteExpense: (id: number) => apiDelete(`/skypdv/finance/expenses/${id}`),
+  downloadSummaryPdf: (start_date?: string, end_date?: string, user_id?: number) => {
+    const query = new URLSearchParams();
+    if (start_date) query.append("start_date", start_date);
+    if (end_date) query.append("end_date", end_date);
+    if (user_id) query.append("user_id", String(user_id));
+    const qs = query.toString();
+    return apiGetBlob(`/skypdv/finance/summary.pdf${qs ? `?${qs}` : ""}`);
+  },
+  downloadSummaryExcel: (start_date?: string, end_date?: string, user_id?: number) => {
+    const query = new URLSearchParams();
+    if (start_date) query.append("start_date", start_date);
+    if (end_date) query.append("end_date", end_date);
+    if (user_id) query.append("user_id", String(user_id));
+    const qs = query.toString();
+    return apiGetBlob(`/skypdv/finance/summary.xlsx${qs ? `?${qs}` : ""}`);
+  },
+};
+
 // Dashboard
 export const dashboardApi = {
   get: (userId?: number) => {

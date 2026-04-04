@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Money24Regular,
   WeatherSunny24Regular,
@@ -37,6 +37,8 @@ import { Product } from "@/services/api";
 import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
+import { terminalApi } from "@/services/api";
 
 import { Screen } from "@/types/screen";
 
@@ -66,6 +68,18 @@ export function SkyPDV() {
   const { qualityLabel, qualityColor, isOnline } = useNetworkQuality();
   const { isConnected: hardwareConnected, isConnecting: hardwareConnecting } = useHardwarePlugin();
   const perms = usePermissions();
+  const { data: terminal, error: terminalError } = useQuery({
+    queryKey: ["terminal"],
+    queryFn: () => terminalApi.get(),
+  });
+
+  useEffect(() => {
+    if ((terminalError as any)?.status === 404) {
+      setShowSetup(true);
+    } else if (terminal) {
+      setShowSetup(false);
+    }
+  }, [terminalError, terminal]);
 
   // Initialize global WebSocket for notifications
   useSkyWebsocket();
