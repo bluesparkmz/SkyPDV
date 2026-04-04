@@ -41,6 +41,9 @@ export function TerminalUsersSettings() {
   const { user: profileData } = useAuth();
   const currentUserId = profileData?.user?.id;
 
+  const currentUserRole = users?.find((u) => u.user_id === currentUserId)?.role;
+  const isCurrentAdmin = currentUserRole === "admin";
+
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -51,6 +54,7 @@ export function TerminalUsersSettings() {
   const removeUser = useRemoveTerminalUser();
 
   const handleAddUser = async (data: CreatePDVTerminalUser) => {
+    if (!isCurrentAdmin) return;
     await addUser.mutateAsync(data);
     setIsAddDialogOpen(false);
   };
@@ -68,13 +72,17 @@ export function TerminalUsersSettings() {
   };
 
   const openEditDialog = (user: PDVTerminalUser) => {
-    setSelectedUser(user);
-    setIsEditDialogOpen(true);
+    if (isCurrentAdmin) {
+      setSelectedUser(user);
+      setIsEditDialogOpen(true);
+    }
   };
 
   const openDeleteDialog = (user: PDVTerminalUser) => {
-    setSelectedUser(user);
-    setIsDeleteDialogOpen(true);
+    if (isCurrentAdmin) {
+      setSelectedUser(user);
+      setIsDeleteDialogOpen(true);
+    }
   };
 
   const isCurrentUser = (user: PDVTerminalUser) => {
@@ -82,7 +90,7 @@ export function TerminalUsersSettings() {
   };
 
   const isAdmin = (user: PDVTerminalUser) => {
-    return user.role === "admin" || isCurrentUser(user);
+    return user.role === "admin";
   };
 
   if (isLoading) {
@@ -104,13 +112,15 @@ export function TerminalUsersSettings() {
             Gerencie usuários e permissões do terminal PDV
           </p>
         </div>
-        <Button
-          onClick={() => setIsAddDialogOpen(true)}
-          className="fluent-button fluent-button-primary"
-        >
-          <PersonAdd24Regular className="w-4 h-4 mr-2" />
-          Adicionar Usuário
-        </Button>
+        {isCurrentAdmin && (
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            className="fluent-button fluent-button-primary"
+          >
+            <PersonAdd24Regular className="w-4 h-4 mr-2" />
+            Adicionar Usuário
+          </Button>
+        )}
       </div>
 
       {users && users.length === 0 ? (
@@ -183,7 +193,7 @@ export function TerminalUsersSettings() {
                 </div>
 
                 <div className="flex gap-2 shrink-0">
-                  {!isCurrentUser(user) && (
+                  {isCurrentAdmin && !isCurrentUser(user) && (
                     <>
                       <Button
                         variant="outline"
@@ -210,12 +220,15 @@ export function TerminalUsersSettings() {
         </div>
       )}
 
-      <AddUserDialog
-        open={isAddDialogOpen}
-        onOpenChange={setIsAddDialogOpen}
-        onAdd={handleAddUser}
-        isLoading={addUser.isPending}
-      />
+      {isCurrentAdmin && (
+        <AddUserDialog
+          open={isAddDialogOpen}
+          onOpenChange={setIsAddDialogOpen}
+          onAdd={handleAddUser}
+          isLoading={addUser.isPending}
+          disabled={!isCurrentAdmin}
+        />
+      )}
 
       {selectedUser && (
         <>
@@ -245,11 +258,13 @@ function AddUserDialog({
   onOpenChange,
   onAdd,
   isLoading,
+  disabled = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onAdd: (data: CreatePDVTerminalUser) => Promise<void>;
   isLoading: boolean;
+  disabled?: boolean;
 }) {
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"admin" | "cashier" | "manager" | "viewer">("cashier");
@@ -306,7 +321,7 @@ function AddUserDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="usuario@exemplo.com"
-              disabled={isLoading}
+              disabled={isLoading || disabled}
             />
           </div>
 
@@ -316,7 +331,7 @@ function AddUserDialog({
               id="role"
               value={role}
               onChange={(e) => setRole(e.target.value as any)}
-              disabled={isLoading}
+              disabled={isLoading || disabled}
               className="w-full px-4 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               <option value="cashier">Caixa</option>
@@ -336,7 +351,7 @@ function AddUserDialog({
                   onChange={(e) =>
                     setPermissions((prev) => ({ ...prev, [key]: e.target.checked }))
                   }
-                  disabled={isLoading}
+                  disabled={isLoading || disabled}
                   className="w-4 h-4 rounded border-border"
                 />
                 <span className="text-sm text-foreground">
@@ -521,4 +536,3 @@ function DeleteUserDialog({
     </Dialog>
   );
 }
-
