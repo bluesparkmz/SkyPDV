@@ -80,7 +80,7 @@ const useStyles = makeStyles({
   },
 });
 
-type SettingsTab = "general" | "company" | "receipt" | "printer" | "appearance" | "security" | "users";
+type SettingsTab = "general" | "company" | "receipt" | "invoice" | "printer" | "appearance" | "security" | "users";
 
 type Props = {
   onOpenSetup?: () => void;
@@ -111,6 +111,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
     { id: "general" as const, name: "Geral", icon: <Settings24Regular className="w-5 h-5" /> },
     { id: "company" as const, name: "Empresa", icon: <Building24Regular className="w-5 h-5" /> },
     { id: "receipt" as const, name: "Recibos", icon: <Receipt24Regular className="w-5 h-5" /> },
+    { id: "invoice" as const, name: "Fatura", icon: <Receipt24Regular className="w-5 h-5" /> },
     { id: "printer" as const, name: "Impressora", icon: <Print24Regular className="w-5 h-5" /> },
     { id: "users" as const, name: "Usuários", icon: <PeopleTeam24Regular className="w-5 h-5" /> },
     { id: "appearance" as const, name: "Aparência", icon: <Color24Regular className="w-5 h-5" /> },
@@ -481,6 +482,42 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                   <Info24Regular className="w-10 h-10 mb-2 opacity-30" />
                   <p className="text-sm">Configurações de Recibos</p>
                   <p className="text-xs">Em desenvolvimento</p>
+                </div>
+              )}
+
+              {activeTab === "invoice" && (
+                <div className="space-y-4 md:space-y-6">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h2 className="text-base md:text-lg font-semibold text-foreground">Fatura</h2>
+                      <p className="text-sm text-muted-foreground">
+                        As linhas das faturas são carregadas diretamente dos produtos cadastrados no PDV.
+                      </p>
+                    </div>
+                    <Link
+                      to="/products"
+                      className="fluent-button fluent-button-primary whitespace-nowrap"
+                    >
+                      Gerenciar Produtos
+                    </Link>
+                  </div>
+
+                  <div className="rounded-2xl border border-border p-4 md:p-6 bg-secondary/40">
+                    <h3 className="text-sm font-semibold text-foreground mb-2">Como funciona</h3>
+                    <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-4">
+                      <li>Os itens disponíveis na fatura são os mesmos produtos cadastrados no catálogo.</li>
+                      <li>Atualize preços, nomes ou categorias em Produtos para refletir nas próximas faturas.</li>
+                      <li>As faturas utilizam o mesmo cabeçalho de empresa e IVA configurados nas abas Empresa e Geral.</li>
+                    </ul>
+                  </div>
+
+                  <div className="rounded-2xl border border-dashed border-border p-4 bg-card">
+                    <p className="text-sm text-muted-foreground">
+                      Em breve aqui você poderá personalizar o layout da fatura e definir campos adicionais
+                      (ex.: observações, condições de pagamento). Por enquanto, revise os produtos e impostos
+                      para garantir que o PDF saia correto.
+                    </p>
+                  </div>
                 </div>
               )}
 
