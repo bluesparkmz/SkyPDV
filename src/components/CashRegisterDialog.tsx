@@ -29,6 +29,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
   const [notes, setNotes] = useState("");
 
   const handleOpen = async () => {
+    if (isOpen) return;
     try {
       await openMutation.mutateAsync({
         opening_amount: openingAmount,
@@ -60,6 +61,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
   };
 
   const isOpen = currentRegister?.status === "open";
+  const alreadyOpenWarning = isOpen ? "Já existe um caixa aberto. Feche-o antes de abrir outro." : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -110,9 +112,10 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
               value={isOpen ? closingAmount : openingAmount}
               onChange={(e) => isOpen ? setClosingAmount(e.target.value) : setOpeningAmount(e.target.value)}
               placeholder="0.00"
+              disabled={!!alreadyOpenWarning}
             />
           </div>
-          
+
           <div className="space-y-2">
             <Label htmlFor="notes">Observações</Label>
             <Textarea
@@ -121,17 +124,24 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Notas adicionais..."
               rows={3}
+              disabled={!!alreadyOpenWarning}
             />
           </div>
+
+          {alreadyOpenWarning && (
+            <div className="text-sm text-destructive bg-destructive/10 border border-destructive/30 rounded-md px-3 py-2">
+              {alreadyOpenWarning}
+            </div>
+          )}
         </div>
-        
+
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
           <Button 
             onClick={isOpen ? handleClose : handleOpen}
-            disabled={isOpen ? !closingAmount : openMutation.isPending || closeMutation.isPending}
+            disabled={isOpen ? !closingAmount : openMutation.isPending || closeMutation.isPending || !!alreadyOpenWarning}
           >
             {isOpen ? "Fechar Caixa" : "Abrir Caixa"}
           </Button>
@@ -140,4 +150,3 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
     </Dialog>
   );
 }
-
