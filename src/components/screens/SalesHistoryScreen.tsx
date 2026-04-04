@@ -50,6 +50,7 @@ import { ptBR } from "date-fns/locale/pt-BR";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/contexts/AuthContext";
 
 const useStyles = makeStyles({
   root: {
@@ -90,6 +91,7 @@ export function SalesHistoryScreen() {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
+  const { user: authUser } = useAuth();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
     const map = new Map<number, string>();
@@ -100,6 +102,13 @@ export function SalesHistoryScreen() {
     }
     return map;
   }, [terminalUsers]);
+
+  const isAdmin = useMemo(() => {
+    const uid = authUser?.user?.id;
+    if (!uid) return false;
+    const entry = terminalUsers.find((u) => u.user_id === uid);
+    return !!entry && (entry.role === "admin" || entry.can_manage_users === true);
+  }, [authUser, terminalUsers]);
 
   const startIso = filterStart ? new Date(`${filterStart}T00:00:00`).toISOString() : undefined;
   const endIso = filterEnd ? new Date(`${filterEnd}T23:59:59.999`).toISOString() : undefined;
@@ -457,7 +466,7 @@ export function SalesHistoryScreen() {
                             >
                               <Eye24Regular className="w-4 h-4" />
                             </Button>
-                            {sale.status === "completed" && (
+                            {sale.status === "completed" && isAdmin && (
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -623,9 +632,11 @@ export function SalesHistoryScreen() {
                 <Button variant="outline" onClick={() => setIsVoidDialogOpen(false)}>
                   Cancelar
                 </Button>
-                <Button variant="destructive" onClick={confirmVoid} disabled={voidSale.isPending}>
-                  {voidSale.isPending ? "Cancelando..." : "Confirmar Cancelamento"}
-                </Button>
+                {isAdmin && (
+                  <Button variant="destructive" onClick={confirmVoid} disabled={voidSale.isPending}>
+                    {voidSale.isPending ? "Cancelando..." : "Confirmar Cancelamento"}
+                  </Button>
+                )}
               </DialogFooter>
             </DialogContent>
           </Dialog>
