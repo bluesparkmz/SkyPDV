@@ -60,6 +60,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { dashboardApi } from "@/services/api";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useWhatsappPrefs } from "@/hooks/useWhatsappPrefs";
 import {
   Select,
   SelectContent,
@@ -114,6 +115,10 @@ export function ReportsScreen() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [selectedCashierId, setSelectedCashierId] = useState<number | undefined>(undefined);
+  const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady } = useWhatsappPrefs();
+  const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
+  const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
+  const [tempPhone, setTempPhone] = useState("");
 
   useEffect(() => {
     // Sincronizar estado inicial e mudanças de redimensionamento
@@ -291,6 +296,11 @@ export function ReportsScreen() {
 
   const handleExport = async (type: "pdf" | "excel") => {
     try {
+      if (whatsappPrefs.enabled && !whatsappPrefs.phone) {
+        setPendingExportType(type);
+        setShowWhatsappDialog(true);
+        return;
+      }
       // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
       const isDailyView = activeView === "daily" && selectedDate;
       const exportStart = isDailyView ? selectedDate : startDate;
@@ -318,6 +328,11 @@ export function ReportsScreen() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
+
+      // placeholder para envio ao WhatsApp
+      if (whatsappPrefs.enabled && whatsappPrefs.phone) {
+        toast.success(`Enviaremos o relatório para o WhatsApp ${whatsappPrefs.phone}. (placeholder)`);
+      }
     } catch (e: any) {
       toast.error(e?.message || `Falha ao gerar o ${type === "pdf" ? "PDF" : "Excel"}`);
     }
@@ -692,6 +707,54 @@ export function ReportsScreen() {
               <Button onClick={handleExportPDF} className="gap-2">
                 <Print24Regular className="w-4 h-4" />
                 Imprimir
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showWhatsappDialog} onOpenChange={setShowWhatsappDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Enviar para WhatsApp</DialogTitle>
+              <DialogDescription>
+                Informe o número de WhatsApp que deve receber o relatório. Você pode desativar esse envio nas
+                configurações.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-3">
+              <Input
+                placeholder="Ex.: +25884XXXXXXX"
+                value={tempPhone}
+                onChange={(e) => setTempPhone(e.target.value)}
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={whatsappPrefs.enabled}
+                  onChange={(e) => setWhatsappPrefs({ enabled: e.target.checked })}
+                />
+                <span className="text-sm text-muted-foreground">Ativar envio automático para WhatsApp</span>
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setShowWhatsappDialog(false);
+                  if (pendingExportType) handleExport(pendingExportType);
+                }}
+              >
+                Imprimir sem WhatsApp
+              </Button>
+              <Button
+                onClick={() => {
+                  setWhatsappPrefs({ phone: tempPhone, enabled: true });
+                  setShowWhatsappDialog(false);
+                  if (pendingExportType) handleExport(pendingExportType);
+                }}
+                disabled={!tempPhone.trim()}
+              >
+                Salvar e continuar
               </Button>
             </DialogFooter>
           </DialogContent>

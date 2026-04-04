@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense } from "@/hooks/useFinance";
 import { financeApi } from "@/services/api";
+import { useWhatsappPrefs } from "@/hooks/useWhatsappPrefs";
 import { PDVExpense } from "@/services/api";
 import { toast } from "sonner";
 
@@ -23,6 +24,10 @@ export function FinanceScreen() {
     amount: "",
     expense_date: format(new Date(), "yyyy-MM-dd"),
   });
+  const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs } = useWhatsappPrefs();
+  const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
+  const [pendingExport, setPendingExport] = useState<"pdf" | "excel" | null>(null);
+  const [tempPhone, setTempPhone] = useState("");
 
   const { data: summary } = useFinanceSummary(startDate, endDate);
   const { data: categories = [] } = useExpenseCategories();
@@ -110,6 +115,11 @@ export function FinanceScreen() {
 
   const handleExport = async (type: "pdf" | "excel") => {
     try {
+      if (whatsappPrefs.enabled && !whatsappPrefs.phone) {
+        setPendingExport(type);
+        setShowWhatsappDialog(true);
+        return;
+      }
       const { blob, filename } =
         type === "pdf"
           ? await financeApi.downloadSummaryPdf(startDate, endDate)
@@ -122,6 +132,10 @@ export function FinanceScreen() {
         `finance-${type}-${startDate || "inicio"}-${endDate || "fim"}.${type === "pdf" ? "pdf" : "xlsx"}`;
       a.click();
       URL.revokeObjectURL(url);
+
+      if (whatsappPrefs.enabled && whatsappPrefs.phone) {
+        toast.success(`Enviaremos o resumo para o WhatsApp ${whatsappPrefs.phone}. (placeholder)`);
+      }
     } catch (e: any) {
       toast.error(e?.message || `Falha ao gerar ${type === "pdf" ? "PDF" : "Excel"}`);
     }
@@ -240,6 +254,50 @@ export function FinanceScreen() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={showWhatsappDialog} onOpenChange={setShowWhatsappDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar documento para WhatsApp</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-3">
+            <Input
+              placeholder="Ex.: +25884XXXXXXX"
+              value={tempPhone}
+              onChange={(e) => setTempPhone(e.target.value)}
+            />
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={whatsappPrefs.enabled}
+                onChange={(e) => setWhatsappPrefs({ enabled: e.target.checked })}
+              />
+              <span className="text-sm text-muted-foreground">Ativar envio automático para WhatsApp</span>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setShowWhatsappDialog(false);
+                if (pendingExport) handleExport(pendingExport);
+              }}
+            >
+              Imprimir sem WhatsApp
+            </Button>
+            <Button
+              onClick={() => {
+                setWhatsappPrefs({ phone: tempPhone, enabled: true });
+                setShowWhatsappDialog(false);
+                if (pendingExport) handleExport(pendingExport);
+              }}
+              disabled={!tempPhone.trim()}
+            >
+              Salvar e continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
