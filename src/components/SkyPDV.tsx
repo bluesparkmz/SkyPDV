@@ -240,11 +240,11 @@ export function SkyPDV() {
     setIsStartOpen(false);
   };
 
-const renderScreen = () => {
-  switch (currentScreen) {
-    case "overview":
-      return <OverviewScreen />;
-    case "products":
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case "overview":
+        return <OverviewScreen />;
+      case "products":
         return <ProductsScreen />;
       case "stock":
         return <StockScreen />;
@@ -258,15 +258,15 @@ const renderScreen = () => {
         return <TablesScreen />;
       case "tabs":
         return <TabsScreen />;
-    case "sales":
-      return <SalesHistoryScreen />;
-    case "fastfood":
-      return <FastfoodAdminScreen />;
-    case "finance":
-      return <FinanceScreen />;
-    case "pdv":
-    default:
-      return (
+      case "sales":
+        return <SalesHistoryScreen />;
+      case "fastfood":
+        return <FastfoodAdminScreen />;
+      case "finance":
+        return <FinanceScreen />;
+      case "pdv":
+      default:
+        return (
           <>
             {/* Main Content */}
             <div className="flex-1 flex flex-col p-3 md:p-4 overflow-hidden">
@@ -414,10 +414,7 @@ const renderScreen = () => {
             />
           </>
         );
-    case "finance":
-      return <FinanceScreen />;
-    default:
-      return <OverviewScreen />;
+    }
   };
 
   return (
