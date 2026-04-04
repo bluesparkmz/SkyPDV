@@ -24,7 +24,7 @@ export function FinanceScreen() {
     amount: "",
     expense_date: format(new Date(), "yyyy-MM-dd"),
   });
-  const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs } = useWhatsappPrefs();
+  const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, saveToBackend } = useWhatsappPrefs();
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
   const [pendingExport, setPendingExport] = useState<"pdf" | "excel" | null>(null);
   const [tempPhone, setTempPhone] = useState("");
@@ -120,10 +120,11 @@ export function FinanceScreen() {
         setShowWhatsappDialog(true);
         return;
       }
+      const phoneParam = whatsappPrefs.enabled ? whatsappPrefs.phone : undefined;
       const { blob, filename } =
         type === "pdf"
-          ? await financeApi.downloadSummaryPdf(startDate, endDate)
-          : await financeApi.downloadSummaryExcel(startDate, endDate);
+          ? await financeApi.downloadSummaryPdf(startDate, endDate, undefined, phoneParam)
+          : await financeApi.downloadSummaryExcel(startDate, endDate, undefined, phoneParam);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -288,6 +289,7 @@ export function FinanceScreen() {
             <Button
               onClick={() => {
                 setWhatsappPrefs({ phone: tempPhone, enabled: true });
+                saveToBackend(tempPhone);
                 setShowWhatsappDialog(false);
                 if (pendingExport) handleExport(pendingExport);
               }}

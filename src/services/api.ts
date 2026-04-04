@@ -199,10 +199,15 @@ export const salesApi = {
     if (params?.limit) query.append("limit", String(params.limit));
     if (params?.user_id) query.append("user_id", String(params.user_id));
     const queryString = query.toString();
-    return apiGet<Sale[]>(`/skypdv/sales${queryString ? `?${queryString}` : ""}`);
+  return apiGet<Sale[]>(`/skypdv/sales${queryString ? `?${queryString}` : ""}`);
   },
   get: (id: number) => apiGet<Sale>(`/skypdv/sales/${id}`),
   void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`),
+};
+
+// Perfil
+export const profileApi = {
+  updatePhone: (phone: string) => apiPost<{ status: string; phone: string }>("/user/phone", { phone }),
 };
 
 // Finanças
@@ -233,19 +238,21 @@ export const financeApi = {
   updateExpense: (id: number, data: PDVExpenseUpdate) =>
     apiPut<PDVExpense>(`/skypdv/finance/expenses/${id}`, data),
   deleteExpense: (id: number) => apiDelete(`/skypdv/finance/expenses/${id}`),
-  downloadSummaryPdf: (start_date?: string, end_date?: string, user_id?: number) => {
+  downloadSummaryPdf: (start_date?: string, end_date?: string, user_id?: number, phone?: string) => {
     const query = new URLSearchParams();
     if (start_date) query.append("start_date", start_date);
     if (end_date) query.append("end_date", end_date);
     if (user_id) query.append("user_id", String(user_id));
+    if (phone) query.append("phone", phone);
     const qs = query.toString();
     return apiGetBlob(`/skypdv/finance/summary.pdf${qs ? `?${qs}` : ""}`);
   },
-  downloadSummaryExcel: (start_date?: string, end_date?: string, user_id?: number) => {
+  downloadSummaryExcel: (start_date?: string, end_date?: string, user_id?: number, phone?: string) => {
     const query = new URLSearchParams();
     if (start_date) query.append("start_date", start_date);
     if (end_date) query.append("end_date", end_date);
     if (user_id) query.append("user_id", String(user_id));
+    if (phone) query.append("phone", phone);
     const qs = query.toString();
     return apiGetBlob(`/skypdv/finance/summary.xlsx${qs ? `?${qs}` : ""}`);
   },
@@ -267,19 +274,21 @@ export const dashboardApi = {
     const queryString = query.toString();
     return apiGet<SalesSummary>(`/skypdv/reports/sales-summary${queryString ? `?${queryString}` : ""}`);
   },
-  downloadSalesSummaryPdf: (startDate?: string, endDate?: string, userId?: number) => {
+  downloadSalesSummaryPdf: (startDate?: string, endDate?: string, userId?: number, phone?: string) => {
     const query = new URLSearchParams();
     if (startDate) query.append("start_date", startDate);
     if (endDate) query.append("end_date", endDate);
     if (userId) query.append("user_id", String(userId));
+    if (phone) query.append("phone", phone);
     const queryString = query.toString();
     return apiGetBlob(`/skypdv/reports/sales-summary.pdf${queryString ? `?${queryString}` : ""}`);
   },
-  downloadSalesSummaryExcel: (startDate?: string, endDate?: string, userId?: number) => {
+  downloadSalesSummaryExcel: (startDate?: string, endDate?: string, userId?: number, phone?: string) => {
     const query = new URLSearchParams();
     if (startDate) query.append("start_date", startDate);
     if (endDate) query.append("end_date", endDate);
     if (userId) query.append("user_id", String(userId));
+    if (phone) query.append("phone", phone);
     const queryString = query.toString();
     return apiGetBlob(`/skypdv/reports/sales-summary.xlsx${queryString ? `?${queryString}` : ""}`);
   },

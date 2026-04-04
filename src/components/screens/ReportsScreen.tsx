@@ -115,7 +115,7 @@ export function ReportsScreen() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [selectedCashierId, setSelectedCashierId] = useState<number | undefined>(undefined);
-  const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady } = useWhatsappPrefs();
+  const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady, saveToBackend } = useWhatsappPrefs();
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
   const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
   const [tempPhone, setTempPhone] = useState("");
@@ -306,10 +306,11 @@ export function ReportsScreen() {
       const exportStart = isDailyView ? selectedDate : startDate;
       const exportEnd = isDailyView ? selectedDate : endDate;
 
+      const phoneParam = whatsappPrefs.enabled ? whatsappPrefs.phone : undefined;
       const { blob, filename: apiFilename } =
         type === "pdf"
-          ? await dashboardApi.downloadSalesSummaryPdf(exportStart!, exportEnd!, selectedCashierId)
-          : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId);
+          ? await dashboardApi.downloadSalesSummaryPdf(exportStart!, exportEnd!, selectedCashierId, phoneParam)
+          : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId, phoneParam);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
       // Formata o período para o nome do arquivo
@@ -747,8 +748,9 @@ export function ReportsScreen() {
                 Imprimir sem WhatsApp
               </Button>
               <Button
-                onClick={() => {
+              onClick={() => {
                   setWhatsappPrefs({ phone: tempPhone, enabled: true });
+                  saveToBackend(tempPhone);
                   setShowWhatsappDialog(false);
                   if (pendingExportType) handleExport(pendingExportType);
                 }}
