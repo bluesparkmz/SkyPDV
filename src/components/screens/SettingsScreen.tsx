@@ -45,6 +45,13 @@ import { toast } from "sonner";
 import { TerminalUsersSettings } from "./TerminalUsersSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BuildingShop24Regular } from "@fluentui/react-icons";
+import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
+import { useProducts } from "@/hooks/useProducts";
+import { invoicesApi } from "@/services/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const useStyles = makeStyles({
   root: {
@@ -485,41 +492,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                 </div>
               )}
 
-              {activeTab === "invoice" && (
-                <div className="space-y-4 md:space-y-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h2 className="text-base md:text-lg font-semibold text-foreground">Fatura</h2>
-                      <p className="text-sm text-muted-foreground">
-                        As linhas das faturas são carregadas diretamente dos produtos cadastrados no PDV.
-                      </p>
-                    </div>
-                    <Link
-                      to="/products"
-                      className="fluent-button fluent-button-primary whitespace-nowrap"
-                    >
-                      Gerenciar Produtos
-                    </Link>
-                  </div>
-
-                  <div className="rounded-2xl border border-border p-4 md:p-6 bg-secondary/40">
-                    <h3 className="text-sm font-semibold text-foreground mb-2">Como funciona</h3>
-                    <ul className="text-sm text-muted-foreground space-y-2 list-disc pl-4">
-                      <li>Os itens disponíveis na fatura são os mesmos produtos cadastrados no catálogo.</li>
-                      <li>Atualize preços, nomes ou categorias em Produtos para refletir nas próximas faturas.</li>
-                      <li>As faturas utilizam o mesmo cabeçalho de empresa e IVA configurados nas abas Empresa e Geral.</li>
-                    </ul>
-                  </div>
-
-                  <div className="rounded-2xl border border-dashed border-border p-4 bg-card">
-                    <p className="text-sm text-muted-foreground">
-                      Em breve aqui você poderá personalizar o layout da fatura e definir campos adicionais
-                      (ex.: observações, condições de pagamento). Por enquanto, revise os produtos e impostos
-                      para garantir que o PDF saia correto.
-                    </p>
-                  </div>
-                </div>
-              )}
+              {activeTab === "invoice" && <InvoiceSection />}
 
               {activeTab === "printer" && <PrinterSettings />}
 
@@ -731,6 +704,172 @@ function PrinterSettings() {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function InvoiceSection() {
+  const { data: invoices, isLoading } = useInvoices();
+  const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });
+  const [open, setOpen] = useState(false);
+  const [productId, setProductId] = useState<number | null>(null);
+  const [quantity, setQuantity] = useState<string>("1");
+  const [customerName, setCustomerName] = useState("");
+  const [customerPhone, setCustomerPhone] = useState("");
+  const createInvoice = useCreateInvoice();
+  const payInvoice = usePayInvoice();
+
+  const products = productsData || [];
+
+  const handleCreate = async () => {
+    if (!productId) {
+      toast.error("Selecione um produto");
+      return;
+    }
+    await createInvoice.mutateAsync({
+      items: [
+        {
+          product_id: productId,
+          quantity: quantity || "1",
+        },
+      ],
+      customer_name: customerName || undefined,
+      customer_phone: customerPhone || undefined,
+      payment_method: "cash",
+      sale_type: "local",
+    });
+    setOpen(false);
+    setQuantity("1");
+    setCustomerName("");
+    setCustomerPhone("");
+    setProductId(null);
+  };
+
+  const handleDownload = async (id: number) => {
+    try {
+      const { blob, filename } = await invoicesApi.downloadPdf(id);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || `fatura-${id}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      toast.error(`Erro ao gerar PDF: ${e.message}`);
+    }
+  };
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
+          <p className="text-sm text-muted-foreground">
+            Liste e gere faturas. Os itens são os produtos do PDV.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Link to="/products" className="fluent-button">Produtos</Link>
+          <Button className="fluent-button fluent-button-primary" onClick={() => setOpen(true)}>
+            Criar Fatura
+          </Button>
+        </div>
+      </div>
+
+      <div className="rounded-2xl border border-border overflow-auto">
+        <table className="min-w-full text-sm">
+          <thead className="bg-secondary/50">
+            <tr className="text-left">
+              <th className="px-3 py-2">#</th>
+              <th className="px-3 py-2">Data</th>
+              <th className="px-3 py-2">Cliente</th>
+              <th className="px-3 py-2">Total</th>
+              <th className="px-3 py-2">Status</th>
+              <th className="px-3 py-2">Pagamento</th>
+              <th className="px-3 py-2">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {isLoading && (
+              <tr>
+                <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Carregando...</td>
+              </tr>
+            )}
+            {!isLoading && invoices && invoices.length === 0 && (
+              <tr>
+                <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Nenhuma fatura encontrada</td>
+              </tr>
+            )}
+            {invoices?.map((inv) => (
+              <tr key={inv.id} className="border-t border-border">
+                <td className="px-3 py-2 font-semibold">#{inv.id}</td>
+                <td className="px-3 py-2">{new Date(inv.created_at).toLocaleString()}</td>
+                <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
+                <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
+                <td className="px-3 py-2">
+                  <span className={`px-2 py-1 rounded-full text-xs ${inv.payment_status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                    {inv.payment_status === "paid" ? "Pago" : "Pendente"}
+                  </span>
+                </td>
+                <td className="px-3 py-2 capitalize">{inv.payment_method}</td>
+                <td className="px-3 py-2 flex gap-2">
+                  {inv.payment_status !== "paid" && (
+                    <Button size="sm" variant="outline" onClick={() => payInvoice.mutate(inv.id)}>
+                      Marcar pago
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id)}>
+                    PDF
+                  </Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Criar Fatura</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 gap-2">
+              <Label>Produto</Label>
+              <Select onValueChange={(v) => setProductId(Number(v))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um produto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.name} - {Number(p.price).toFixed(2)} MZN
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <Label>Quantidade</Label>
+              <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" min="1" />
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <Label>Cliente</Label>
+              <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nome do cliente (opcional)" />
+            </div>
+            <div className="grid grid-cols-1 gap-2">
+              <Label>Telefone</Label>
+              <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={createInvoice.isPending}>
+              {createInvoice.isPending ? "Criando..." : "Criar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

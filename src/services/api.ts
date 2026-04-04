@@ -199,10 +199,31 @@ export const salesApi = {
     if (params?.limit) query.append("limit", String(params.limit));
     if (params?.user_id) query.append("user_id", String(params.user_id));
     const queryString = query.toString();
-  return apiGet<Sale[]>(`/skypdv/sales${queryString ? `?${queryString}` : ""}`);
+    return apiGet<Sale[]>(`/skypdv/sales${queryString ? `?${queryString}` : ""}`);
   },
   get: (id: number) => apiGet<Sale>(`/skypdv/sales/${id}`),
   void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`),
+};
+
+// Faturas (mesma estrutura de vendas, mas status pendente/pago)
+export const invoicesApi = {
+  create: (data: CreateSale) => apiPost<Sale>("/skypdv/invoices", data),
+  list: (params?: { start_date?: string; end_date?: string; payment_status?: string; skip?: number; limit?: number; user_id?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.append("start_date", params.start_date);
+    if (params?.end_date) query.append("end_date", params.end_date);
+    if (params?.payment_status) query.append("payment_status", params.payment_status);
+    if (params?.skip) query.append("skip", String(params.skip));
+    if (params?.limit) query.append("limit", String(params.limit));
+    if (params?.user_id) query.append("user_id", String(params.user_id));
+    const qs = query.toString();
+    return apiGet<Sale[]>(`/skypdv/invoices${qs ? `?${qs}` : ""}`);
+  },
+  pay: (id: number) => apiPost<Sale>(`/skypdv/invoices/${id}/pay`),
+  downloadPdf: (id: number, phone?: string) => {
+    const qs = phone ? `?phone=${encodeURIComponent(phone)}` : "";
+    return apiGetBlob(`/skypdv/invoices/${id}/pdf${qs}`);
+  }
 };
 
 // Perfil
