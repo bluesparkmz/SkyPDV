@@ -23,6 +23,7 @@ import {
 } from "@fluentui/react-components";
 import { useSales, useVoidSale } from "@/hooks/useSales";
 import { Sale } from "@/services/api";
+import { dashboardApi } from "@/services/api";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { CustomerName } from "@/components/CustomerName";
 import { Button } from "@/components/ui/button";
@@ -47,6 +48,7 @@ import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { toast } from "sonner";
 
 const useStyles = makeStyles({
   root: {
@@ -159,8 +161,23 @@ export function SalesHistoryScreen() {
     return cashierNameByUserId.get(sale.created_by) || `#${sale.created_by}`;
   };
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrint = async () => {
+    try {
+      const { blob, filename: apiFilename } = await dashboardApi.downloadSalesSummaryPdf(
+        dateFilter,
+        dateFilter
+      );
+
+      const filename = apiFilename || `vendas-${dateFilter}.pdf`;
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error(err?.message || "Não foi possível gerar o PDF das vendas.");
+    }
   };
 
   if (isLoading) {
@@ -569,4 +586,3 @@ export function SalesHistoryScreen() {
     </div>
   );
 }
-

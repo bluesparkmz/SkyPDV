@@ -274,6 +274,8 @@ export function ReportsScreen() {
     }
   };
 
+  const handleExportPDF = () => handleExport("pdf");
+
   const handleQuickFilter = (period: 'today' | 'yesterday' | 'week' | 'month') => {
     const end = new Date();
     const start = new Date();
