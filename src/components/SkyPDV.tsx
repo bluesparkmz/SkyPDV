@@ -415,11 +415,12 @@ export function SkyPDV() {
               onSaleComplete={handleSaleComplete}
               isCashRegisterOpen={currentRegister?.status === "open"}
               canSell={perms.can_sell}
-              parkedSales={parkedSales.map(({ id, label, createdAt, customerName }) => ({
+              parkedSales={parkedSales.map(({ id, label, createdAt, customerName, items }) => ({
                 id,
                 label,
                 createdAt,
                 customerName,
+                items,
               }))}
               customerName={currentCustomerName}
               onCustomerNameChange={setCurrentCustomerName}

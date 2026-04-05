@@ -68,15 +68,24 @@ export function useHardwarePlugin() {
   };
 
   const printReceipt = async (content: string) => {
-    if (!isConnected) {
-      if (!isMobile) {
-        toast.error("Plugin de hardware não conectado");
+    const plugin = getHardwarePlugin();
+    if (!plugin.isConnected()) {
+      setIsConnecting(true);
+      try {
+        await connectHardwarePlugin();
+        setIsConnected(true);
+      } catch {
+        setIsConnected(false);
+        if (!isMobile) {
+          toast.error("Plugin de hardware não conectado. Inicie o plugin local (WebSocket).");
+        }
+        return { success: false, error: "Não conectado ao plugin" };
+      } finally {
+        setIsConnecting(false);
       }
-      return { success: false, error: "Não conectado" };
     }
 
     try {
-      const plugin = getHardwarePlugin();
       const result = await plugin.printReceipt(content);
 
       if (result.success) {
@@ -99,15 +108,20 @@ export function useHardwarePlugin() {
   };
 
   const openCashDrawer = async (port?: string) => {
-    if (!isConnected) {
-      if (!isMobile) {
-        toast.error("Plugin de hardware não conectado");
+    const plugin = getHardwarePlugin();
+    if (!plugin.isConnected()) {
+      try {
+        await connectHardwarePlugin();
+        setIsConnected(true);
+      } catch {
+        if (!isMobile) {
+          toast.error("Plugin de hardware não conectado");
+        }
+        return { success: false, error: "Não conectado ao plugin" };
       }
-      return { success: false, error: "Não conectado" };
     }
 
     try {
-      const plugin = getHardwarePlugin();
       const result = await plugin.openCashDrawer(port);
 
       if (result.success) {

@@ -39,7 +39,8 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
-  const { isConnected: hardwareConnected, isConnecting: isConnectingHardware, printReceipt, openCashDrawer } = useHardwarePlugin();
+  const { isConnected: hardwareConnected, isConnecting: isConnectingHardware, printReceipt, openCashDrawer } =
+    useHardwarePlugin();
 
   // Os produtos já vêm com IVA incluído no preço
   // Total = soma dos preços (já com IVA)
@@ -131,24 +132,18 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
 
     try {
       const sale = await createSale.mutateAsync(saleData);
-      
-      // Tentar imprimir recibo e abrir gaveta via plugin
-      if (hardwareConnected) {
-        try {
-          // Formatar e imprimir recibo
-          const receiptContent = formatReceipt(saleData, sale.receipt_number || sale.id.toString());
-          await printReceipt(receiptContent);
-          
-          // Abrir gaveta se pagamento for em dinheiro
-          if (paymentMethod === "cash") {
-            await openCashDrawer();
-          }
-        } catch (error: any) {
-          console.error("Erro ao usar hardware:", error);
-          // Não bloquear a venda se houver erro no hardware
+
+      // Recibo via plugin local (WebSocket) — tenta conectar se necessário
+      try {
+        const receiptContent = formatReceipt(saleData, sale.receipt_number || sale.id.toString());
+        await printReceipt(receiptContent);
+        if (paymentMethod === "cash") {
+          await openCashDrawer();
         }
+      } catch (error: any) {
+        console.error("Erro ao usar hardware:", error);
       }
-      
+
       onSuccess();
       onOpenChange(false);
       // Reset form
@@ -189,7 +184,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
             Confirme os detalhes da venda antes de finalizar
             {!hardwareConnected && !isConnectingHardware && (
               <span className="block mt-1 text-xs text-muted-foreground">
-                ⚠ Plugin não conectado - Recibo não será impresso automaticamente
+                Sem plugin: ao finalizar tentaremos conectar e imprimir o recibo na impressora configurada.
               </span>
             )}
           </DialogDescription>

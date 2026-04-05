@@ -12,20 +12,23 @@ import {
   Dismiss24Regular,
   Building24Regular,
   Cart24Filled,
+  Print24Regular,
 } from "@fluentui/react-icons";
-import { useState } from "react";
+import { useState, type MouseEvent } from "react";
 import { SaleDialog } from "./SaleDialog";
 import { ReserveBillDialog } from "./ReserveBillDialog";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { toast } from "sonner";
 import { ProductImage } from "./ProductImage";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
+import { formatParkedSaleReceipt } from "@/lib/receiptFormat";
 
 type ParkedSaleSummary = {
   id: string;
   label: string;
   createdAt: string;
   customerName?: string;
+  items: CartItem[];
 };
 
 interface CartSidebarProps {
@@ -87,7 +90,7 @@ function CartContent({
   const [showPendingSales, setShowPendingSales] = useState(false);
   const [isParking, setIsParking] = useState(false);
   const { data: paymentMethods } = usePaymentMethods();
-  const { isConnected: hardwareConnected, printReceipt } = useHardwarePlugin();
+  const { printReceipt } = useHardwarePlugin();
 
   const handleFinalizeSale = () => {
     if (!isCashRegisterOpen) {
@@ -101,49 +104,21 @@ function CartContent({
     setSaleDialogOpen(true);
   };
 
-  const formatPendingReceipt = () => {
-    const date = new Date().toLocaleString("pt-MZ");
-    const lines: string[] = [];
-    lines.push("=".repeat(42));
-    lines.push("      SKYPDV - VENDA EM ESPERA");
-    lines.push("=".repeat(42));
-    lines.push(`Data: ${date}`);
-    if (customerName) lines.push(`Cliente: ${customerName}`);
-    lines.push("-".repeat(42));
-    lines.push("ITENS:");
-    lines.push("-".repeat(42));
-    items.forEach((item) => {
-      const itemTotal = (item.price * item.quantity).toFixed(2);
-      lines.push(item.name);
-      lines.push(`  ${item.quantity}x ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
-    });
-    lines.push("-".repeat(42));
-    lines.push(`Subtotal: ${subtotal.toFixed(2)} MT`);
-    lines.push(`IVA (16%): ${ivaAmount.toFixed(2)} MT`);
-    lines.push("=".repeat(42));
-    lines.push(`TOTAL: ${total.toFixed(2)} MT`);
-    lines.push("=".repeat(42));
-    lines.push("Estado: EM ESPERA");
-    lines.push("Apresente este comprovativo para finalizar.");
-    lines.push("=".repeat(42));
-    lines.push("");
-    return lines.join("\n");
-  };
-
-  const handlePrintPending = async () => {
-    if (!hardwareConnected) {
-      toast.error("Plugin de hardware não conectado.");
-      return;
-    }
-    if (items.length === 0) {
-      toast.error("Nenhuma venda em espera carregada.");
+  const handlePrintParkedSale = async (sale: ParkedSaleSummary, e: MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    if (!sale.items?.length) {
+      toast.error("Esta venda pendente não tem itens.");
       return;
     }
     try {
-      await printReceipt(formatPendingReceipt());
-      toast.success("Impressão enviada para a impressora.");
-    } catch (e: any) {
-      toast.error(`Erro ao imprimir: ${e.message}`);
+      const content = formatParkedSaleReceipt(sale.items, {
+        customerName: sale.customerName,
+        label: sale.label,
+        createdAt: sale.createdAt,
+      });
+      await printReceipt(content);
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao imprimir.");
     }
   };
   return (
@@ -286,23 +261,24 @@ function CartContent({
               {parkedSales.map((sale) => (
                 <div key={sale.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded-lg bg-muted/70">
                   <button
+                    type="button"
                     onClick={() => {
                       onLoadParkedSale(sale.id);
                       setShowPendingSales(false);
                     }}
-                    className="text-xs font-medium text-foreground text-left flex-1 hover:underline"
+                    className="text-xs font-medium text-foreground text-left flex-1 hover:underline min-w-0"
                   >
                     {sale.customerName ? sale.customerName : sale.label}
                   </button>
-                  {hardwareConnected && (
-                    <button
-                      onClick={handlePrintPending}
-                      className="p-1 rounded hover:bg-secondary text-muted-foreground"
-                      title="Imprimir"
-                    >
-                      🖨️
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={(e) => handlePrintParkedSale(sale, e)}
+                    className="p-1.5 shrink-0 rounded-md hover:bg-secondary text-muted-foreground hover:text-foreground border border-transparent hover:border-border"
+                    title="Imprimir recibo (impressora via plugin WebSocket)"
+                    aria-label="Imprimir recibo desta venda pendente"
+                  >
+                    <Print24Regular className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
             </div>

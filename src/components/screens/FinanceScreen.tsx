@@ -1,6 +1,29 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfYear, endOfYear } from "date-fns";
-import { Money24Regular, ReceiptMoney24Regular, CalligraphyPen20Regular, AlertOff24Regular, Print24Regular, Document24Regular } from "@fluentui/react-icons";
+import type { DrawerProps } from "@fluentui/react-components";
+import {
+  Hamburger,
+  NavDrawer,
+  NavDrawerBody,
+  NavDrawerHeader,
+  NavDivider,
+  NavItem,
+  NavSectionHeader,
+  makeStyles,
+  tokens,
+  Tooltip,
+  useRestoreFocusTarget,
+} from "@fluentui/react-components";
+import {
+  Money24Regular,
+  ReceiptMoney24Regular,
+  CalligraphyPen20Regular,
+  AlertOff24Regular,
+  Print24Regular,
+  Document24Regular,
+  DataTrending24Regular,
+  List24Regular,
+} from "@fluentui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,8 +35,50 @@ import { financeApi } from "@/services/api";
 import { useWhatsappPrefs } from "@/hooks/useWhatsappPrefs";
 import { PDVExpense } from "@/services/api";
 import { toast } from "sonner";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const useStyles = makeStyles({
+  root: {
+    overflow: "hidden",
+    display: "flex",
+    flex: 1,
+    minHeight: 0,
+  },
+  nav: {
+    minWidth: "260px",
+  },
+  content: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+  },
+  drawerContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    height: "100%",
+  },
+  footer: {
+    marginTop: "auto",
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    paddingTop: tokens.spacingVerticalS,
+  },
+});
+
+type FinanceNav = "resumo" | "despesas";
 
 export function FinanceScreen() {
+  const styles = useStyles();
+  const isMobile = useIsMobile();
+  const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const restoreFocusTargetAttributes = useRestoreFocusTarget();
+  const [activeNav, setActiveNav] = useState<FinanceNav>("resumo");
+  const resumoRef = useRef<HTMLDivElement>(null);
+  const despesasRef = useRef<HTMLDivElement>(null);
+
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
@@ -36,6 +101,15 @@ export function FinanceScreen() {
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
+
+  useEffect(() => {
+    setIsNavOpen(!isMobile);
+  }, [isMobile]);
+
+  const scrollToSection = (section: FinanceNav) => {
+    const el = section === "resumo" ? resumoRef.current : despesasRef.current;
+    el?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const openNew = () => {
     setEditing(null);
@@ -142,119 +216,232 @@ export function FinanceScreen() {
     }
   };
 
-  return (
-    <div className="flex flex-col gap-4 p-4 md:p-6 h-full overflow-auto">
-      <div className="flex flex-col md:flex-row md:items-center gap-3 justify-between">
+  const sidebarItems = [
+    {
+      id: "resumo" as FinanceNav,
+      label: "Resumo financeiro",
+      icon: DataTrending24Regular,
+    },
+    {
+      id: "despesas" as FinanceNav,
+      label: "Despesas do período",
+      icon: List24Regular,
+    },
+  ];
+
+  const filterFields = (
+    <div className="space-y-3">
+      <div>
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Atalhos de período</div>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyQuickRange("day")}>
+            Hoje
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyQuickRange("week")}>
+            Semana
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyQuickRange("month")}>
+            Mês
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => applyQuickRange("year")}>
+            Ano
+          </Button>
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Datas</div>
         <div>
-          <h1 className="text-xl font-bold">Finanças / Contabilidade</h1>
-          <p className="text-sm text-muted-foreground">Controle simples de entradas (vendas) e saídas (despesas).</p>
+          <label className="text-xs text-muted-foreground mb-1 block">Data inicial</label>
+          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="h-8 text-xs" />
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => applyQuickRange("day")}>Hoje</Button>
-          <Button variant="outline" size="sm" onClick={() => applyQuickRange("week")}>Semana</Button>
-          <Button variant="outline" size="sm" onClick={() => applyQuickRange("month")}>Mês</Button>
-          <Button variant="outline" size="sm" onClick={() => applyQuickRange("year")}>Ano</Button>
-          <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
-          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-          <Select value={selectedCategory ? String(selectedCategory) : "todas"} onValueChange={(v) => setSelectedCategory(v === "todas" ? undefined : Number(v))}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Categoria" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todas">Todas categorias</SelectItem>
-              {categories.map((c) => (
-                <SelectItem key={c.id} value={String(c.id)}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button onClick={openNew}>Registrar despesa</Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport("pdf")} className="gap-2">
-            <Print24Regular className="w-4 h-4" /> PDF
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => handleExport("excel")} className="gap-2">
-            <Document24Regular className="w-4 h-4" /> Excel
-          </Button>
+        <div>
+          <label className="text-xs text-muted-foreground mb-1 block">Data final</label>
+          <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="h-8 text-xs" />
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
-              <ReceiptMoney24Regular className="w-5 h-5 text-emerald-500" />
-              Entradas (vendas)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">{formatCurrency(summary?.gross_revenue)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
-              <CalligraphyPen20Regular className="w-5 h-5 text-red-500" />
-              Saídas (despesas)
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">{formatCurrency(summary?.total_expenses)}</CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Money24Regular className="w-5 h-5 text-blue-500" />
-              Lucro líquido
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-2xl font-bold">{formatCurrency(summary?.net_profit)}</CardContent>
-        </Card>
+      <div>
+        <label className="text-xs text-muted-foreground mb-1 block">Categoria</label>
+        <Select
+          value={selectedCategory ? String(selectedCategory) : "todas"}
+          onValueChange={(v) => setSelectedCategory(v === "todas" ? undefined : Number(v))}
+        >
+          <SelectTrigger className="h-8 w-full text-xs">
+            <SelectValue placeholder="Categoria" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="todas">Todas categorias</SelectItem>
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={String(c.id)}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+    </div>
+  );
 
-      <Card className="flex-1">
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2">
-            <AlertOff24Regular className="w-5 h-5" />
-            Despesas do período
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Título</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Valor</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {expenses?.map((exp) => (
-                <TableRow key={exp.id}>
-                  <TableCell>{exp.expense_date.substring(0, 10)}</TableCell>
-                  <TableCell>{exp.title}</TableCell>
-                  <TableCell>{exp.category_name || "-"}</TableCell>
-                  <TableCell>{formatCurrency(exp.amount)}</TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(exp)}>
-                      Editar
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(exp)}>
-                      Remover
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {expenses?.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
-                    Nenhuma despesa registrada no período.
-                  </TableCell>
-                </TableRow>
+  return (
+    <div className={styles.root}>
+      <NavDrawer
+        selectedValue={activeNav}
+        open={isNavOpen}
+        type={drawerType}
+        className={styles.nav}
+        onOpenChange={(_, data) => setIsNavOpen(data.open)}
+        onNavItemSelect={(_, data) => {
+          const next = data.value as FinanceNav;
+          setActiveNav(next);
+          if (isMobile) setIsNavOpen(false);
+          requestAnimationFrame(() => scrollToSection(next));
+        }}
+      >
+        <NavDrawerHeader>
+          <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
+        </NavDrawerHeader>
+        <NavDrawerBody className={styles.drawerContent}>
+          <NavSectionHeader>Finanças</NavSectionHeader>
+          {sidebarItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavItem key={item.id} value={item.id} icon={<Icon />}>
+                {item.label}
+              </NavItem>
+            );
+          })}
+          {!isMobile && (
+            <div className={styles.footer}>
+              <NavDivider />
+              {filterFields}
+            </div>
+          )}
+        </NavDrawerBody>
+      </NavDrawer>
+
+      <div className={styles.content}>
+        <div className="flex-1 flex flex-col overflow-hidden p-4 md:p-6 min-h-0">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4 shrink-0">
+            <div className="flex items-start gap-3 min-w-0">
+              {(isMobile || !isNavOpen) && (
+                <Tooltip content="Abrir menu" relationship="label">
+                  <Hamburger
+                    onClick={() => setIsNavOpen(true)}
+                    {...restoreFocusTargetAttributes}
+                    aria-expanded={isNavOpen}
+                  />
+                </Tooltip>
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              <div>
+                <h1 className="text-lg md:text-xl font-bold tracking-tight">Finanças / Contabilidade</h1>
+                <p className="text-xs md:text-sm text-muted-foreground mt-0.5">
+                  Controle simples de entradas (vendas) e saídas (despesas).
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 shrink-0">
+              <Button onClick={openNew}>Registrar despesa</Button>
+              <Button variant="outline" size="sm" onClick={() => handleExport("pdf")} className="gap-2">
+                <Print24Regular className="w-4 h-4" /> PDF
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => handleExport("excel")} className="gap-2">
+                <Document24Regular className="w-4 h-4" /> Excel
+              </Button>
+            </div>
+          </div>
+
+          {isMobile && (
+            <Card className="mb-4 shrink-0">
+              <CardHeader className="pb-2 pt-4 px-4">
+                <CardTitle className="text-sm font-medium">Período e filtros</CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-4">{filterFields}</CardContent>
+            </Card>
+          )}
+
+          <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
+            <div ref={resumoRef} id="finance-resumo" className="scroll-mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <ReceiptMoney24Regular className="w-5 h-5 text-emerald-500" />
+                      Entradas (vendas)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold">{formatCurrency(summary?.gross_revenue)}</CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <CalligraphyPen20Regular className="w-5 h-5 text-red-500" />
+                      Saídas (despesas)
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold">{formatCurrency(summary?.total_expenses)}</CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Money24Regular className="w-5 h-5 text-blue-500" />
+                      Lucro líquido
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-2xl font-bold">{formatCurrency(summary?.net_profit)}</CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div ref={despesasRef} id="finance-despesas" className="scroll-mt-4">
+              <Card className="flex-1">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertOff24Regular className="w-5 h-5" />
+                    Despesas do período
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Título</TableHead>
+                        <TableHead>Categoria</TableHead>
+                        <TableHead>Valor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {expenses?.map((exp) => (
+                        <TableRow key={exp.id}>
+                          <TableCell>{exp.expense_date.substring(0, 10)}</TableCell>
+                          <TableCell>{exp.title}</TableCell>
+                          <TableCell>{exp.category_name || "-"}</TableCell>
+                          <TableCell>{formatCurrency(exp.amount)}</TableCell>
+                          <TableCell className="text-right space-x-2">
+                            <Button size="sm" variant="ghost" onClick={() => openEdit(exp)}>
+                              Editar
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => handleDelete(exp)}>
+                              Remover
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {expenses?.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-6">
+                            Nenhuma despesa registrada no período.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <Dialog open={showWhatsappDialog} onOpenChange={setShowWhatsappDialog}>
         <DialogContent>
