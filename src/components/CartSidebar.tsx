@@ -86,6 +86,7 @@ function CartContent({
   const [showPendingSales, setShowPendingSales] = useState(false);
   const [isParking, setIsParking] = useState(false);
   const { data: paymentMethods } = usePaymentMethods();
+  const { isConnected: hardwareConnected, printReceipt } = useHardwarePlugin();
 
   const handleFinalizeSale = () => {
     if (!isCashRegisterOpen) {
@@ -97,6 +98,52 @@ function CartContent({
       return;
     }
     setSaleDialogOpen(true);
+  };
+
+  const formatPendingReceipt = () => {
+    const date = new Date().toLocaleString("pt-MZ");
+    const lines: string[] = [];
+    lines.push("=".repeat(42));
+    lines.push("      SKYPDV - VENDA EM ESPERA");
+    lines.push("=".repeat(42));
+    lines.push(`Data: ${date}`);
+    if (customerName) lines.push(`Cliente: ${customerName}`);
+    lines.push("-".repeat(42));
+    lines.push("ITENS:");
+    lines.push("-".repeat(42));
+    items.forEach((item) => {
+      const itemTotal = (item.price * item.quantity).toFixed(2);
+      lines.push(item.name);
+      lines.push(`  ${item.quantity}x ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
+    });
+    lines.push("-".repeat(42));
+    lines.push(`Subtotal: ${subtotal.toFixed(2)} MT`);
+    lines.push(`IVA (16%): ${ivaAmount.toFixed(2)} MT`);
+    lines.push("=".repeat(42));
+    lines.push(`TOTAL: ${total.toFixed(2)} MT`);
+    lines.push("=".repeat(42));
+    lines.push("Estado: EM ESPERA");
+    lines.push("Apresente este comprovativo para finalizar.");
+    lines.push("=".repeat(42));
+    lines.push("");
+    return lines.join("\n");
+  };
+
+  const handlePrintPending = async () => {
+    if (!hardwareConnected) {
+      toast.error("Plugin de hardware não conectado.");
+      return;
+    }
+    if (items.length === 0) {
+      toast.error("Nenhuma venda em espera carregada.");
+      return;
+    }
+    try {
+      await printReceipt(formatPendingReceipt());
+      toast.success("Impressão enviada para a impressora.");
+    } catch (e: any) {
+      toast.error(`Erro ao imprimir: ${e.message}`);
+    }
   };
   return (
     <>
@@ -293,6 +340,17 @@ function CartContent({
             className="fluent-button bg-destructive/10 text-destructive hover:bg-destructive/20 py-2 transition-colors text-xs font-medium border border-destructive/20"
           >
             Limpar Carrinho
+          </button>
+        </div>
+
+        {/* Imprimir venda em espera */}
+        <div className="grid grid-cols-1">
+          <button
+            onClick={handlePrintPending}
+            disabled={!hardwareConnected || items.length === 0}
+            className="fluent-button bg-secondary text-foreground hover:bg-secondary/80 py-2 transition-colors text-xs font-semibold border border-border disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Imprimir venda em espera
           </button>
         </div>
 

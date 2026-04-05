@@ -51,7 +51,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAuth } from "@/contexts/AuthContext";
 
 const useStyles = makeStyles({
   root: {
@@ -92,7 +91,6 @@ export function SalesHistoryScreen() {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
-  const { user: authUser } = useAuth();
   const { user: authUser } = useAuth();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
