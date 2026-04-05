@@ -41,8 +41,16 @@ export function TerminalUsersSettings() {
   const { user: profileData } = useAuth();
   const currentUserId = profileData?.user?.id;
 
-  const currentUserRole = users?.find((u) => u.user_id === currentUserId)?.role;
-  const isCurrentAdmin = currentUserRole === "admin";
+  const isCurrentAdmin = (() => {
+    if (!users) return true; // fallback: assume dono/admin
+    const me = users.find((u) => u.user_id === currentUserId);
+    if (!me) return true; // se nÃ£o retornou nos membros, assume admin/dono
+    return (
+      me.role === "admin" ||
+      me.role === "manager" ||
+      me.can_manage_users === true
+    );
+  })();
 
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -90,7 +98,7 @@ export function TerminalUsersSettings() {
   };
 
   const isAdmin = (user: PDVTerminalUser) => {
-    return user.role === "admin";
+    return user.role === "admin" || user.role === "manager" || user.can_manage_users === true;
   };
 
   if (isLoading) {

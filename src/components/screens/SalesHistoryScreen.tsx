@@ -51,6 +51,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 
 const useStyles = makeStyles({
   root: {
@@ -92,6 +93,7 @@ export function SalesHistoryScreen() {
   }, [isMobile]);
 
   const { user: authUser } = useAuth();
+  const { user: authUser } = useAuth();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
     const map = new Map<number, string>();
@@ -106,8 +108,14 @@ export function SalesHistoryScreen() {
   const isAdmin = useMemo(() => {
     const uid = authUser?.user?.id;
     if (!uid) return false;
+    if (!terminalUsers || terminalUsers.length === 0) return true; // fallback: assume dono
     const entry = terminalUsers.find((u) => u.user_id === uid);
-    return !!entry && (entry.role === "admin" || entry.can_manage_users === true);
+    if (!entry) return true; // se nÃ£o estiver na lista, provavelmente Ã© dono
+    return (
+      entry.role === "admin" ||
+      entry.role === "manager" ||
+      entry.can_manage_users === true
+    );
   }, [authUser, terminalUsers]);
 
   const startIso = filterStart ? new Date(`${filterStart}T00:00:00`).toISOString() : undefined;
