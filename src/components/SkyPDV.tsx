@@ -6,6 +6,7 @@ import {
   BatteryCharge24Regular,
   Search24Regular,
   Print24Regular,
+  Download24Regular,
 } from "@fluentui/react-icons";
 import { Taskbar } from "./Taskbar";
 import { StartMenu } from "./StartMenu";
@@ -63,6 +64,8 @@ export function SkyPDV() {
   const [currentCustomerName, setCurrentCustomerName] = useState<string>("");
   const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [showSetup, setShowSetup] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallCard, setShowInstallCard] = useState(false);
 
   const { data: currentRegister } = useCashRegister();
   const { level: batteryLevel, charging: isCharging, isSupported: batterySupported } = useBattery();
@@ -82,6 +85,36 @@ export function SkyPDV() {
       setShowSetup(false);
     }
   }, [terminalError, terminal]);
+
+  // PWA install prompt handling
+  useEffect(() => {
+    const isStandalone =
+      (window.matchMedia && window.matchMedia("(display-mode: standalone)").matches) ||
+      // @ts-ignore
+      window.navigator.standalone === true;
+    if (isStandalone) {
+      setShowInstallCard(false);
+      return;
+    }
+
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallCard(true);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallPwa = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") {
+      setShowInstallCard(false);
+    }
+    setDeferredPrompt(null);
+  };
 
   // Initialize global WebSocket for notifications
   useSkyWebsocket();
@@ -369,11 +402,34 @@ export function SkyPDV() {
                       )}
                     </div>
                   </div>
+              </div>
+            </div>
+
+            {showInstallCard && (
+              <div className="mb-3 md:mb-4 p-3 rounded-xl border border-primary/30 bg-primary/5 flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                  <Download24Regular className="w-5 h-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">Instale o app SkyPDV</p>
+                  <p className="text-xs text-muted-foreground">Acesse mais rápido e use em modo offline.</p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowInstallCard(false)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    Depois
+                  </button>
+                  <Button size="sm" onClick={handleInstallPwa}>
+                    Instalar
+                  </Button>
                 </div>
               </div>
+            )}
 
-              {/* Search */}
-              <div className="relative mb-3 md:mb-4">
+            {/* Search */}
+            <div className="relative mb-3 md:mb-4">
                 <Search24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
