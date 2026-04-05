@@ -15,6 +15,7 @@ export default defineConfig(({ mode }) => ({
     mode === "development" && componentTagger(),
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: null,
       includeAssets: ["pwa-icon.svg", "robots.txt", "placeholder.svg"],
       manifest: {
         id: "/",
