@@ -1,4 +1,6 @@
+import { useMemo } from "react";
 import { Screen } from "@/types/screen";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import {
   Desktop24Regular,
   Home24Regular,
@@ -42,6 +44,12 @@ const pinnedApps: { name: string; icon: React.FC<React.SVGProps<SVGSVGElement>>;
 ];
 
 export function StartMenu({ isOpen, onClose, onNavigate, currentScreen }: StartMenuProps) {
+  const isAdmin = useIsAdmin();
+  const pinnedVisible = useMemo(
+    () => pinnedApps.filter((app) => app.screen !== "finance" || isAdmin),
+    [isAdmin]
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -75,7 +83,7 @@ export function StartMenu({ isOpen, onClose, onNavigate, currentScreen }: StartM
           </div>
 
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-            {pinnedApps.map((app) => {
+            {pinnedVisible.map((app) => {
               const isActive = currentScreen === app.screen;
               return (
                 <button

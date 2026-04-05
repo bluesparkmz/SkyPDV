@@ -123,6 +123,18 @@ export function TerminalSetup({ onSuccess }: Props) {
     setError("");
     setIsLoading(true);
     try {
+      // payload comum para criar o terminal (setup)
+      const payload: CreateTerminal = {
+        name: name.trim(),
+        description: description.trim() ? description.trim() : null,
+        currency: currency.trim() || "MZN",
+        tax_rate: taxRate.trim() || "0",
+        settings: { business_type: businessType },
+      };
+
+      // Sempre garante que o terminal existe primeiro
+      const terminal = await terminalApi.setup(payload);
+
       if (isFastFoodBusiness) {
         const form = new FormData();
         form.append("name", name.trim());
@@ -148,22 +160,11 @@ export function TerminalSetup({ onSuccess }: Props) {
 
         await fastfoodApi.createRestaurant(form);
 
+        // Atualiza configurações do terminal caso precise salvar algum detalhe extra
         await terminalApi.update({
-          name: name.trim(),
-          description: description.trim() ? description.trim() : null,
-          currency: currency.trim() || "MZN",
-          tax_rate: taxRate.trim() || "0",
-          settings: { business_type: businessType },
+          ...payload,
+          settings: { ...(payload.settings || {}), business_type: businessType },
         });
-      } else {
-        const payload: CreateTerminal = {
-          name: name.trim(),
-          description: description.trim() ? description.trim() : null,
-          currency: currency.trim() || "MZN",
-          tax_rate: taxRate.trim() || "0",
-          settings: { business_type: businessType },
-        };
-        await terminalApi.setup(payload);
       }
       onSuccess();
     } catch (err: any) {

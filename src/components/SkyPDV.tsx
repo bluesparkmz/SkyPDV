@@ -33,6 +33,7 @@ import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { useSkyWebsocket } from "@/hooks/useSkyWebsocket";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Product } from "@/services/api";
 import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ export function SkyPDV() {
   const { qualityLabel, qualityColor, isOnline } = useNetworkQuality();
   const { isConnected: hardwareConnected, isConnecting: hardwareConnecting } = useHardwarePlugin();
   const perms = usePermissions();
+  const isAdmin = useIsAdmin();
   const { data: terminal, error: terminalError } = useQuery({
     queryKey: ["terminal"],
     queryFn: () => terminalApi.get(),
@@ -250,9 +252,20 @@ export function SkyPDV() {
   };
 
   const handleNavigate = (screen: Screen) => {
+    if (screen === "finance" && !isAdmin) {
+      toast.error("Apenas administradores do terminal podem aceder às Finanças.");
+      setIsStartOpen(false);
+      return;
+    }
     setCurrentScreen(screen);
     setIsStartOpen(false);
   };
+
+  useEffect(() => {
+    if (currentScreen === "finance" && !isAdmin) {
+      setCurrentScreen("overview");
+    }
+  }, [currentScreen, isAdmin]);
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -277,7 +290,7 @@ export function SkyPDV() {
       case "fastfood":
         return <FastfoodAdminScreen />;
       case "finance":
-        return <FinanceScreen />;
+        return isAdmin ? <FinanceScreen /> : <OverviewScreen />;
       case "pdv":
       default:
         return (
