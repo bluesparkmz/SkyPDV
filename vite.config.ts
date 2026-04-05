@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => ({
     VitePWA({
       registerType: "autoUpdate",
       injectRegister: null,
-      includeAssets: ["pwa-icon.svg", "robots.txt", "placeholder.svg"],
+      includeAssets: ["favicon.ico", "robots.txt", "placeholder.svg"],
       manifest: {
         id: "/",
         name: "SkyPDV — Ponto de venda",
@@ -33,16 +33,10 @@ export default defineConfig(({ mode }) => ({
         categories: ["business", "finance", "productivity"],
         icons: [
           {
-            src: "/pwa-icon.svg",
-            sizes: "512x512",
-            type: "image/svg+xml",
-            purpose: "any",
-          },
-          {
-            src: "/pwa-icon.svg",
-            sizes: "512x512",
-            type: "image/svg+xml",
-            purpose: "maskable",
+            src: "/favicon.ico",
+            sizes: "any",
+            type: "image/x-icon",
+            purpose: "any maskable",
           },
         ],
       },
