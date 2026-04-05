@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Safe zone ~80% for maskable; fundo indigo alinhado ao tema SkyPDV -->
+  <rect width="512" height="512" rx="22%" fill="#4f46e5"/>
+  <text x="256" y="334" text-anchor="middle" font-family="system-ui,Segoe UI,sans-serif" font-weight="700" font-size="220" fill="#ffffff">S</text>
+</svg>
