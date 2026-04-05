@@ -282,18 +282,28 @@ function CartContent({
                 <Dismiss24Regular className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-col gap-2">
               {parkedSales.map((sale) => (
-                <button
-                  key={sale.id}
-                  onClick={() => {
-                    onLoadParkedSale(sale.id);
-                    setShowPendingSales(false);
-                  }}
-                  className="px-2 py-1 rounded-full bg-muted text-xs text-foreground hover:bg-muted/80 transition-colors"
-                >
-                  {sale.customerName ? sale.customerName : sale.label}
-                </button>
+                <div key={sale.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded-lg bg-muted/70">
+                  <button
+                    onClick={() => {
+                      onLoadParkedSale(sale.id);
+                      setShowPendingSales(false);
+                    }}
+                    className="text-xs font-medium text-foreground text-left flex-1 hover:underline"
+                  >
+                    {sale.customerName ? sale.customerName : sale.label}
+                  </button>
+                  {hardwareConnected && (
+                    <button
+                      onClick={handlePrintPending}
+                      className="p-1 rounded hover:bg-secondary text-muted-foreground"
+                      title="Imprimir"
+                    >
+                      🖨️
+                    </button>
+                  )}
+                </div>
               ))}
             </div>
           </div>
@@ -344,16 +354,6 @@ function CartContent({
           </button>
         </div>
 
-        {/* Imprimir venda em espera */}
-        <div className="grid grid-cols-1">
-          <button
-            onClick={handlePrintPending}
-            disabled={!hardwareConnected || items.length === 0}
-            className="fluent-button bg-secondary text-foreground hover:bg-secondary/80 py-2 transition-colors text-xs font-semibold border border-border disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Imprimir venda em espera
-          </button>
-        </div>
 
         {/* Form para dar nome e confirmar venda em espera */}
         {isParking && onParkSale && onCustomerNameChange && (
