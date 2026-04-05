@@ -19,6 +19,7 @@ import { ReserveBillDialog } from "./ReserveBillDialog";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { toast } from "sonner";
 import { ProductImage } from "./ProductImage";
+import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 
 type ParkedSaleSummary = {
   id: string;
