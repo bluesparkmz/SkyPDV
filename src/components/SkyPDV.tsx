@@ -358,7 +358,10 @@ export function SkyPDV() {
                         : "bg-red-500"
                         }`} />
                       <span className="hidden sm:inline text-xs">
-                        {currentRegister?.status === "open" ? "Caixa Aberto" : "Caixa Fechado"}
+                        {currentRegister?.status === "open" ? "Fechar Caixa" : "Abrir Caixa"}
+                      </span>
+                      <span className="hidden md:inline text-[11px] text-muted-foreground">
+                        {currentRegister?.status === "open" ? "Caixa aberto" : "Caixa fechado"}
                       </span>
                     </div>
                   </Button>
