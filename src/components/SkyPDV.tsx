@@ -6,7 +6,7 @@ import {
   BatteryCharge24Regular,
   Search24Regular,
   Print24Regular,
-  Download24Regular,
+  ArrowDownload24Regular,
 } from "@fluentui/react-icons";
 import { Taskbar } from "./Taskbar";
 import { StartMenu } from "./StartMenu";
@@ -411,7 +411,7 @@ export function SkyPDV() {
             {showInstallCard && (
               <div className="mb-3 md:mb-4 p-3 rounded-xl border border-primary/30 bg-primary/5 flex items-center gap-3">
                 <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                  <Download24Regular className="w-5 h-5" />
+                  <ArrowDownload24Regular className="w-5 h-5" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">Instale o app SkyPDV</p>
