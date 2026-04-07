@@ -380,112 +380,118 @@ export function FinanceScreen() {
           {isMobile && <Card className="mb-4 shrink-0"><CardHeader className="px-4 pb-2 pt-4"><CardTitle className="text-sm font-medium">Periodo e filtros</CardTitle></CardHeader><CardContent className="px-4 pb-4">{filterFields}</CardContent></Card>}
 
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-            <div ref={resumoRef} id="finance-resumo" className="scroll-mt-4">
-              <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><ReceiptMoney24Regular className="h-5 w-5 text-emerald-500" />Entradas (vendas)</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.gross_revenue)}</CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><CalligraphyPen20Regular className="h-5 w-5 text-red-500" />Saidas (despesas)</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.total_expenses)}</CardContent></Card>
-                <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><Money24Regular className="h-5 w-5 text-blue-500" />Lucro liquido</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.net_profit)}</CardContent></Card>
+            {activeNav === "resumo" && (
+              <div ref={resumoRef} id="finance-resumo" className="scroll-mt-4">
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><ReceiptMoney24Regular className="h-5 w-5 text-emerald-500" />Entradas (vendas)</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.gross_revenue)}</CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><CalligraphyPen20Regular className="h-5 w-5 text-red-500" />Saidas (despesas)</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.total_expenses)}</CardContent></Card>
+                  <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><Money24Regular className="h-5 w-5 text-blue-500" />Lucro liquido</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.net_profit)}</CardContent></Card>
+                </div>
               </div>
-            </div>
+            )}
 
-            <div ref={despesasRef} id="finance-despesas" className="scroll-mt-4">
-              <Card className="flex-1">
-                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2"><AlertOff24Regular className="h-5 w-5" />Despesas do periodo</CardTitle></CardHeader>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Titulo</TableHead><TableHead>Categoria</TableHead><TableHead>Valor</TableHead><TableHead className="text-right">Acoes</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                      {expenses.map((expense) => (
-                        <TableRow key={expense.id}>
-                          <TableCell>{expense.expense_date.substring(0, 10)}</TableCell>
-                          <TableCell>{expense.title}</TableCell>
-                          <TableCell>{expense.category_name || "-"}</TableCell>
-                          <TableCell>{formatCurrency(expense.amount)}</TableCell>
-                          <TableCell className="space-x-2 text-right"><Button size="sm" variant="ghost" onClick={() => openEdit(expense)}>Editar</Button><Button size="sm" variant="ghost" onClick={() => handleDelete(expense)}>Remover</Button></TableCell>
-                        </TableRow>
-                      ))}
-                      {expenses.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">Nenhuma despesa registrada no periodo.</TableCell></TableRow>}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-            <div ref={impostoRef} id="finance-imposto" className="scroll-mt-4">
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2"><Money24Regular className="h-5 w-5" />Imposto</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground">O imposto mensal e criado automaticamente com estado Nao pago. O admin pode marcar como pago depois da liquidacao.</p>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-                    <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Mes</label>
-                      <Select value={String(taxMonth)} onValueChange={(value) => setTaxMonth(Number(value))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {monthLabels.map((label, index) => (
-                            <SelectItem key={label} value={String(index + 1)}>{String(index + 1).padStart(2, "0")} - {label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs text-muted-foreground">Ano</label>
-                      <Select value={String(taxYear)} onValueChange={(value) => setTaxYear(Number(value))}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {Array.from({ length: 6 }, (_, index) => new Date().getFullYear() - 2 + index).map((year) => (
-                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="mb-1 block text-xs text-muted-foreground">Estado do mes selecionado</label>
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button variant={taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: true, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending}>Marcar como Pago</Button>
-                        <Button variant={!taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: false, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending}>Marcar como Nao Pago</Button>
+            {activeNav === "despesas" && (
+              <div ref={despesasRef} id="finance-despesas" className="scroll-mt-4">
+                <Card className="flex-1">
+                  <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2"><AlertOff24Regular className="h-5 w-5" />Despesas do periodo</CardTitle></CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader><TableRow><TableHead>Data</TableHead><TableHead>Titulo</TableHead><TableHead>Categoria</TableHead><TableHead>Valor</TableHead><TableHead className="text-right">Acoes</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                        {expenses.map((expense) => (
+                          <TableRow key={expense.id}>
+                            <TableCell>{expense.expense_date.substring(0, 10)}</TableCell>
+                            <TableCell>{expense.title}</TableCell>
+                            <TableCell>{expense.category_name || "-"}</TableCell>
+                            <TableCell>{formatCurrency(expense.amount)}</TableCell>
+                            <TableCell className="space-x-2 text-right"><Button size="sm" variant="ghost" onClick={() => openEdit(expense)}>Editar</Button><Button size="sm" variant="ghost" onClick={() => handleDelete(expense)}>Remover</Button></TableCell>
+                          </TableRow>
+                        ))}
+                        {expenses.length === 0 && <TableRow><TableCell colSpan={5} className="py-6 text-center text-sm text-muted-foreground">Nenhuma despesa registrada no periodo.</TableCell></TableRow>}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {activeNav === "imposto" && (
+              <div ref={impostoRef} id="finance-imposto" className="scroll-mt-4">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="flex items-center gap-2"><Money24Regular className="h-5 w-5" />Imposto</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-muted-foreground">O imposto mensal e criado automaticamente com estado Nao pago. O admin pode marcar como pago depois da liquidacao.</p>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
+                      <div>
+                        <label className="mb-1 block text-xs text-muted-foreground">Mes</label>
+                        <Select value={String(taxMonth)} onValueChange={(value) => setTaxMonth(Number(value))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {monthLabels.map((label, index) => (
+                              <SelectItem key={label} value={String(index + 1)}>{String(index + 1).padStart(2, "0")} - {label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs text-muted-foreground">Ano</label>
+                        <Select value={String(taxYear)} onValueChange={(value) => setTaxYear(Number(value))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 6 }, (_, index) => new Date().getFullYear() - 2 + index).map((year) => (
+                              <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="mb-1 block text-xs text-muted-foreground">Estado do mes selecionado</label>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button variant={taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: true, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending}>Marcar como Pago</Button>
+                          <Button variant={!taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: false, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending}>Marcar como Nao Pago</Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <Card className="border-amber-200 bg-amber-50/70"><CardHeader className="pb-2"><CardTitle className="text-sm text-amber-800">Total do mes atual</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-amber-950">{formatCurrency(taxSummary?.total_tax_due)}</CardContent></Card>
-                    <Card className="border-emerald-200 bg-emerald-50/70"><CardHeader className="pb-2"><CardTitle className="text-sm text-emerald-800">Total vendido no mes</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-emerald-950">{formatCurrency(taxMonthFinanceSummary?.gross_revenue)}</CardContent></Card>
-                    <Card className="border-rose-200 bg-rose-50/70"><CardHeader className="pb-2"><CardTitle className="text-sm text-rose-800">Total de despesas</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-rose-950">{formatCurrency(taxMonthFinanceSummary?.total_expenses)}</CardContent></Card>
-                  </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                      <Card className="border-amber-200 bg-amber-50/70"><CardHeader className="pb-2"><CardTitle className="text-sm text-amber-800">Total do mes atual</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-amber-950">{formatCurrency(taxSummary?.total_tax_due)}</CardContent></Card>
+                      <Card className="border-emerald-200 bg-emerald-50/70"><CardHeader className="pb-2"><CardTitle className="text-sm text-emerald-800">Total vendido no mes</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-emerald-950">{formatCurrency(taxMonthFinanceSummary?.gross_revenue)}</CardContent></Card>
+                      <Card className="border-rose-200 bg-rose-50/70"><CardHeader className="pb-2"><CardTitle className="text-sm text-rose-800">Total de despesas</CardTitle></CardHeader><CardContent className="text-2xl font-bold text-rose-950">{formatCurrency(taxMonthFinanceSummary?.total_expenses)}</CardContent></Card>
+                    </div>
 
-                  <Card>
-                    <CardHeader className="pb-2"><CardTitle className="text-base">Lista de meses</CardTitle></CardHeader>
-                    <CardContent className="p-0">
-                      <Table>
-                        <TableHeader><TableRow><TableHead>Nº</TableHead><TableHead>Nome do mes</TableHead><TableHead>Total do imposto</TableHead><TableHead>Total de venda do mes</TableHead><TableHead>% imposto</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acao</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                          {monthlyTaxRows.map((row) => (
-                            <TableRow key={`${taxYear}-${row.month}`} className={row.month === taxMonth ? "bg-muted/40" : undefined}>
-                              <TableCell>{String(row.month).padStart(2, "0")}</TableCell>
-                              <TableCell>{row.label}</TableCell>
-                              <TableCell>{formatCurrency(row.taxSummary?.total_tax_due)}</TableCell>
-                              <TableCell>{formatCurrency(row.financeSummary?.gross_revenue)}</TableCell>
-                              <TableCell>{row.taxPercentage.toFixed(2)}%</TableCell>
-                              <TableCell><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${row.taxSummary?.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{row.taxSummary?.is_paid ? "Pago" : "Nao pago"}</span></TableCell>
-                              <TableCell className="text-right"><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setTaxMonth(row.month)}>Ver</Button><Button variant={row.taxSummary?.is_paid ? "outline" : "default"} size="sm" onClick={() => handleTaxStatusChange(row.month, !row.taxSummary?.is_paid)}>{row.taxSummary?.is_paid ? "Marcar Nao Pago" : "Marcar Pago"}</Button></div></TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
+                    <Card>
+                      <CardHeader className="pb-2"><CardTitle className="text-base">Lista de meses</CardTitle></CardHeader>
+                      <CardContent className="p-0">
+                        <Table>
+                          <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Nome do mes</TableHead><TableHead>Total do imposto</TableHead><TableHead>Total de venda do mes</TableHead><TableHead>% imposto</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acao</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {monthlyTaxRows.map((row) => (
+                              <TableRow key={`${taxYear}-${row.month}`} className={row.month === taxMonth ? "bg-muted/40" : undefined}>
+                                <TableCell>{String(row.month).padStart(2, "0")}</TableCell>
+                                <TableCell>{row.label}</TableCell>
+                                <TableCell>{formatCurrency(row.taxSummary?.total_tax_due)}</TableCell>
+                                <TableCell>{formatCurrency(row.financeSummary?.gross_revenue)}</TableCell>
+                                <TableCell>{row.taxPercentage.toFixed(2)}%</TableCell>
+                                <TableCell><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${row.taxSummary?.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{row.taxSummary?.is_paid ? "Pago" : "Nao pago"}</span></TableCell>
+                                <TableCell className="text-right"><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setTaxMonth(row.month)}>Ver</Button><Button variant={row.taxSummary?.is_paid ? "outline" : "default"} size="sm" onClick={() => handleTaxStatusChange(row.month, !row.taxSummary?.is_paid)}>{row.taxSummary?.is_paid ? "Marcar Nao Pago" : "Marcar Pago"}</Button></div></TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
 
-                  <div>
-                    <label className="mb-1 block text-xs text-muted-foreground">Observacoes</label>
-                    <Input value={taxNotes} onChange={(e) => setTaxNotes(e.target.value)} placeholder="Notas sobre o pagamento do imposto" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-muted-foreground">Observacoes</label>
+                      <Input value={taxNotes} onChange={(e) => setTaxNotes(e.target.value)} placeholder="Notas sobre o pagamento do imposto" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
       </div>
-
       <Dialog open={showWhatsappDialog} onOpenChange={setShowWhatsappDialog}>
         <DialogContent>
           <DialogHeader><DialogTitle>Enviar documento para WhatsApp</DialogTitle></DialogHeader>
