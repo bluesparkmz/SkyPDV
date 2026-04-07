@@ -182,6 +182,14 @@ export const cashRegisterApi = {
   getCurrent: () => apiGet<CashRegister | null>("/skypdv/cash-register/current"),
   open: (data: OpenCashRegister) => apiPost<CashRegister>("/skypdv/cash-register/open", data),
   close: (data: CloseCashRegister) => apiPost<CashRegister>("/skypdv/cash-register/close", data),
+  history: (params?: { start_date?: string; end_date?: string; user_id?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.append("start_date", params.start_date);
+    if (params?.end_date) query.append("end_date", params.end_date);
+    if (params?.user_id) query.append("user_id", String(params.user_id));
+    const queryString = query.toString();
+    return apiGet<CashRegister[]>(`/skypdv/cash-register/history${queryString ? `?${queryString}` : ""}`);
+  },
 };
 
 // Vendas

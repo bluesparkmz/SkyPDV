@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { dashboardApi } from "@/services/api";
+import { cashRegisterApi, dashboardApi } from "@/services/api";
 
 export function useSalesSummary(startDate?: string, endDate?: string, userId?: number) {
     return useQuery({
@@ -53,5 +53,13 @@ export function useDashboardStats(userId?: number) {
     return useQuery({
         queryKey: ["dashboardStats", userId],
         queryFn: () => dashboardApi.get(userId),
+    });
+}
+
+export function useCashRegisterHistory(startDate?: string, endDate?: string, userId?: number) {
+    return useQuery({
+        queryKey: ["cashRegisterHistory", startDate, endDate, userId],
+        queryFn: () => cashRegisterApi.history({ start_date: startDate, end_date: endDate, user_id: userId }),
+        enabled: true,
     });
 }

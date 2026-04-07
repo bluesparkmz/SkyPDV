@@ -28,8 +28,8 @@ import {
   Tooltip,
   useRestoreFocusTarget,
 } from "@fluentui/react-components";
-import { useSalesSummary, useSalesByDay, usePeriodicReport } from "@/hooks/useReports";
-import { salesApi, Sale } from "@/services/api";
+import { useSalesSummary, useSalesByDay, usePeriodicReport, useCashRegisterHistory } from "@/hooks/useReports";
+import { CashRegister, salesApi, Sale } from "@/services/api";
 import { CustomerName } from "@/components/CustomerName";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -99,7 +99,7 @@ const useStyles = makeStyles({
   },
 });
 
-type ReportView = "dashboard" | "daily" | "all-sales";
+type ReportView = "dashboard" | "daily" | "all-sales" | "cash-registers";
 
 export function ReportsScreen() {
   const styles = useStyles();
@@ -115,6 +115,7 @@ export function ReportsScreen() {
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), 'yyyy-MM-dd'));
   const [selectedCashierId, setSelectedCashierId] = useState<number | undefined>(undefined);
+  const [operatorNameFilter, setOperatorNameFilter] = useState("");
   const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady, saveToBackend } = useWhatsappPrefs();
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
   const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
@@ -163,6 +164,12 @@ export function ReportsScreen() {
     status: "completed",
     user_id: selectedCashierId,
   });
+
+  const { data: cashRegisters = [], isLoading: cashRegistersLoading } = useCashRegisterHistory(
+    startDate,
+    endDate,
+    selectedCashierId
+  );
 
   // Buscar vendas do dia selecionado
   const { data: daySales = [], isLoading: daySalesLoading } = useQuery({
@@ -259,6 +266,15 @@ export function ReportsScreen() {
     };
     return labels[method] || method;
   };
+
+  const filteredCashRegisters = useMemo(() => {
+    const query = operatorNameFilter.trim().toLowerCase();
+    return cashRegisters.filter((register) => {
+      const operatorName = cashierNameByUserId.get(register.user_id) || `#${register.user_id}`;
+      if (!query) return true;
+      return operatorName.toLowerCase().includes(query);
+    });
+  }, [cashRegisters, operatorNameFilter, cashierNameByUserId]);
 
   const handleDownloadReport = async (type: "pdf" | "excel") => {
     try {
@@ -403,6 +419,12 @@ export function ReportsScreen() {
       icon: Receipt24Regular,
       description: "Histórico completo",
     },
+    {
+      id: "cash-registers" as ReportView,
+      label: "Caixas",
+      icon: Money24Regular,
+      description: "Caixas abertos e fechados",
+    },
   ];
 
   return (
@@ -524,11 +546,13 @@ export function ReportsScreen() {
                   {activeView === "dashboard" && "Dashboard de Relatórios"}
                   {activeView === "daily" && "Relatórios Diários"}
                   {activeView === "all-sales" && "Todas as Vendas"}
+                  {activeView === "cash-registers" && "Relatorio de Caixas"}
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   {activeView === "dashboard" && ""}
                   {activeView === "daily" && "Visualize vendas por dia"}
                   {activeView === "all-sales" && "Histórico completo de vendas"}
+                  {activeView === "cash-registers" && "Caixas abertos e fechados por operador"}
                 </p>
               </div>
             </div>
@@ -589,6 +613,17 @@ export function ReportsScreen() {
                 formatCurrency={formatCurrency}
                 formatTime={formatTime}
                 getPaymentMethodLabel={getPaymentMethodLabel}
+              />
+            )}
+
+            {activeView === "cash-registers" && (
+              <CashRegistersView
+                registers={filteredCashRegisters}
+                isLoading={cashRegistersLoading}
+                formatCurrency={formatCurrency}
+                cashierNameByUserId={cashierNameByUserId}
+                operatorNameFilter={operatorNameFilter}
+                onOperatorNameFilterChange={setOperatorNameFilter}
               />
             )}
           </div>
@@ -1243,6 +1278,129 @@ function AllSalesView({
                     </TableCell>
                   </TableRow>
                 ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CashRegistersView({
+  registers,
+  isLoading,
+  formatCurrency,
+  cashierNameByUserId,
+  operatorNameFilter,
+  onOperatorNameFilterChange,
+}: {
+  registers: CashRegister[];
+  isLoading: boolean;
+  formatCurrency: (value: string | number) => string;
+  cashierNameByUserId: Map<number, string>;
+  operatorNameFilter: string;
+  onOperatorNameFilterChange: (value: string) => void;
+}) {
+  const getRegisterTotal = (register: CashRegister) => {
+    if (register.closing_amount) return register.closing_amount;
+    if (register.expected_amount) return register.expected_amount;
+    return (
+      parseFloat(register.opening_amount || "0") +
+      parseFloat(register.total_cash || "0") +
+      parseFloat(register.total_card || "0") +
+      parseFloat(register.total_skywallet || "0") +
+      parseFloat(register.total_mpesa || "0")
+    ).toFixed(2);
+  };
+
+  const openCount = registers.filter((register) => register.status === "open").length;
+  const closedCount = registers.filter((register) => register.status === "closed").length;
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="fluent-card p-4">
+          <p className="text-xs text-muted-foreground uppercase mb-1">Total de Caixas</p>
+          <p className="text-2xl font-bold">{registers.length}</p>
+        </div>
+        <div className="fluent-card p-4">
+          <p className="text-xs text-muted-foreground uppercase mb-1">Caixas Abertos</p>
+          <p className="text-2xl font-bold text-emerald-600">{openCount}</p>
+        </div>
+        <div className="fluent-card p-4">
+          <p className="text-xs text-muted-foreground uppercase mb-1">Caixas Fechados</p>
+          <p className="text-2xl font-bold text-muted-foreground">{closedCount}</p>
+        </div>
+      </div>
+
+      <div className="fluent-card p-4 space-y-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold">Lista de Caixas</h3>
+            <p className="text-sm text-muted-foreground">
+              Veja caixas abertos e fechados, por operador e periodo.
+            </p>
+          </div>
+          <div className="w-full md:w-[280px]">
+            <Input
+              value={operatorNameFilter}
+              onChange={(e) => onOperatorNameFilterChange(e.target.value)}
+              placeholder="Filtrar por nome do operador"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center h-48 text-muted-foreground">
+            Carregando caixas...
+          </div>
+        ) : registers.length === 0 ? (
+          <div className="flex items-center justify-center h-48 text-muted-foreground">
+            Nenhum caixa encontrado com os filtros aplicados.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Operador</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Abertura</TableHead>
+                  <TableHead>Fechamento</TableHead>
+                  <TableHead>Total do Caixa</TableHead>
+                  <TableHead>Total de Vendas</TableHead>
+                  <TableHead>Vendas</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {registers.map((register) => {
+                  const operatorName = cashierNameByUserId.get(register.user_id) || `Caixa ${register.user_id}`;
+                  const openedAt = format(parseISO(register.opened_at), "dd/MM/yyyy HH:mm", { locale: ptBR });
+                  const closedAt = register.closed_at
+                    ? format(parseISO(register.closed_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                    : "-";
+                  return (
+                    <TableRow key={register.id}>
+                      <TableCell className="font-medium">{operatorName}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={register.status === "open" ? "default" : "secondary"}
+                          className={register.status === "open" ? "bg-emerald-600 text-white" : ""}
+                        >
+                          {register.status === "open" ? "Aberto" : "Fechado"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{openedAt}</TableCell>
+                      <TableCell>{closedAt}</TableCell>
+                      <TableCell className="font-semibold text-primary">
+                        {formatCurrency(getRegisterTotal(register))}
+                      </TableCell>
+                      <TableCell>{formatCurrency(register.total_sales)}</TableCell>
+                      <TableCell>{register.sales_count}</TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </div>
