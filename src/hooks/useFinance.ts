@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { financeApi } from "@/services/api";
-import { PDVExpense, PDVExpenseCreate, PDVExpenseUpdate, PDVExpenseCategory, FinancialSummary } from "@/services/api";
+import { PDVExpense, PDVExpenseCreate, PDVExpenseUpdate, PDVExpenseCategory, FinancialSummary, PDVTaxSummaryUpdate } from "@/services/api";
 
 export function useFinanceSummary(start_date?: string, end_date?: string, user_id?: number) {
   return useQuery({
@@ -51,6 +51,25 @@ export function useDeleteExpense() {
     mutationFn: (id: number) => financeApi.deleteExpense(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["expenses"] });
+      qc.invalidateQueries({ queryKey: ["financeSummary"] });
+    },
+  });
+}
+
+export function useTaxSummary(year: number, month: number) {
+  return useQuery({
+    queryKey: ["taxSummary", year, month],
+    queryFn: () => financeApi.taxSummary(year, month),
+    enabled: !!year && !!month,
+  });
+}
+
+export function useUpdateTaxSummary(year: number, month: number) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: PDVTaxSummaryUpdate) => financeApi.updateTaxSummary(year, month, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["taxSummary", year, month] });
       qc.invalidateQueries({ queryKey: ["financeSummary"] });
     },
   });

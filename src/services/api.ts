@@ -249,6 +249,10 @@ export const financeApi = {
     const qs = query.toString();
     return apiGet<FinancialSummary>(`/skypdv/finance/summary${qs ? `?${qs}` : ""}`);
   },
+  taxSummary: (year: number, month: number) =>
+    apiGet<PDVTaxSummary>(`/skypdv/finance/tax-summary?year=${year}&month=${month}`),
+  updateTaxSummary: (year: number, month: number, data: PDVTaxSummaryUpdate) =>
+    apiPut<PDVTaxSummary>(`/skypdv/finance/tax-summary?year=${year}&month=${month}`, data),
   listCategories: () => apiGet<PDVExpenseCategory[]>("/skypdv/finance/expense-categories"),
   createCategory: (data: PDVExpenseCategoryCreate) =>
     apiPost<PDVExpenseCategory>("/skypdv/finance/expense-categories", data),
@@ -955,5 +959,19 @@ export interface StockTransfer {
   from_location: "balcao" | "congelado" | "armazem";
   to_location: "balcao" | "congelado" | "armazem";
   quantity: string;
+  notes?: string;
+}
+
+export interface PDVTaxSummary {
+  year: number;
+  month: number;
+  total_tax_due: string;
+  is_paid: boolean;
+  paid_at: string | null;
+  notes: string | null;
+}
+
+export interface PDVTaxSummaryUpdate {
+  is_paid: boolean;
   notes?: string;
 }

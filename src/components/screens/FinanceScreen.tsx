@@ -30,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense } from "@/hooks/useFinance";
+import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense, useTaxSummary, useUpdateTaxSummary } from "@/hooks/useFinance";
 import { financeApi } from "@/services/api";
 import { useWhatsappPrefs } from "@/hooks/useWhatsappPrefs";
 import { PDVExpense } from "@/services/api";
@@ -67,7 +67,7 @@ const useStyles = makeStyles({
   },
 });
 
-type FinanceNav = "resumo" | "despesas";
+type FinanceNav = "resumo" | "despesas" | "imposto";
 
 export function FinanceScreen() {
   const styles = useStyles();
@@ -78,10 +78,14 @@ export function FinanceScreen() {
   const [activeNav, setActiveNav] = useState<FinanceNav>("resumo");
   const resumoRef = useRef<HTMLDivElement>(null);
   const despesasRef = useRef<HTMLDivElement>(null);
+  const impostoRef = useRef<HTMLDivElement>(null);
 
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState(format(endOfMonth(new Date()), "yyyy-MM-dd"));
   const [selectedCategory, setSelectedCategory] = useState<number | undefined>(undefined);
+  const [taxMonth, setTaxMonth] = useState<number>(new Date().getMonth() + 1);
+  const [taxYear, setTaxYear] = useState<number>(new Date().getFullYear());
+  const [taxNotes, setTaxNotes] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editing, setEditing] = useState<PDVExpense | null>(null);
   const [form, setForm] = useState<{ title: string; amount: string; expense_date: string; category_id?: number; description?: string }>({
@@ -97,19 +101,25 @@ export function FinanceScreen() {
   const { data: summary } = useFinanceSummary(startDate, endDate);
   const { data: categories = [] } = useExpenseCategories();
   const { data: expenses = [] } = useExpenses(startDate, endDate, selectedCategory);
+  const { data: taxSummary } = useTaxSummary(taxYear, taxMonth);
 
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
+  const updateTaxSummary = useUpdateTaxSummary(taxYear, taxMonth);
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
   const scrollToSection = (section: FinanceNav) => {
-    const el = section === "resumo" ? resumoRef.current : despesasRef.current;
+    const el = section === "resumo" ? resumoRef.current : section === "despesas" ? despesasRef.current : impostoRef.current;
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  useEffect(() => {
+    setTaxNotes(taxSummary?.notes || "");
+  }, [taxSummary?.notes]);
 
   const openNew = () => {
     setEditing(null);
@@ -226,6 +236,11 @@ export function FinanceScreen() {
       id: "despesas" as FinanceNav,
       label: "Despesas do período",
       icon: List24Regular,
+    },
+    {
+      id: "imposto" as FinanceNav,
+      label: "Imposto",
+      icon: Money24Regular,
     },
   ];
 
@@ -436,6 +451,109 @@ export function FinanceScreen() {
                       )}
                     </TableBody>
                   </Table>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div ref={impostoRef} id="finance-imposto" className="scroll-mt-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2">
+                    <Money24Regular className="w-5 h-5" />
+                    Imposto
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-sm text-muted-foreground">
+                    O imposto mensal e criado automaticamente com estado Nao pago. O admin pode marcar como pago depois da liquidacao.
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Mês</label>
+                      <Select value={String(taxMonth)} onValueChange={(v) => setTaxMonth(Number(v))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
+                            <SelectItem key={month} value={String(month)}>
+                              {month.toString().padStart(2, "0")}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground mb-1 block">Ano</label>
+                      <Select value={String(taxYear)} onValueChange={(v) => setTaxYear(Number(v))}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Array.from({ length: 6 }, (_, i) => new Date().getFullYear() - 2 + i).map((year) => (
+                            <SelectItem key={year} value={String(year)}>
+                              {year}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="text-xs text-muted-foreground mb-1 block">Estado</label>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={taxSummary?.is_paid ? "default" : "outline"}
+                          onClick={() => updateTaxSummary.mutate({ is_paid: true, notes: taxNotes || undefined })}
+                          disabled={updateTaxSummary.isPending}
+                        >
+                          Marcar como Pago
+                        </Button>
+                        <Button
+                          variant={!taxSummary?.is_paid ? "default" : "outline"}
+                          onClick={() => updateTaxSummary.mutate({ is_paid: false, notes: taxNotes || undefined })}
+                          disabled={updateTaxSummary.isPending}
+                        >
+                          Marcar como Nao Pago
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-muted-foreground">Total a pagar no mês</CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-2xl font-bold">
+                        {formatCurrency(taxSummary?.total_tax_due)}
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-muted-foreground">Estado</CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-lg font-semibold">
+                        {taxSummary?.is_paid ? "Pago" : "Nao pago"}
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm text-muted-foreground">Data de pagamento</CardTitle>
+                      </CardHeader>
+                      <CardContent className="text-lg font-semibold">
+                        {taxSummary?.paid_at ? taxSummary.paid_at.substring(0, 10) : "-"}
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
+                    <Input
+                      value={taxNotes}
+                      onChange={(e) => setTaxNotes(e.target.value)}
+                      placeholder="Notas sobre o pagamento do imposto"
+                    />
+                  </div>
                 </CardContent>
               </Card>
             </div>
