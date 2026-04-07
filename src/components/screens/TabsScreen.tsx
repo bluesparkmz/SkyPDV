@@ -335,6 +335,18 @@ export function TabsScreen() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
+                <Label htmlFor="closing_total">Valor a Fechar</Label>
+                <Input
+                  id="closing_total"
+                  value={selectedTab ? formatCurrency(selectedTab.current_balance) : ""}
+                  readOnly
+                  disabled
+                />
+                <p className="text-xs text-muted-foreground">
+                  A conta sera fechada com o mesmo valor vendido/disponivel nesta conta.
+                </p>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="client_name">Nome do Cliente *</Label>
                 <Input
                   id="client_name"
