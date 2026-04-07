@@ -22,6 +22,16 @@ import { toast } from "sonner";
 import { ProductImage } from "./ProductImage";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { formatParkedSaleReceipt } from "@/lib/receiptFormat";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ParkedSaleSummary = {
   id: string;
@@ -89,6 +99,7 @@ function CartContent({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"cash" | "skywallet" | "mpesa">("cash");
   const [showPendingSales, setShowPendingSales] = useState(false);
   const [isParking, setIsParking] = useState(false);
+  const [clearCartDialogOpen, setClearCartDialogOpen] = useState(false);
   const { data: paymentMethods } = usePaymentMethods();
   const { printReceipt } = useHardwarePlugin();
 
@@ -323,7 +334,7 @@ function CartContent({
             Finalizar Venda
           </button>
           <button
-            onClick={onClear}
+            onClick={() => setClearCartDialogOpen(true)}
             className="fluent-button bg-destructive/10 text-destructive hover:bg-destructive/20 py-2 transition-colors text-xs font-medium border border-destructive/20"
           >
             Limpar Carrinho
@@ -367,6 +378,29 @@ function CartContent({
             </div>
           </div>
         )}
+
+        <AlertDialog open={clearCartDialogOpen} onOpenChange={setClearCartDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Limpar carrinho?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Todos os itens adicionados serÃ£o removidos do carrinho atual. Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onClear();
+                  setClearCartDialogOpen(false);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Sim, limpar
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
 
       <SaleDialog
