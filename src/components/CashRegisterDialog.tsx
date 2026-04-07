@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +31,25 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
   const expiresAt = currentRegister?.opened_at
     ? new Date(new Date(currentRegister.opened_at).getTime() + 24 * 60 * 60 * 1000)
     : null;
+  const expectedClosingAmount = currentRegister?.expected_amount
+    ? parseFloat(currentRegister.expected_amount).toFixed(2)
+    : currentRegister
+      ? (
+          parseFloat(currentRegister.opening_amount || "0") +
+          parseFloat(currentRegister.total_cash || "0") +
+          parseFloat(currentRegister.total_card || "0") +
+          parseFloat(currentRegister.total_skywallet || "0") +
+          parseFloat(currentRegister.total_mpesa || "0")
+        ).toFixed(2)
+      : "";
+
+  useEffect(() => {
+    if (isOpen) {
+      setClosingAmount(expectedClosingAmount);
+    } else {
+      setClosingAmount("");
+    }
+  }, [isOpen, expectedClosingAmount]);
 
   const handleOpen = async () => {
     if (isOpen) return;
@@ -69,7 +88,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
           <DialogTitle>{isOpen ? "Fechar Caixa" : "Abrir Caixa"}</DialogTitle>
           <DialogDescription>
             {isOpen
-              ? "Registre o valor em dinheiro no caixa para fechar a sessao manualmente."
+              ? "O fechamento usa automaticamente o valor vendido/esperado desta sessao."
               : "Registre o valor inicial em dinheiro no caixa para iniciar a sessao. Cada caixa dura no maximo 24 horas."}
           </DialogDescription>
         </DialogHeader>
@@ -111,8 +130,14 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
               value={isOpen ? closingAmount : openingAmount}
               onChange={(e) => (isOpen ? setClosingAmount(e.target.value) : setOpeningAmount(e.target.value))}
               placeholder="0.00"
-              disabled={openMutation.isPending || closeMutation.isPending}
+              disabled={isOpen || openMutation.isPending || closeMutation.isPending}
+              readOnly={isOpen}
             />
+            {isOpen && (
+              <p className="text-xs text-muted-foreground">
+                Este valor e calculado automaticamente com base no total vendido no caixa.
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
