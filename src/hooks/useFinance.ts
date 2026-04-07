@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, useQueries } from "@tanstack/react-query";
 import { financeApi } from "@/services/api";
 import { PDVExpense, PDVExpenseCreate, PDVExpenseUpdate, PDVExpenseCategory, FinancialSummary, PDVTaxSummaryUpdate } from "@/services/api";
 
@@ -61,6 +61,19 @@ export function useTaxSummary(year: number, month: number) {
     queryKey: ["taxSummary", year, month],
     queryFn: () => financeApi.taxSummary(year, month),
     enabled: !!year && !!month,
+  });
+}
+
+export function useTaxSummaries(year: number) {
+  return useQueries({
+    queries: Array.from({ length: 12 }, (_, index) => {
+      const month = index + 1;
+      return {
+        queryKey: ["taxSummary", year, month],
+        queryFn: () => financeApi.taxSummary(year, month),
+        enabled: !!year,
+      };
+    }),
   });
 }
 

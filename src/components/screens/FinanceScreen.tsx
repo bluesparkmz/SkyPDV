@@ -30,7 +30,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense, useTaxSummary, useUpdateTaxSummary } from "@/hooks/useFinance";
+import { useFinanceSummary, useExpenses, useExpenseCategories, useCreateExpense, useUpdateExpense, useDeleteExpense, useTaxSummary, useTaxSummaries, useUpdateTaxSummary } from "@/hooks/useFinance";
 import { financeApi } from "@/services/api";
 import { useWhatsappPrefs } from "@/hooks/useWhatsappPrefs";
 import { PDVExpense } from "@/services/api";
@@ -69,6 +69,21 @@ const useStyles = makeStyles({
 
 type FinanceNav = "resumo" | "despesas" | "imposto";
 
+const monthLabels = [
+  "Janeiro",
+  "Fevereiro",
+  "Marco",
+  "Abril",
+  "Maio",
+  "Junho",
+  "Julho",
+  "Agosto",
+  "Setembro",
+  "Outubro",
+  "Novembro",
+  "Dezembro",
+];
+
 export function FinanceScreen() {
   const styles = useStyles();
   const isMobile = useIsMobile();
@@ -97,16 +112,26 @@ export function FinanceScreen() {
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
   const [pendingExport, setPendingExport] = useState<"pdf" | "excel" | null>(null);
   const [tempPhone, setTempPhone] = useState("");
+  const taxPeriodDate = new Date(taxYear, taxMonth - 1, 1);
+  const taxStartDate = format(startOfMonth(taxPeriodDate), "yyyy-MM-dd");
+  const taxEndDate = format(endOfMonth(taxPeriodDate), "yyyy-MM-dd");
 
   const { data: summary } = useFinanceSummary(startDate, endDate);
   const { data: categories = [] } = useExpenseCategories();
   const { data: expenses = [] } = useExpenses(startDate, endDate, selectedCategory);
+  const { data: taxMonthFinanceSummary } = useFinanceSummary(taxStartDate, taxEndDate);
   const { data: taxSummary } = useTaxSummary(taxYear, taxMonth);
+  const taxSummaries = useTaxSummaries(taxYear);
 
   const createExpense = useCreateExpense();
   const updateExpense = useUpdateExpense();
   const deleteExpense = useDeleteExpense();
   const updateTaxSummary = useUpdateTaxSummary(taxYear, taxMonth);
+  const monthlyTaxRows = taxSummaries.map((query, index) => ({
+    month: index + 1,
+    label: monthLabels[index],
+    summary: query.data,
+  }));
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -475,9 +500,9 @@ export function FinanceScreen() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map((month) => (
-                            <SelectItem key={month} value={String(month)}>
-                              {month.toString().padStart(2, "0")}
+                          {monthLabels.map((label, index) => (
+                            <SelectItem key={label} value={String(index + 1)}>
+                              {label}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -520,31 +545,80 @@ export function FinanceScreen() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <Card>
+                    <Card className="border-amber-200 bg-amber-50/70">
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm text-muted-foreground">Total a pagar no mês</CardTitle>
                       </CardHeader>
-                      <CardContent className="text-2xl font-bold">
+                      <CardContent className="text-2xl font-bold text-amber-950">
                         {formatCurrency(taxSummary?.total_tax_due)}
                       </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="border-emerald-200 bg-emerald-50/70">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-muted-foreground">Estado</CardTitle>
+                        <CardTitle className="text-sm text-muted-foreground">Total vendido no mes</CardTitle>
                       </CardHeader>
-                      <CardContent className="text-lg font-semibold">
-                        {taxSummary?.is_paid ? "Pago" : "Nao pago"}
+                      <CardContent className="text-2xl font-bold text-emerald-950">
+                        {formatCurrency(taxMonthFinanceSummary?.gross_revenue)}
                       </CardContent>
                     </Card>
-                    <Card>
+                    <Card className="border-rose-200 bg-rose-50/70">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-muted-foreground">Data de pagamento</CardTitle>
+                        <CardTitle className="text-sm text-rose-800">Total de despesas</CardTitle>
                       </CardHeader>
-                      <CardContent className="text-lg font-semibold">
-                        {taxSummary?.paid_at ? taxSummary.paid_at.substring(0, 10) : "-"}
+                      <CardContent className="text-2xl font-bold text-rose-950">
+                        {formatCurrency(taxMonthFinanceSummary?.total_expenses)}
                       </CardContent>
                     </Card>
                   </div>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Lista de meses e estado</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Mes</TableHead>
+                            <TableHead>Ano</TableHead>
+                            <TableHead>Estado</TableHead>
+                            <TableHead>Total do imposto</TableHead>
+                            <TableHead>Data de pagamento</TableHead>
+                            <TableHead className="text-right">Acao</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {monthlyTaxRows.map((row) => (
+                            <TableRow
+                              key={`${taxYear}-${row.month}`}
+                              className={row.month === taxMonth ? "bg-muted/40" : undefined}
+                            >
+                              <TableCell>{row.label}</TableCell>
+                              <TableCell>{taxYear}</TableCell>
+                              <TableCell>
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                    row.summary?.is_paid
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : "bg-amber-100 text-amber-700"
+                                  }`}
+                                >
+                                  {row.summary?.is_paid ? "Pago" : "Nao pago"}
+                                </span>
+                              </TableCell>
+                              <TableCell>{formatCurrency(row.summary?.total_tax_due)}</TableCell>
+                              <TableCell>{row.summary?.paid_at ? row.summary.paid_at.substring(0, 10) : "-"}</TableCell>
+                              <TableCell className="text-right">
+                                <Button variant="ghost" size="sm" onClick={() => setTaxMonth(row.month)}>
+                                  Ver mes
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
 
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Observações</label>
