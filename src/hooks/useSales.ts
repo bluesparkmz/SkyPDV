@@ -18,6 +18,11 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
+      queryClient.invalidateQueries({ queryKey: ["cashRegisterHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
+      queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
+      queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       toast.success("Venda registrada com sucesso!");
     },
     onError: (error) => {
@@ -35,6 +40,11 @@ export function useVoidSale() {
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
+      queryClient.invalidateQueries({ queryKey: ["cashRegisterHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
+      queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
+      queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
+      queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       toast.success("Venda anulada com sucesso!");
     },
     onError: (error) => {
