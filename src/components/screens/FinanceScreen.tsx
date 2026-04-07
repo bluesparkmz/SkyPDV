@@ -157,11 +157,20 @@ export function FinanceScreen() {
   const latestExpenses = [...expenses]
     .sort((a, b) => new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime())
     .slice(0, 5);
-  const currentMonthNumber = new Date().getMonth() + 1;
-  const visibleTaxMonths =
-    taxYear === new Date().getFullYear()
-      ? monthlyTaxRows.filter((row) => row.month <= currentMonthNumber)
-      : monthlyTaxRows;
+  const currentDate = new Date();
+  const currentMonthNumber = currentDate.getMonth() + 1;
+  const nextMonthNumber = currentMonthNumber === 12 ? 1 : currentMonthNumber + 1;
+  const isCurrentYear = taxYear === currentDate.getFullYear();
+  const isNextYearForPreview = taxYear === currentDate.getFullYear() + 1 && currentMonthNumber === 12;
+  const visibleTaxMonths = monthlyTaxRows.filter((row) => {
+    if (taxYear < currentDate.getFullYear()) return true;
+    if (isCurrentYear) return row.month <= currentMonthNumber + (currentMonthNumber < 12 ? 1 : 0);
+    if (isNextYearForPreview) return row.month === 1;
+    return false;
+  });
+  const isSelectedPreviewMonth =
+    (isCurrentYear && taxMonth === nextMonthNumber && currentMonthNumber < 12) ||
+    (isNextYearForPreview && taxMonth === 1);
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -444,23 +453,31 @@ export function FinanceScreen() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {visibleTaxMonths.map((row) => (
+                          {visibleTaxMonths.map((row) => {
+                            const isPreviewMonth =
+                              (isCurrentYear && row.month === nextMonthNumber && currentMonthNumber < 12) ||
+                              (isNextYearForPreview && row.month === 1);
+
+                            return (
                             <TableRow key={`summary-tax-${taxYear}-${row.month}`}>
                               <TableCell>{String(row.month).padStart(2, "0")} - {row.label}</TableCell>
                               <TableCell>{formatCurrency(row.taxSummary?.total_tax_due)}</TableCell>
                               <TableCell>
                                 <span
                                   className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
-                                    row.taxSummary?.is_paid
+                                    isPreviewMonth
+                                      ? "bg-slate-100 text-slate-500"
+                                      : row.taxSummary?.is_paid
                                       ? "bg-emerald-100 text-emerald-700"
                                       : "bg-amber-100 text-amber-700"
                                   }`}
                                 >
-                                  {row.taxSummary?.is_paid ? "Pago" : "Nao pago"}
+                                  {isPreviewMonth ? "Proximo mes" : row.taxSummary?.is_paid ? "Pago" : "Nao pago"}
                                 </span>
                               </TableCell>
                             </TableRow>
-                          ))}
+                            );
+                          })}
                         </TableBody>
                       </Table>
                     </CardContent>
@@ -506,8 +523,8 @@ export function FinanceScreen() {
                         <Select value={String(taxMonth)} onValueChange={(value) => setTaxMonth(Number(value))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            {monthLabels.map((label, index) => (
-                              <SelectItem key={label} value={String(index + 1)}>{String(index + 1).padStart(2, "0")} - {label}</SelectItem>
+                            {visibleTaxMonths.map((row) => (
+                              <SelectItem key={row.label} value={String(row.month)}>{String(row.month).padStart(2, "0")} - {row.label}</SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -526,8 +543,8 @@ export function FinanceScreen() {
                       <div className="md:col-span-2">
                         <label className="mb-1 block text-xs text-muted-foreground">Estado do mes selecionado</label>
                         <div className="flex flex-wrap items-center gap-2">
-                          <Button variant={taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: true, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending}>Marcar como Pago</Button>
-                          <Button variant={!taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: false, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending}>Marcar como Nao Pago</Button>
+                          <Button variant={taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: true, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending || isSelectedPreviewMonth}>Marcar como Pago</Button>
+                          <Button variant={!taxSummary?.is_paid ? "default" : "outline"} onClick={() => updateTaxSummary.mutate({ is_paid: false, notes: taxNotes || undefined })} disabled={updateTaxSummary.isPending || isSelectedPreviewMonth}>Marcar como Nao Pago</Button>
                         </div>
                       </div>
                     </div>
@@ -544,17 +561,23 @@ export function FinanceScreen() {
                         <Table>
                           <TableHeader><TableRow><TableHead>No</TableHead><TableHead>Nome do mes</TableHead><TableHead>Total do imposto</TableHead><TableHead>Total de venda do mes</TableHead><TableHead>% imposto</TableHead><TableHead>Estado</TableHead><TableHead className="text-right">Acao</TableHead></TableRow></TableHeader>
                           <TableBody>
-                            {monthlyTaxRows.map((row) => (
+                            {visibleTaxMonths.map((row) => {
+                              const isPreviewMonth =
+                                (isCurrentYear && row.month === nextMonthNumber && currentMonthNumber < 12) ||
+                                (isNextYearForPreview && row.month === 1);
+
+                              return (
                               <TableRow key={`${taxYear}-${row.month}`} className={row.month === taxMonth ? "bg-muted/40" : undefined}>
                                 <TableCell>{String(row.month).padStart(2, "0")}</TableCell>
                                 <TableCell>{row.label}</TableCell>
                                 <TableCell>{formatCurrency(row.taxSummary?.total_tax_due)}</TableCell>
                                 <TableCell>{formatCurrency(row.financeSummary?.gross_revenue)}</TableCell>
                                 <TableCell>{row.taxPercentage.toFixed(2)}%</TableCell>
-                                <TableCell><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${row.taxSummary?.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{row.taxSummary?.is_paid ? "Pago" : "Nao pago"}</span></TableCell>
-                                <TableCell className="text-right"><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setTaxMonth(row.month)}>Ver</Button><Button variant={row.taxSummary?.is_paid ? "outline" : "default"} size="sm" onClick={() => handleTaxStatusChange(row.month, !row.taxSummary?.is_paid)}>{row.taxSummary?.is_paid ? "Marcar Nao Pago" : "Marcar Pago"}</Button></div></TableCell>
+                                <TableCell><span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${isPreviewMonth ? "bg-slate-100 text-slate-500" : row.taxSummary?.is_paid ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>{isPreviewMonth ? "Proximo mes" : row.taxSummary?.is_paid ? "Pago" : "Nao pago"}</span></TableCell>
+                                <TableCell className="text-right"><div className="flex justify-end gap-2"><Button variant="ghost" size="sm" onClick={() => setTaxMonth(row.month)}>Ver</Button><Button variant={row.taxSummary?.is_paid ? "outline" : "default"} size="sm" onClick={() => handleTaxStatusChange(row.month, !row.taxSummary?.is_paid)} disabled={isPreviewMonth}>{row.taxSummary?.is_paid ? "Marcar Nao Pago" : "Marcar Pago"}</Button></div></TableCell>
                               </TableRow>
-                            ))}
+                              );
+                            })}
                           </TableBody>
                         </Table>
                       </CardContent>
