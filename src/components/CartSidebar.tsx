@@ -378,7 +378,7 @@ function CartContent({
         )}
 
         <AlertDialog open={clearCartDialogOpen} onOpenChange={setClearCartDialogOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="sm:left-auto sm:right-6 sm:top-auto sm:bottom-24 sm:w-[380px] sm:translate-x-0 sm:translate-y-0">
             <AlertDialogHeader>
               <AlertDialogTitle>Limpar carrinho?</AlertDialogTitle>
               <AlertDialogDescription>
