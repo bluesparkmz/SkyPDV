@@ -17,7 +17,6 @@ import {
 import { useState, type MouseEvent } from "react";
 import { SaleDialog } from "./SaleDialog";
 import { ReserveBillDialog } from "./ReserveBillDialog";
-import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { toast } from "sonner";
 import { ProductImage } from "./ProductImage";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
@@ -100,7 +99,6 @@ function CartContent({
   const [showPendingSales, setShowPendingSales] = useState(false);
   const [isParking, setIsParking] = useState(false);
   const [clearCartDialogOpen, setClearCartDialogOpen] = useState(false);
-  const { data: paymentMethods } = usePaymentMethods();
   const { printReceipt } = useHardwarePlugin();
 
   const handleFinalizeSale = () => {
@@ -352,7 +350,7 @@ function CartContent({
               type="text"
               value={customerName || ""}
               onChange={(e) => onCustomerNameChange(e.target.value)}
-              placeholder="Nome do cliente (ex: João)"
+              placeholder="Nome do cliente (ex: Joao)"
               className="w-full px-3 py-2 rounded-md bg-background border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
               autoFocus
             />
@@ -384,7 +382,7 @@ function CartContent({
             <AlertDialogHeader>
               <AlertDialogTitle>Limpar carrinho?</AlertDialogTitle>
               <AlertDialogDescription>
-                Todos os itens adicionados serÃ£o removidos do carrinho atual. Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+                Todos os itens adicionados serao removidos do carrinho atual. Esta acao nao pode ser desfeita.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

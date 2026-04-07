@@ -69,8 +69,8 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
           <DialogTitle>{isOpen ? "Fechar Caixa" : "Abrir Caixa"}</DialogTitle>
           <DialogDescription>
             {isOpen
-              ? "Registre o valor em dinheiro no caixa para fechar a sessão manualmente."
-              : "Registre o valor inicial em dinheiro no caixa para iniciar a sessão. Cada caixa dura no máximo 24 horas."}
+              ? "Registre o valor em dinheiro no caixa para fechar a sessao manualmente."
+              : "Registre o valor inicial em dinheiro no caixa para iniciar a sessao. Cada caixa dura no maximo 24 horas."}
           </DialogDescription>
         </DialogHeader>
 
@@ -116,7 +116,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
+            <Label htmlFor="notes">Observacoes</Label>
             <Textarea
               id="notes"
               value={notes}
