@@ -134,7 +134,11 @@ export function ReportsScreen() {
     const map = new Map<number, string>();
     terminalUsers.forEach((u) => {
       if (typeof u.user_id === "number") {
-        map.set(u.user_id, u.user_name || u.user_email || `#${u.user_id}`);
+        const preferredName =
+          (u.user_name && u.user_name.trim()) ||
+          (u.user_email && u.user_email.split("@")[0].trim()) ||
+          `Vendedor ${u.user_id}`;
+        map.set(u.user_id, preferredName);
       }
     });
     return map;
@@ -624,6 +628,7 @@ export function ReportsScreen() {
                 cashierNameByUserId={cashierNameByUserId}
                 operatorNameFilter={operatorNameFilter}
                 onOperatorNameFilterChange={setOperatorNameFilter}
+                isAdmin={isAdmin}
               />
             )}
           </div>
@@ -1294,6 +1299,7 @@ function CashRegistersView({
   cashierNameByUserId,
   operatorNameFilter,
   onOperatorNameFilterChange,
+  isAdmin,
 }: {
   registers: CashRegister[];
   isLoading: boolean;
@@ -1301,6 +1307,7 @@ function CashRegistersView({
   cashierNameByUserId: Map<number, string>;
   operatorNameFilter: string;
   onOperatorNameFilterChange: (value: string) => void;
+  isAdmin: boolean;
 }) {
   const getRegisterTotal = (register: CashRegister) => {
     if (register.closing_amount) return register.closing_amount;
@@ -1342,13 +1349,15 @@ function CashRegistersView({
               Veja caixas abertos e fechados, por operador e periodo.
             </p>
           </div>
-          <div className="w-full md:w-[280px]">
-            <Input
-              value={operatorNameFilter}
-              onChange={(e) => onOperatorNameFilterChange(e.target.value)}
-              placeholder="Filtrar por nome do operador"
-            />
-          </div>
+          {isAdmin && (
+            <div className="w-full md:w-[280px]">
+              <Input
+                value={operatorNameFilter}
+                onChange={(e) => onOperatorNameFilterChange(e.target.value)}
+                placeholder="Filtrar por nome do operador"
+              />
+            </div>
+          )}
         </div>
 
         {isLoading ? (
@@ -1366,6 +1375,7 @@ function CashRegistersView({
                 <TableRow>
                   <TableHead>Operador</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Data</TableHead>
                   <TableHead>Abertura</TableHead>
                   <TableHead>Fechamento</TableHead>
                   <TableHead>Total do Caixa</TableHead>
@@ -1376,6 +1386,7 @@ function CashRegistersView({
               <TableBody>
                 {registers.map((register) => {
                   const operatorName = cashierNameByUserId.get(register.user_id) || `Caixa ${register.user_id}`;
+                  const registerDate = format(parseISO(register.opened_at), "dd/MM/yyyy", { locale: ptBR });
                   const openedAt = format(parseISO(register.opened_at), "dd/MM/yyyy HH:mm", { locale: ptBR });
                   const closedAt = register.closed_at
                     ? format(parseISO(register.closed_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
@@ -1391,6 +1402,7 @@ function CashRegistersView({
                           {register.status === "open" ? "Aberto" : "Fechado"}
                         </Badge>
                       </TableCell>
+                      <TableCell>{registerDate}</TableCell>
                       <TableCell>{openedAt}</TableCell>
                       <TableCell>{closedAt}</TableCell>
                       <TableCell className="font-semibold text-primary">
