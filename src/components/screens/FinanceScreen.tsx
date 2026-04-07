@@ -154,6 +154,14 @@ export function FinanceScreen() {
 
     return { month, label, taxSummary: taxData, financeSummary: financeData, taxPercentage: totalSales > 0 ? (totalTax / totalSales) * 100 : 0 };
   });
+  const latestExpenses = [...expenses]
+    .sort((a, b) => new Date(b.expense_date).getTime() - new Date(a.expense_date).getTime())
+    .slice(0, 5);
+  const currentMonthNumber = new Date().getMonth() + 1;
+  const visibleTaxMonths =
+    taxYear === new Date().getFullYear()
+      ? monthlyTaxRows.filter((row) => row.month <= currentMonthNumber)
+      : monthlyTaxRows;
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -386,6 +394,77 @@ export function FinanceScreen() {
                   <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><ReceiptMoney24Regular className="h-5 w-5 text-emerald-500" />Entradas (vendas)</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.gross_revenue)}</CardContent></Card>
                   <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><CalligraphyPen20Regular className="h-5 w-5 text-red-500" />Saidas (despesas)</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.total_expenses)}</CardContent></Card>
                   <Card><CardHeader className="pb-2"><CardTitle className="flex items-center gap-2 text-sm text-muted-foreground"><Money24Regular className="h-5 w-5 text-blue-500" />Lucro liquido</CardTitle></CardHeader><CardContent className="text-2xl font-bold">{formatCurrency(summary?.net_profit)}</CardContent></Card>
+                </div>
+
+                <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-2">
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Ultimas 5 despesas</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Data</TableHead>
+                            <TableHead>Titulo</TableHead>
+                            <TableHead className="text-right">Valor</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {latestExpenses.map((expense) => (
+                            <TableRow key={expense.id}>
+                              <TableCell>{expense.expense_date.substring(0, 10)}</TableCell>
+                              <TableCell>{expense.title}</TableCell>
+                              <TableCell className="text-right">{formatCurrency(expense.amount)}</TableCell>
+                            </TableRow>
+                          ))}
+                          {latestExpenses.length === 0 && (
+                            <TableRow>
+                              <TableCell colSpan={3} className="py-6 text-center text-sm text-muted-foreground">
+                                Nenhuma despesa recente encontrada.
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base">Meses de imposto</CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Mes</TableHead>
+                            <TableHead>Imposto</TableHead>
+                            <TableHead>Estado</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {visibleTaxMonths.map((row) => (
+                            <TableRow key={`summary-tax-${taxYear}-${row.month}`}>
+                              <TableCell>{String(row.month).padStart(2, "0")} - {row.label}</TableCell>
+                              <TableCell>{formatCurrency(row.taxSummary?.total_tax_due)}</TableCell>
+                              <TableCell>
+                                <span
+                                  className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${
+                                    row.taxSummary?.is_paid
+                                      ? "bg-emerald-100 text-emerald-700"
+                                      : "bg-amber-100 text-amber-700"
+                                  }`}
+                                >
+                                  {row.taxSummary?.is_paid ? "Pago" : "Nao pago"}
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             )}
