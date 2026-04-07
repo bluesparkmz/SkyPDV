@@ -158,6 +158,17 @@ export const productsApi = {
     const queryString = query.toString();
     return apiGet<Product[]>(`/skypdv/products${queryString ? `?${queryString}` : ""}`);
   },
+  listCatalog: (params?: { search?: string; category?: string; business_type?: "loja" | "restaurante"; skip?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.category) query.append("category", params.category);
+    if (params?.business_type) query.append("business_type", params.business_type);
+    if (params?.skip) query.append("skip", String(params.skip));
+    if (params?.limit) query.append("limit", String(params.limit));
+    const queryString = query.toString();
+    return apiGet<Product[]>(`/skypdv/products/catalog${queryString ? `?${queryString}` : ""}`);
+  },
+  adopt: (data: AdoptProduct) => apiPost<Product>("/skypdv/products/adopt", data),
   create: (data: CreateProduct) => apiPost<Product>("/skypdv/products", data),
   update: (id: number, data: UpdateProduct) => apiPut<Product>(`/skypdv/products/${id}`, data),
   delete: (id: number) => apiDelete<void>(`/skypdv/products/${id}`),
@@ -453,6 +464,7 @@ export interface CreateTerminal {
 export interface Product {
   id: number;
   terminal_id: number;
+  shared_source_product_id: number | null;
   supplier_id: number | null;
   source_type: "local" | "fastfood" | "skyvenda";
   external_product_id: number | null;
@@ -960,6 +972,13 @@ export interface StockTransfer {
   to_location: "balcao" | "congelado" | "armazem";
   quantity: string;
   notes?: string;
+}
+
+export interface AdoptProduct {
+  source_product_id: number;
+  price?: string;
+  cost_price?: string;
+  initial_stock?: string;
 }
 
 export interface PDVTaxSummary {

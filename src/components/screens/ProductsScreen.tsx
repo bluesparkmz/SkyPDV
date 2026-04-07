@@ -11,6 +11,7 @@ import {
 import { Product } from "@/services/api";
 import { dashboardApi } from "@/services/api";
 import { ProductDialog } from "@/components/ProductDialog";
+import { AdoptProductDialog } from "@/components/AdoptProductDialog";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 import { SupplyProductDialog } from "@/components/SupplyProductDialog";
 import { ProductImage } from "@/components/ProductImage";
@@ -24,6 +25,7 @@ export function ProductsScreen() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSupplyDialogOpen, setIsSupplyDialogOpen] = useState(false);
+  const [isAdoptDialogOpen, setIsAdoptDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Buscar produtos da API
@@ -79,7 +81,7 @@ export function ProductsScreen() {
           name: productData.name,
           price: productData.price.toString(),
           category: productData.category,
-          emoji: productData.emoji || "📦",
+          emoji: productData.emoji || "ðŸ“¦",
           image: productData.image,
           initial_stock: productData.stock.toString(),
           track_stock: true,
@@ -89,7 +91,7 @@ export function ProductsScreen() {
       setIsDialogOpen(false);
       setSelectedProduct(null);
     } catch (error) {
-      // Error já é tratado pelo hook com toast
+      // Error jÃ¡ Ã© tratado pelo hook com toast
       console.error("Erro ao salvar produto:", error);
     }
   };
@@ -101,7 +103,7 @@ export function ProductsScreen() {
         setIsDeleteDialogOpen(false);
         setSelectedProduct(null);
       } catch (error) {
-        // Error já é tratado pelo hook com toast
+        // Error jÃ¡ Ã© tratado pelo hook com toast
         console.error("Erro ao deletar produto:", error);
       }
     }
@@ -150,8 +152,8 @@ export function ProductsScreen() {
     price: parseFloat(selectedProduct.price),
     category: selectedProduct.category || "",
     stock: selectedProduct.inventory ? parseFloat(selectedProduct.inventory.quantity) : 0,
-    image: selectedProduct.image || selectedProduct.emoji || "📦",
-    emoji: selectedProduct.emoji || "📦",
+    image: selectedProduct.image || selectedProduct.emoji || "ðŸ“¦",
+    emoji: selectedProduct.emoji || "ðŸ“¦",
     is_fastfood: selectedProduct.is_fastfood || false,
   } : null;
 
@@ -166,7 +168,7 @@ export function ProductsScreen() {
             </div>
             <div>
               <h1 className="text-lg md:text-2xl font-bold text-foreground">Produtos</h1>
-              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Gerencie seu catálogo</p>
+              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Gerencie seu catÃ¡logo</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -176,6 +178,10 @@ export function ProductsScreen() {
             >
               <Print24Regular className="w-5 h-5" />
               <span className="hidden sm:inline">Imprimir</span>
+            </button>
+            <button onClick={() => setIsAdoptDialogOpen(true)} className="fluent-button gap-2 px-3 justify-center">
+              <Search24Regular className="w-5 h-5" />
+              <span className="hidden sm:inline">Usar Existente</span>
             </button>
             <button onClick={openCreateDialog} className="fluent-button fluent-button-primary gap-2 px-3 justify-center">
               <Add24Regular className="w-5 h-5" />
@@ -253,7 +259,7 @@ export function ProductsScreen() {
                         <div className="flex items-center gap-2 mt-0.5">
                           <span className="text-xs font-bold text-primary">{parseFloat(product.price).toFixed(2)} MT</span>
                           {product.track_stock && (
-                            <span className="text-[10px] text-muted-foreground">• {stock.toFixed(0)} un</span>
+                            <span className="text-[10px] text-muted-foreground">â€¢ {stock.toFixed(0)} un</span>
                           )}
                         </div>
                       </div>
@@ -297,10 +303,10 @@ export function ProductsScreen() {
                   <tr>
                     <th className="text-left p-4 text-sm font-semibold text-foreground">Produto</th>
                     <th className="text-left p-4 text-sm font-semibold text-foreground">Categoria</th>
-                    <th className="text-left p-4 text-sm font-semibold text-foreground">Preço</th>
+                    <th className="text-left p-4 text-sm font-semibold text-foreground">PreÃ§o</th>
                     <th className="text-left p-4 text-sm font-semibold text-foreground">Estoque</th>
                     <th className="text-left p-4 text-sm font-semibold text-foreground">Status</th>
-                    <th className="text-right p-4 text-sm font-semibold text-foreground">Ações</th>
+                    <th className="text-right p-4 text-sm font-semibold text-foreground">AÃ§Ãµes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -344,7 +350,7 @@ export function ProductsScreen() {
                                   ? "bg-warning/20 text-warning"
                                   : "bg-destructive/20 text-destructive"
                                 }`}>
-                                {stockStatus === "normal" ? "Normal" : stockStatus === "low" ? "Baixo" : "Crítico"}
+                                {stockStatus === "normal" ? "Normal" : stockStatus === "low" ? "Baixo" : "CrÃ­tico"}
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground">Sem controle</span>
@@ -394,7 +400,7 @@ export function ProductsScreen() {
             <button className="fluent-button px-3 py-1.5 text-sm" disabled>Anterior</button>
             <button className="fluent-button fluent-button-primary px-3 py-1.5 text-sm">1</button>
             <button className="fluent-button px-3 py-1.5 text-sm">2</button>
-            <button className="fluent-button px-3 py-1.5 text-sm">Próximo</button>
+            <button className="fluent-button px-3 py-1.5 text-sm">PrÃ³ximo</button>
           </div>
         </div>
 
@@ -416,10 +422,11 @@ export function ProductsScreen() {
           onOpenChange={setIsSupplyDialogOpen}
           product={selectedProduct}
           onSuccess={() => {
-            // Recarregar produtos após fornecer
+            // Recarregar produtos apÃ³s fornecer
             // O React Query vai atualizar automaticamente
           }}
         />
+        <AdoptProductDialog open={isAdoptDialogOpen} onOpenChange={setIsAdoptDialogOpen} />
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { productsApi, Product, CreateProduct, ProductsParams, UpdateProduct } from "@/services/api";
+import { productsApi, Product, CreateProduct, ProductsParams, UpdateProduct, AdoptProduct } from "@/services/api";
 import { toast } from "sonner";
 import { isEmoji } from "@/lib/imageUtils";
 
@@ -7,6 +7,13 @@ export function useProducts(params?: ProductsParams) {
   return useQuery({
     queryKey: ["products", params],
     queryFn: () => productsApi.list(params),
+  });
+}
+
+export function useCatalogProducts(params?: { search?: string; category?: string; business_type?: "loja" | "restaurante"; skip?: number; limit?: number }) {
+  return useQuery({
+    queryKey: ["catalogProducts", params],
+    queryFn: () => productsApi.listCatalog(params),
   });
 }
 
@@ -83,6 +90,22 @@ export function useDeleteProduct() {
     },
     onError: (error) => {
       toast.error(`Erro ao desativar produto: ${error.message}`);
+    },
+  });
+}
+
+export function useAdoptProduct() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: AdoptProduct) => productsApi.adopt(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["catalogProducts"] });
+      toast.success("Produto adicionado a sua conta com sucesso!");
+    },
+    onError: (error) => {
+      toast.error(`Erro ao adicionar produto: ${error.message}`);
     },
   });
 }
