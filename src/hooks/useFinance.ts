@@ -77,6 +77,23 @@ export function useTaxSummaries(year: number) {
   });
 }
 
+export function useMonthlyFinanceSummaries(year: number) {
+  return useQueries({
+    queries: Array.from({ length: 12 }, (_, index) => {
+      const month = index + 1;
+      const start_date = `${year}-${String(month).padStart(2, "0")}-01`;
+      const lastDay = new Date(year, month, 0).getDate();
+      const end_date = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+      return {
+        queryKey: ["financeSummary", start_date, end_date, undefined],
+        queryFn: () => financeApi.summary(start_date, end_date),
+        enabled: !!year,
+      };
+    }),
+  });
+}
+
 export function useUpdateTaxSummary(year: number, month: number) {
   const qc = useQueryClient();
   return useMutation({
