@@ -353,7 +353,7 @@ export function SalesHistoryScreen() {
                   const start=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-01`;
                   const end=now.toISOString().split("T")[0];
                   setFilterStart(start); setFilterEnd(end);
-                }}>MÃªs</Button>
+                }}>Mes</Button>
                 <Button size="sm" variant="outline" onClick={() => {
                   const now=new Date();
                   setFilterStart(`${now.getFullYear()}-01-01`);
