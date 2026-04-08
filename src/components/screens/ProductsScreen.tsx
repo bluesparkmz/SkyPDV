@@ -1,23 +1,25 @@
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  Box24Regular,
   Add24Regular,
-  Search24Regular,
-  Filter24Regular,
-  Edit24Regular,
+  Box24Regular,
   Delete24Regular,
+  Edit24Regular,
+  Filter24Regular,
   Print24Regular,
+  Search24Regular,
 } from "@fluentui/react-icons";
-import { Product } from "@/services/api";
-import { dashboardApi } from "@/services/api";
-import { ProductDialog } from "@/components/ProductDialog";
+import { toast } from "sonner";
+
 import { AdoptProductDialog } from "@/components/AdoptProductDialog";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
-import { SupplyProductDialog } from "@/components/SupplyProductDialog";
+import { ProductDialog } from "@/components/ProductDialog";
 import { ProductImage } from "@/components/ProductImage";
-import { useProducts, useCreateProduct, useUpdateProduct, useDeleteProduct } from "@/hooks/useProducts";
+import { SupplyProductDialog } from "@/components/SupplyProductDialog";
 import { useCategories } from "@/hooks/useCategories";
-import { toast } from "sonner";
+import { useCreateProduct, useDeleteProduct, useProducts, useUpdateProduct } from "@/hooks/useProducts";
+import { dashboardApi, Product } from "@/services/api";
+
+const DEFAULT_EMOJI = "📦";
 
 export function ProductsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -28,14 +30,11 @@ export function ProductsScreen() {
   const [isAdoptDialogOpen, setIsAdoptDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
-  // Buscar produtos da API
   const { data: products = [], isLoading: productsLoading } = useProducts({
     search: searchQuery || undefined,
     category: selectedCategory !== "all" ? selectedCategory : undefined,
     limit: 1000,
   });
-
-  // Buscar categorias da API
   const { data: categoriesList = [] } = useCategories();
 
   const createProduct = useCreateProduct();
@@ -62,9 +61,8 @@ export function ProductsScreen() {
   }) => {
     try {
       if (productData.id) {
-        // Edit
         await updateProduct.mutateAsync({
-          id: typeof productData.id === "string" ? parseInt(productData.id) : productData.id,
+          id: typeof productData.id === "string" ? parseInt(productData.id, 10) : productData.id,
           data: {
             name: productData.name,
             price: productData.price.toString(),
@@ -76,36 +74,34 @@ export function ProductsScreen() {
           },
         });
       } else {
-        // Create
         await createProduct.mutateAsync({
           name: productData.name,
           price: productData.price.toString(),
           category: productData.category,
-          emoji: productData.emoji || "ðŸ“¦",
+          emoji: productData.emoji || DEFAULT_EMOJI,
           image: productData.image,
           initial_stock: productData.stock.toString(),
           track_stock: true,
           is_fastfood: productData.is_fastfood || false,
         });
       }
+
       setIsDialogOpen(false);
       setSelectedProduct(null);
     } catch (error) {
-      // Error jÃ¡ Ã© tratado pelo hook com toast
       console.error("Erro ao salvar produto:", error);
     }
   };
 
   const handleDeleteProduct = async () => {
-    if (selectedProduct) {
-      try {
-        await deleteProduct.mutateAsync(selectedProduct.id);
-        setIsDeleteDialogOpen(false);
-        setSelectedProduct(null);
-      } catch (error) {
-        // Error jÃ¡ Ã© tratado pelo hook com toast
-        console.error("Erro ao deletar produto:", error);
-      }
+    if (!selectedProduct) return;
+
+    try {
+      await deleteProduct.mutateAsync(selectedProduct.id);
+      setIsDeleteDialogOpen(false);
+      setSelectedProduct(null);
+    } catch (error) {
+      console.error("Erro ao deletar produto:", error);
     }
   };
 
@@ -133,118 +129,110 @@ export function ProductsScreen() {
     try {
       const { blob, filename } = await dashboardApi.downloadProductsPdf();
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filename || "products.pdf";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename || "products.pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
       window.URL.revokeObjectURL(url);
-    } catch (e: any) {
-      toast.error(e?.message || "Falha ao gerar o PDF");
+    } catch (error: any) {
+      toast.error(error?.message || "Falha ao gerar o PDF");
     }
   };
 
-  // Converter produto da API para o formato esperado pelo dialog
-  const productForDialog = selectedProduct ? {
-    id: selectedProduct.id.toString(),
-    name: selectedProduct.name,
-    price: parseFloat(selectedProduct.price),
-    category: selectedProduct.category || "",
-    stock: selectedProduct.inventory ? parseFloat(selectedProduct.inventory.quantity) : 0,
-    image: selectedProduct.image || selectedProduct.emoji || "ðŸ“¦",
-    emoji: selectedProduct.emoji || "ðŸ“¦",
-    is_fastfood: selectedProduct.is_fastfood || false,
-  } : null;
+  const productForDialog = selectedProduct
+    ? {
+        id: selectedProduct.id.toString(),
+        name: selectedProduct.name,
+        price: parseFloat(selectedProduct.price),
+        category: selectedProduct.category || "",
+        stock: selectedProduct.inventory ? parseFloat(selectedProduct.inventory.quantity) : 0,
+        image: selectedProduct.image || selectedProduct.emoji || DEFAULT_EMOJI,
+        emoji: selectedProduct.emoji || DEFAULT_EMOJI,
+        is_fastfood: selectedProduct.is_fastfood || false,
+      }
+    : null;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Fixed Header */}
-      <div className="p-3 md:p-6 border-b border-border bg-background/80 backdrop-blur-md z-10">
+    <div className="flex h-full flex-1 flex-col overflow-hidden">
+      <div className="z-10 border-b border-border bg-background/80 p-3 backdrop-blur-md md:p-6">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center text-white">
-              <Box24Regular className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white md:h-10 md:w-10">
+              <Box24Regular className="h-5 w-5 md:h-6 md:w-6" />
             </div>
             <div>
-              <h1 className="text-lg md:text-2xl font-bold text-foreground">Produtos</h1>
-              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Gerencie seu catÃ¡logo</p>
+              <h1 className="text-lg font-bold text-foreground md:text-2xl">Produtos</h1>
+              <p className="hidden text-xs text-muted-foreground sm:block md:text-sm">Gerencie seu catalogo</p>
             </div>
           </div>
           <div className="flex gap-2">
-            <button
-              onClick={handlePrintProducts}
-              className="fluent-button gap-2 px-3 justify-center"
-            >
-              <Print24Regular className="w-5 h-5" />
+            <button onClick={handlePrintProducts} className="fluent-button justify-center gap-2 px-3">
+              <Print24Regular className="h-5 w-5" />
               <span className="hidden sm:inline">Imprimir</span>
             </button>
-            <button onClick={() => setIsAdoptDialogOpen(true)} className="fluent-button gap-2 px-3 justify-center">
-              <Search24Regular className="w-5 h-5" />
+            <button onClick={() => setIsAdoptDialogOpen(true)} className="fluent-button justify-center gap-2 px-3">
+              <Search24Regular className="h-5 w-5" />
               <span className="hidden sm:inline">Usar Existente</span>
             </button>
-            <button onClick={openCreateDialog} className="fluent-button fluent-button-primary gap-2 px-3 justify-center">
-              <Add24Regular className="w-5 h-5" />
+            <button onClick={openCreateDialog} className="fluent-button fluent-button-primary justify-center gap-2 px-3">
+              <Add24Regular className="h-5 w-5" />
               <span className="hidden sm:inline">Novo</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 p-3 md:p-6 overflow-auto windows-scrollbar">
-
-
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3 mb-4 md:mb-6">
+      <div className="windows-scrollbar flex-1 overflow-auto p-3 md:p-6">
+        <div className="mb-4 flex flex-col items-stretch gap-2 md:mb-6 md:gap-3 sm:flex-row sm:items-center">
           <div className="relative flex-1">
-            <Search24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
+            <Search24Regular className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground md:h-5 md:w-5" />
             <input
               type="text"
               placeholder="Buscar produtos..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 md:pl-10 pr-4 py-2 md:py-2.5 rounded-lg bg-card border border-border text-xs md:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="w-full rounded-lg border border-border bg-card py-2 pr-4 pl-9 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50 md:py-2.5 md:pl-10 md:text-sm"
             />
           </div>
 
           <div className="flex gap-2">
             <select
               value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-              className="flex-1 sm:flex-none px-3 md:px-4 py-2 md:py-2.5 rounded-lg bg-card border border-border text-xs md:text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+              onChange={(event) => setSelectedCategory(event.target.value)}
+              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 md:px-4 md:py-2.5 md:text-sm sm:flex-none"
             >
               <option value="all">Categorias</option>
-              {categoriesList.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categoriesList.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
             </select>
 
-            <button className="fluent-button gap-2 hidden sm:flex">
-              <Filter24Regular className="w-5 h-5" />
+            <button className="fluent-button hidden gap-2 sm:flex">
+              <Filter24Regular className="h-5 w-5" />
               Filtros
             </button>
           </div>
         </div>
 
-        {/* Loading State */}
         {productsLoading && (
-          <div className="flex items-center justify-center h-48 text-muted-foreground">
+          <div className="flex h-48 items-center justify-center text-muted-foreground">
             <p className="text-sm">Carregando produtos...</p>
           </div>
         )}
 
-        {/* Products - Mobile Cards */}
         {!productsLoading && (
-          <div className="block md:hidden space-y-2">
+          <div className="block space-y-2 md:hidden">
             {filteredProducts.map((product) => {
               const stock = product.inventory ? parseFloat(product.inventory.quantity) : 0;
-              const stockStatus = stock > 20 ? "normal" : stock > 5 ? "low" : "critical";
 
               return (
                 <div key={product.id} className="fluent-card p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex min-w-0 flex-1 items-center gap-3">
                       <ProductImage
                         emoji={product.emoji}
                         image={product.image}
@@ -255,36 +243,28 @@ export function ProductsScreen() {
                         textColor="text-primary"
                       />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-foreground truncate">{product.name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                        <p className="truncate text-sm font-medium text-foreground">{product.name}</p>
+                        <div className="mt-0.5 flex items-center gap-2">
                           <span className="text-xs font-bold text-primary">{parseFloat(product.price).toFixed(2)} MT</span>
-                          {product.track_stock && (
-                            <span className="text-[10px] text-muted-foreground">â€¢ {stock.toFixed(0)} un</span>
-                          )}
+                          {product.track_stock && <span className="text-[10px] text-muted-foreground">• {stock.toFixed(0)} un</span>}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0">
+                    <div className="flex shrink-0 items-center gap-1">
                       {product.track_stock && (
                         <button
                           onClick={() => openSupplyDialog(product)}
-                          className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600"
+                          className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600"
                           title="Fornecer"
                         >
-                          <Add24Regular className="w-4 h-4" />
+                          <Add24Regular className="h-4 w-4" />
                         </button>
                       )}
-                      <button
-                        onClick={() => openEditDialog(product)}
-                        className="p-2 rounded-lg bg-secondary text-muted-foreground"
-                      >
-                        <Edit24Regular className="w-4 h-4" />
+                      <button onClick={() => openEditDialog(product)} className="rounded-lg bg-secondary p-2 text-muted-foreground">
+                        <Edit24Regular className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => openDeleteDialog(product)}
-                        className="p-2 rounded-lg text-destructive"
-                      >
-                        <Delete24Regular className="w-4 h-4" />
+                      <button onClick={() => openDeleteDialog(product)} className="rounded-lg p-2 text-destructive">
+                        <Delete24Regular className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
@@ -294,19 +274,18 @@ export function ProductsScreen() {
           </div>
         )}
 
-        {/* Products Table - Desktop */}
         {!productsLoading && (
-          <div className="hidden md:block fluent-card overflow-hidden">
+          <div className="fluent-card hidden overflow-hidden md:block">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-secondary/50">
                   <tr>
-                    <th className="text-left p-4 text-sm font-semibold text-foreground">Produto</th>
-                    <th className="text-left p-4 text-sm font-semibold text-foreground">Categoria</th>
-                    <th className="text-left p-4 text-sm font-semibold text-foreground">PreÃ§o</th>
-                    <th className="text-left p-4 text-sm font-semibold text-foreground">Estoque</th>
-                    <th className="text-left p-4 text-sm font-semibold text-foreground">Status</th>
-                    <th className="text-right p-4 text-sm font-semibold text-foreground">AÃ§Ãµes</th>
+                    <th className="p-4 text-left text-sm font-semibold text-foreground">Produto</th>
+                    <th className="p-4 text-left text-sm font-semibold text-foreground">Categoria</th>
+                    <th className="p-4 text-left text-sm font-semibold text-foreground">Preco</th>
+                    <th className="p-4 text-left text-sm font-semibold text-foreground">Estoque</th>
+                    <th className="p-4 text-left text-sm font-semibold text-foreground">Status</th>
+                    <th className="p-4 text-right text-sm font-semibold text-foreground">Acoes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -322,7 +301,7 @@ export function ProductsScreen() {
                       const stockStatus = stock > 20 ? "normal" : stock > 5 ? "low" : "critical";
 
                       return (
-                        <tr key={product.id} className="border-t border-border hover:bg-secondary/30 transition-colors">
+                        <tr key={product.id} className="border-t border-border transition-colors hover:bg-secondary/30">
                           <td className="p-4">
                             <div className="flex items-center gap-3">
                               <ProductImage
@@ -339,18 +318,19 @@ export function ProductsScreen() {
                           </td>
                           <td className="p-4 text-sm text-muted-foreground">{product.category || "Sem categoria"}</td>
                           <td className="p-4 text-sm font-semibold text-foreground">{parseFloat(product.price).toFixed(2)} MT</td>
-                          <td className="p-4 text-sm text-foreground">
-                            {product.track_stock ? `${stock.toFixed(0)} un` : "N/A"}
-                          </td>
+                          <td className="p-4 text-sm text-foreground">{product.track_stock ? `${stock.toFixed(0)} un` : "N/A"}</td>
                           <td className="p-4">
                             {product.track_stock ? (
-                              <span className={`px-2 py-1 rounded-full text-xs font-medium ${stockStatus === "normal"
-                                ? "bg-success/20 text-success"
-                                : stockStatus === "low"
-                                  ? "bg-warning/20 text-warning"
-                                  : "bg-destructive/20 text-destructive"
-                                }`}>
-                                {stockStatus === "normal" ? "Normal" : stockStatus === "low" ? "Baixo" : "CrÃ­tico"}
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs font-medium ${
+                                  stockStatus === "normal"
+                                    ? "bg-success/20 text-success"
+                                    : stockStatus === "low"
+                                      ? "bg-warning/20 text-warning"
+                                      : "bg-destructive/20 text-destructive"
+                                }`}
+                              >
+                                {stockStatus === "normal" ? "Normal" : stockStatus === "low" ? "Baixo" : "Critico"}
                               </span>
                             ) : (
                               <span className="text-xs text-muted-foreground">Sem controle</span>
@@ -361,23 +341,23 @@ export function ProductsScreen() {
                               {product.track_stock && (
                                 <button
                                   onClick={() => openSupplyDialog(product)}
-                                  className="p-2 rounded-lg hover:bg-emerald-500/10 text-emerald-600 hover:text-emerald-700 transition-colors"
+                                  className="rounded-lg p-2 text-emerald-600 transition-colors hover:bg-emerald-500/10 hover:text-emerald-700"
                                   title="Fornecer produto"
                                 >
-                                  <Add24Regular className="w-4 h-4" />
+                                  <Add24Regular className="h-4 w-4" />
                                 </button>
                               )}
                               <button
                                 onClick={() => openEditDialog(product)}
-                                className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                               >
-                                <Edit24Regular className="w-4 h-4" />
+                                <Edit24Regular className="h-4 w-4" />
                               </button>
                               <button
                                 onClick={() => openDeleteDialog(product)}
-                                className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                               >
-                                <Delete24Regular className="w-4 h-4" />
+                                <Delete24Regular className="h-4 w-4" />
                               </button>
                             </div>
                           </td>
@@ -391,20 +371,20 @@ export function ProductsScreen() {
           </div>
         )}
 
-        {/* Pagination */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
-          <p className="text-sm text-muted-foreground text-center sm:text-left">
+        <div className="mt-4 flex flex-col items-center justify-between gap-3 sm:flex-row">
+          <p className="text-center text-sm text-muted-foreground sm:text-left">
             Mostrando {filteredProducts.length} de {products.length} produtos
           </p>
           <div className="flex items-center gap-2">
-            <button className="fluent-button px-3 py-1.5 text-sm" disabled>Anterior</button>
+            <button className="fluent-button px-3 py-1.5 text-sm" disabled>
+              Anterior
+            </button>
             <button className="fluent-button fluent-button-primary px-3 py-1.5 text-sm">1</button>
             <button className="fluent-button px-3 py-1.5 text-sm">2</button>
-            <button className="fluent-button px-3 py-1.5 text-sm">PrÃ³ximo</button>
+            <button className="fluent-button px-3 py-1.5 text-sm">Proximo</button>
           </div>
         </div>
 
-        {/* Dialogs */}
         <ProductDialog
           isOpen={isDialogOpen}
           onClose={() => setIsDialogOpen(false)}
@@ -422,8 +402,7 @@ export function ProductsScreen() {
           onOpenChange={setIsSupplyDialogOpen}
           product={selectedProduct}
           onSuccess={() => {
-            // Recarregar produtos apÃ³s fornecer
-            // O React Query vai atualizar automaticamente
+            // O React Query atualiza os produtos automaticamente.
           }}
         />
         <AdoptProductDialog open={isAdoptDialogOpen} onOpenChange={setIsAdoptDialogOpen} />

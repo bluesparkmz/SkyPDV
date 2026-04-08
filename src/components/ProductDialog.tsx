@@ -1,19 +1,10 @@
-import { useState, useEffect, useRef } from "react";
-import {
-  Dismiss24Regular,
-  Save24Regular,
-  Box24Regular,
-  Image24Regular,
-} from "@fluentui/react-icons";
-import { Product } from "@/types/product";
+import { useEffect, useRef, useState } from "react";
+import { Box24Regular, Dismiss24Regular, Image24Regular, Save24Regular } from "@fluentui/react-icons";
+
 import { useCategories } from "@/hooks/useCategories";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { isEmoji } from "@/lib/imageUtils";
+import { Product } from "@/types/product";
 
 interface ProductDialogProps {
   isOpen: boolean;
@@ -22,27 +13,27 @@ interface ProductDialogProps {
   product?: Product | null;
 }
 
+const DEFAULT_EMOJI = "📦";
+const EMOJIS = ["📦", "🥤", "🍔", "🍕", "🌭", "🍟", "🍿", "🍫", "🍦", "🍰", "🍪", "🍩", "☕", "🧃", "💧", "🍹", "🍺", "🥗", "🥪", "🌮", "🧀"];
+
 export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     price: "",
     category: "",
     stock: "",
-    image: "📦",
-    emoji: "📦",
+    image: DEFAULT_EMOJI,
+    emoji: DEFAULT_EMOJI,
     is_fastfood: false,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: categoriesList = [] } = useCategories();
 
-  const emojis = ["📦", "🥤", "🍔", "🍕", "🌭", "🍟", "🍿", "🍫", "🍦", "🍰", "🍪", "🍩", "☕", "🧃", "💧", "🍹", "🍺", "🥗", "🥪", "🌮", "🧀"];
-
-  // Definir categoria padrão quando categorias carregarem
   useEffect(() => {
     if (categoriesList.length > 0 && !formData.category && !product) {
-      setFormData(prev => ({ ...prev, category: categoriesList[0] }));
+      setFormData((prev) => ({ ...prev, category: categoriesList[0] }));
     }
-  }, [categoriesList, product]);
+  }, [categoriesList, formData.category, product]);
 
   useEffect(() => {
     if (product) {
@@ -51,60 +42,56 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         price: product.price.toString(),
         category: product.category,
         stock: product.stock.toString(),
-        image: product.image || "📦",
-        emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : "📦"),
+        image: product.image || DEFAULT_EMOJI,
+        emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : DEFAULT_EMOJI),
         is_fastfood: (product as any).is_fastfood || false,
       });
-    } else {
-      setFormData({
-        name: "",
-        price: "",
-        category: "bebidas",
-        stock: "",
-        image: "📦",
-        emoji: "📦",
-        is_fastfood: false,
-      });
+      return;
     }
-  }, [product, isOpen]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const result = reader.result as string;
-        setFormData({ ...formData, image: result, emoji: "📦" });
-      };
-      reader.readAsDataURL(file);
-    }
+    setFormData({
+      name: "",
+      price: "",
+      category: categoriesList[0] || "bebidas",
+      stock: "",
+      image: DEFAULT_EMOJI,
+      emoji: DEFAULT_EMOJI,
+      is_fastfood: false,
+    });
+  }, [product, isOpen, categoriesList]);
+
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setFormData((prev) => ({ ...prev, image: result, emoji: DEFAULT_EMOJI }));
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleEmojiSelect = (emoji: string) => {
-    setFormData({ ...formData, image: emoji, emoji: emoji });
+    setFormData((prev) => ({ ...prev, image: emoji, emoji }));
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
 
-    // Garantir que sempre tenha um emoji padrão se não houver imagem nem emoji
     let finalImage = formData.image;
     let finalEmoji = formData.emoji;
 
-    if (!finalImage || finalImage.trim() === "") {
-      finalImage = "📦";
-      finalEmoji = "📦";
+    if (!finalImage?.trim()) {
+      finalImage = DEFAULT_EMOJI;
+      finalEmoji = DEFAULT_EMOJI;
     } else if (isEmoji(finalImage)) {
-      // Se a imagem é um emoji, usar como emoji também
       finalEmoji = finalImage;
-    } else {
-      // Se é uma imagem (não emoji), garantir que tem emoji padrão
-      if (!finalEmoji || finalEmoji.trim() === "") {
-        finalEmoji = "📦";
-      }
+    } else if (!finalEmoji?.trim()) {
+      finalEmoji = DEFAULT_EMOJI;
     }
 
     onSave({
@@ -112,50 +99,49 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       name: formData.name,
       price: parseFloat(formData.price) || 0,
       category: formData.category,
-      stock: parseInt(formData.stock) || 0,
+      stock: parseInt(formData.stock, 10) || 0,
       image: finalImage,
       emoji: finalEmoji,
       is_fastfood: formData.is_fastfood,
     } as any);
+
     onClose();
   };
 
-  const isEditing = !!product;
+  const isEditing = Boolean(product);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[500px] bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Box24Regular className="w-4 h-4 text-primary-foreground" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
+              <Box24Regular className="h-4 w-4 text-primary-foreground" />
             </div>
             {isEditing ? "Editar Produto" : "Novo Produto"}
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-          {/* Emoji Selector */}
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Ícone (Emoji ou Imagem)
-            </label>
-            <div className="flex flex-wrap gap-2 p-3 bg-secondary/50 rounded-lg max-h-24 overflow-auto windows-scrollbar mb-2">
-              {emojis.map((emoji) => (
+            <label className="mb-2 block text-sm font-medium text-foreground">Icone (Emoji ou Imagem)</label>
+            <div className="mb-2 flex max-h-24 flex-wrap gap-2 overflow-auto rounded-lg bg-secondary/50 p-3 windows-scrollbar">
+              {EMOJIS.map((emoji) => (
                 <button
                   key={emoji}
                   type="button"
                   onClick={() => handleEmojiSelect(emoji)}
-                  className={`w-10 h-10 text-xl rounded-lg transition-all ${(formData.image === emoji || formData.emoji === emoji)
-                    ? "bg-primary scale-110 shadow-lg"
-                    : "bg-card hover:bg-secondary"
-                    }`}
+                  className={`h-10 w-10 rounded-lg text-xl transition-all ${
+                    formData.image === emoji || formData.emoji === emoji
+                      ? "scale-110 bg-primary shadow-lg"
+                      : "bg-card hover:bg-secondary"
+                  }`}
                 >
                   {emoji}
                 </button>
               ))}
             </div>
-            {/* Upload de Imagem */}
+
             <div className="mt-2">
               <input
                 ref={fileInputRef}
@@ -167,141 +153,121 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               />
               <label
                 htmlFor="image-upload"
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary/50 border border-border cursor-pointer hover:bg-secondary transition-colors text-sm text-foreground"
+                className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-secondary/50 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
               >
-                <Image24Regular className="w-4 h-4" />
+                <Image24Regular className="h-4 w-4" />
                 {formData.image && !isEmoji(formData.image) ? "Trocar Imagem" : "Enviar Imagem"}
               </label>
+
               {formData.image && !isEmoji(formData.image) && (
-                <div className="mt-2 relative">
-                  <img
-                    src={formData.image}
-                    alt="Preview"
-                    className="w-20 h-20 object-cover rounded-lg border border-border"
-                  />
+                <div className="relative mt-2">
+                  <img src={formData.image} alt="Preview" className="h-20 w-20 rounded-lg border border-border object-cover" />
                   <button
                     type="button"
                     onClick={() => {
-                      setFormData({ ...formData, image: "📦", emoji: "📦" });
+                      setFormData((prev) => ({ ...prev, image: DEFAULT_EMOJI, emoji: DEFAULT_EMOJI }));
                       if (fileInputRef.current) {
                         fileInputRef.current.value = "";
                       }
                     }}
-                    className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center text-xs hover:bg-red-600"
+                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600"
                   >
-                    ×
+                    x
                   </button>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Name */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Nome do Produto
-            </label>
+            <label className="mb-2 block text-sm font-medium text-foreground">Nome do Produto</label>
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
               placeholder="Ex: Coca-Cola 350ml"
               required
-              className="w-full px-4 py-2.5 rounded-lg bg-secondary/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+              className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
             />
           </div>
 
-          {/* Price and Stock */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                Preço (MT)
-              </label>
+              <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={formData.price}
-                onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
                 placeholder="0.00"
                 required
-                className="w-full px-4 py-2.5 rounded-lg bg-secondary/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
+
             <div>
-              <label className="text-sm font-medium text-foreground mb-2 block">
-                Estoque
-              </label>
+              <label className="mb-2 block text-sm font-medium text-foreground">Estoque</label>
               <input
                 type="number"
                 min="0"
                 value={formData.stock}
-                onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                onChange={(event) => setFormData((prev) => ({ ...prev, stock: event.target.value }))}
                 placeholder="0"
                 required
-                className="w-full px-4 py-2.5 rounded-lg bg-secondary/50 border border-border text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
               />
             </div>
           </div>
 
-          {/* Category */}
           <div>
-            <label className="text-sm font-medium text-foreground mb-2 block">
-              Categoria
-            </label>
+            <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
             <select
               value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              className="w-full px-4 py-2.5 rounded-lg bg-secondary/50 border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary"
+              onChange={(event) => setFormData((prev) => ({ ...prev, category: event.target.value }))}
+              className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               <option value="">Sem Categoria</option>
-              {categoriesList.map((cat) => (
-                <option key={cat} value={cat}>{cat}</option>
+              {categoriesList.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
               ))}
             </select>
           </div>
 
-          {/* Fastfood Toggle */}
-          <div className="flex items-center justify-between p-4 rounded-lg bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-800">
+          <div className="flex items-center justify-between rounded-lg border-2 border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950/20">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/30">
                 🍔
               </div>
               <div>
-                <label htmlFor="is_fastfood" className="text-sm font-semibold text-foreground cursor-pointer">
-                  Disponível no Fastfood
+                <label htmlFor="is_fastfood" className="cursor-pointer text-sm font-semibold text-foreground">
+                  Disponivel no Fastfood
                 </label>
-                <p className="text-xs text-muted-foreground">Produto aparecerá no app de delivery</p>
+                <p className="text-xs text-muted-foreground">Produto aparecera no app de delivery</p>
               </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="relative inline-flex cursor-pointer items-center">
               <input
                 type="checkbox"
                 id="is_fastfood"
                 checked={formData.is_fastfood}
-                onChange={(e) => setFormData({ ...formData, is_fastfood: e.target.checked })}
-                className="sr-only peer"
+                onChange={(event) => setFormData((prev) => ({ ...prev, is_fastfood: event.target.checked }))}
+                className="peer sr-only"
               />
-              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:peer-focus:ring-orange-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-orange-500"></div>
+              <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-orange-500 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:bg-gray-700 dark:border-gray-600 dark:peer-focus:ring-orange-800 rtl:peer-checked:after:-translate-x-full" />
             </label>
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-2 pt-4 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="fluent-button gap-2"
-            >
-              <Dismiss24Regular className="w-4 h-4" />
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
+            <button type="button" onClick={onClose} className="fluent-button gap-2">
+              <Dismiss24Regular className="h-4 w-4" />
               Cancelar
             </button>
-            <button
-              type="submit"
-              className="fluent-button fluent-button-primary gap-2"
-            >
-              <Save24Regular className="w-4 h-4" />
-              {isEditing ? "Salvar Alterações" : "Cadastrar"}
+            <button type="submit" className="fluent-button fluent-button-primary gap-2">
+              <Save24Regular className="h-4 w-4" />
+              {isEditing ? "Salvar Alteracoes" : "Cadastrar"}
             </button>
           </div>
         </form>
