@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+﻿import { useState, useEffect, type ReactNode } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import type { DrawerProps } from "@fluentui/react-components";
@@ -93,6 +93,28 @@ type Props = {
   onOpenSetup?: () => void;
 };
 
+function SettingsPanel({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="rounded-2xl border border-border bg-card shadow-sm">
+      <div className="border-b border-border px-4 py-4 md:px-5">
+        <h2 className="text-base md:text-lg font-semibold text-foreground">{title}</h2>
+        {description && (
+          <p className="mt-1 text-xs md:text-sm text-muted-foreground">{description}</p>
+        )}
+      </div>
+      <div className="p-4 md:p-5">{children}</div>
+    </section>
+  );
+}
+
 export function SettingsScreen({ onOpenSetup }: Props) {
   const styles = useStyles();
   const isMobile = useIsMobile();
@@ -120,9 +142,9 @@ export function SettingsScreen({ onOpenSetup }: Props) {
     { id: "receipt" as const, name: "Recibos", icon: <Receipt24Regular className="w-5 h-5" /> },
     { id: "invoice" as const, name: "Fatura", icon: <Receipt24Regular className="w-5 h-5" /> },
     { id: "printer" as const, name: "Impressora", icon: <Print24Regular className="w-5 h-5" /> },
-    { id: "users" as const, name: "Usuários", icon: <PeopleTeam24Regular className="w-5 h-5" /> },
-    { id: "appearance" as const, name: "Aparência", icon: <Color24Regular className="w-5 h-5" /> },
-    { id: "security" as const, name: "Segurança", icon: <LockClosed24Regular className="w-5 h-5" /> },
+    { id: "users" as const, name: "Usuarios", icon: <PeopleTeam24Regular className="w-5 h-5" /> },
+    { id: "appearance" as const, name: "Aparencia", icon: <Color24Regular className="w-5 h-5" /> },
+    { id: "security" as const, name: "Seguranca", icon: <LockClosed24Regular className="w-5 h-5" /> },
   ];
 
   useEffect(() => {
@@ -152,7 +174,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
             <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
           </NavDrawerHeader>
           <NavDrawerBody className={styles.drawerContent}>
-            <NavSectionHeader>Configurações</NavSectionHeader>
+            <NavSectionHeader>Configuracoes</NavSectionHeader>
             {tabs.map((tab) => (
               <NavItem key={tab.id} value={tab.id} icon={tab.icon}>
                 {tab.name}
@@ -181,7 +203,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                 </Tooltip>
               )}
               <div>
-                <h1 className="text-lg md:text-xl font-bold text-foreground">Configurações</h1>
+                <h1 className="text-lg md:text-xl font-bold text-foreground">Configuracoes</h1>
                 <p className="text-xs text-muted-foreground hidden sm:block">Personalize o sistema</p>
               </div>
               {onOpenSetup && (
@@ -199,127 +221,161 @@ export function SettingsScreen({ onOpenSetup }: Props) {
               )}
             </div>
 
-            <div className="flex-1 fluent-card p-4 md:p-6 min-w-0">
-              <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden mb-4 md:mb-8">
-                <div className="p-3 md:p-6">
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 md:gap-6 mb-3 md:mb-6">
-                    <div className="relative group/avatar hidden md:block">
-                      <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-gradient-to-tr from-primary via-purple-500 to-pink-500 p-[3px]">
-                        <img
-                          src={resolveAvatar(u?.profile_image, baseUrl)}
-                          className="w-full h-full rounded-full object-cover bg-background"
-                          alt="Profile"
-                        />
-                      </div>
-                      <button className="absolute bottom-0 right-0 p-1.5 bg-background rounded-full shadow-md border border-border hover:bg-secondary transition-colors text-primary">
-                        <Camera24Regular className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="flex-1 min-w-0 text-center sm:text-left">
-                      <div className="flex flex-col sm:flex-row items-center gap-2 mb-1">
-                        <h2 className="text-lg md:text-2xl font-bold text-foreground truncate max-w-full">
-                          {displayName || "Carregando..."}
-                        </h2>
-                        {isVerified && (
-                          <CheckmarkCircle24Regular className="w-5 h-5 text-primary" title="Verificado" />
-                        )}
-                      </div>
-                      <p className="text-muted-foreground text-xs md:text-sm mb-2 md:mb-4">@{u?.username || "..."}</p>
-
-                      <div className="hidden md:flex flex-wrap justify-center sm:justify-start gap-4 text-sm font-medium">
-                        <div className="flex items-center gap-1.5 text-foreground">
-                          <Box24Regular className="w-4 h-4" />
-                          <span>{stats?.total_products || 0}</span>
-                          <span className="text-muted-foreground font-normal">Produtos</span>
+            <div className="flex-1 min-w-0 space-y-6">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_320px]">
+                <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                  <div className="border-b border-border px-4 py-4 md:px-5 md:py-5">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                      <div className="flex items-center gap-4 min-w-0">
+                        <div className="relative shrink-0">
+                          <div className="w-16 h-16 rounded-2xl border border-border bg-secondary/60 p-1.5">
+                            <img
+                              src={resolveAvatar(u?.profile_image, baseUrl)}
+                              className="w-full h-full rounded-xl object-cover bg-background"
+                              alt="Perfil"
+                            />
+                          </div>
+                          <button className="absolute -bottom-2 -right-2 rounded-full border border-border bg-background p-1.5 text-primary shadow-sm transition-colors hover:bg-secondary">
+                            <Camera24Regular className="w-4 h-4" />
+                          </button>
                         </div>
-                        <div className="flex items-center gap-1.5 text-foreground">
-                          <PeopleTeam24Regular className="w-4 h-4" />
-                          <span>{stats?.total_followers || 0}</span>
-                          <span className="text-muted-foreground font-normal">Seguidores</span>
+
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
+                              {displayName || "Conta do PDV"}
+                            </h2>
+                            {isVerified && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-600">
+                                <CheckmarkCircle24Regular className="w-4 h-4" />
+                                Verificado
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground">@{u?.username || "usuario"}</p>
+                          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                            Centro de configuracoes do terminal, dados da empresa e preferencias operacionais.
+                          </p>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="hidden md:flex gap-2">
-                      <a
-                        href={`https://skyvenda.com/${u?.username}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl bg-secondary text-foreground font-semibold text-sm hover:bg-secondary/80 transition-colors border border-border"
-                      >
-                        <Link24Regular className="w-4 h-4" />
-                        <span className="hidden lg:inline">Ver no Site</span>
-                      </a>
-                      <Button
-                        onClick={logout}
-                        variant="ghost"
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-destructive hover:bg-destructive/10 hover:text-destructive"
-                      >
-                        <SignOut24Regular className="w-4 h-4" />
-                        <span className="hidden lg:inline">Sair da Conta</span>
-                      </Button>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex items-center gap-2"
+                          onClick={() => setActiveTab("company")}
+                        >
+                          <Edit24Regular className="w-4 h-4" />
+                          Editar dados
+                        </Button>
+                        <a
+                          href={`https://skyvenda.com/${u?.username}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80"
+                        >
+                          <Link24Regular className="w-4 h-4" />
+                          Ver no site
+                        </a>
+                        <Button
+                          onClick={logout}
+                          variant="ghost"
+                          className="flex items-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                        >
+                          <SignOut24Regular className="w-4 h-4" />
+                          Sair
+                        </Button>
+                      </div>
                     </div>
                   </div>
 
-                  {u?.bio && (
-                    <p className="hidden md:block text-sm text-muted-foreground mb-6 bg-secondary/50 p-4 rounded-xl border border-border">
-                      {u.bio}
-                    </p>
-                  )}
-
-                  <div className="hidden md:grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2">
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{nameLabel}</span>
-                      <p className="text-sm font-semibold text-foreground truncate">{displayName || "Não definido"}</p>
+                  <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4 md:p-5">
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{nameLabel}</p>
+                      <p className="mt-2 truncate text-sm font-semibold text-foreground">{displayName || "Nao definido"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Conta principal do terminal</p>
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tipo de Conta</span>
-                      <p className="text-sm font-semibold text-foreground capitalize">{u?.user_type || "Nível Básico"}</p>
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tipo de conta</p>
+                      <p className="mt-2 text-sm font-semibold capitalize text-foreground">{u?.user_type || "Nivel basico"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Classificacao atual da conta</p>
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Contacto / WhatsApp</span>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Call24Regular className="w-4 h-4" />
-                        {u?.whatsapp_number || u?.phone || "Não configurado"}
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contacto / WhatsApp</p>
+                      <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Call24Regular className="w-4 h-4 text-primary" />
+                        <span className="truncate">{u?.whatsapp_number || u?.phone || "Nao configurado"}</span>
                       </div>
+                      <p className="mt-1 text-xs text-muted-foreground">Canal principal de comunicacao</p>
                     </div>
-                    <div className="space-y-1">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Saldo SkyWallet</span>
-                      <div className="flex items-center gap-2 text-sm font-semibold text-emerald-500">
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo SkyWallet</p>
+                      <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-emerald-600">
                         <Money24Regular className="w-4 h-4" />
                         {u?.wallet_balance?.toLocaleString() || "0"} MZN
                       </div>
+                      <p className="mt-1 text-xs text-muted-foreground">Disponivel para operacoes</p>
                     </div>
                   </div>
-                </div>
+                </section>
 
-                <div className="border-t border-border bg-secondary/30 p-2 md:p-4">
-                  <button
-                    onClick={() => setActiveTab("company")}
-                    className="w-full py-2 md:py-2.5 rounded-xl bg-primary text-primary-foreground font-bold text-xs md:text-sm hover:bg-primary/90 transition-all shadow-sm active:scale-[0.99]"
-                  >
-                    Editar Informações do Perfil
-                  </button>
+                <div className="space-y-4">
+                  <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                      <BuildingShop24Regular className="w-4 h-4 text-primary" />
+                      Resumo do sistema
+                    </div>
+                    <div className="mt-4 space-y-3">
+                      <div className="rounded-xl border border-border bg-background/80 p-3">
+                        <p className="text-xs text-muted-foreground">Produtos cadastrados</p>
+                        <p className="mt-1 text-xl font-bold text-foreground">{stats?.total_products || 0}</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/80 p-3">
+                        <p className="text-xs text-muted-foreground">Estado da conta</p>
+                        <p className="mt-1 text-sm font-semibold text-foreground">
+                          {isVerified ? "Conta validada" : "Aguardando validacao"}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/80 p-3">
+                        <p className="text-xs text-muted-foreground">Identificador</p>
+                        <p className="mt-1 break-all text-sm font-semibold text-foreground">
+                          {u?.unique_identifier || "Nao definido"}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  {u?.bio && (
+                    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Info24Regular className="w-4 h-4 text-primary" />
+                        Descricao
+                      </div>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{u.bio}</p>
+                    </section>
+                  )}
                 </div>
               </div>
 
               {activeTab === "general" && (
+                <SettingsPanel
+                  title="Configuracoes gerais"
+                  description="Preferencias do terminal, idioma e comportamento padrao do PDV."
+                >
                 <div className="space-y-4 md:space-y-6">
-                  <h2 className="text-base md:text-lg font-semibold text-foreground">Configurações Gerais</h2>
 
                   <div className="space-y-4">
                     <div>
                       <label className="text-sm font-medium text-foreground block mb-2">Idioma</label>
                       <select className="w-full md:max-w-xs px-4 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
-                        <option>Português (Brasil)</option>
+                        <option>Portugues (Brasil)</option>
                         <option>English</option>
-                        <option>Español</option>
+                        <option>Espanol</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="text-sm font-medium text-foreground block mb-2">Fuso Horário</label>
+                      <label className="text-sm font-medium text-foreground block mb-2">Fuso horario</label>
                       <select className="w-full md:max-w-xs px-4 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
                         <option>America/Sao_Paulo (GMT-3)</option>
                         <option>America/Manaus (GMT-4)</option>
@@ -350,11 +406,15 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                     </div>
                   </div>
                 </div>
+                </SettingsPanel>
               )}
 
               {activeTab === "company" && (
+                <SettingsPanel
+                  title="Dados da empresa"
+                  description="Informacoes usadas em documentos, contacto e identificacao do negocio."
+                >
                 <div className="space-y-4 md:space-y-6">
-                  <h2 className="text-base md:text-lg font-semibold text-foreground">Dados da Empresa</h2>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -394,21 +454,25 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="text-sm font-medium text-foreground block mb-2">Bio / Descrição</label>
+                      <label className="text-sm font-medium text-foreground block mb-2">Bio / Descricao</label>
                       <textarea
                         defaultValue={u?.bio || ""}
-                        placeholder="Conte um pouco sobre o seu negócio..."
+                        placeholder="Conte um pouco sobre o seu negocio..."
                         rows={3}
                         className="w-full px-4 py-2.5 rounded-lg bg-card border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                       />
                     </div>
                   </div>
                 </div>
+                </SettingsPanel>
               )}
 
               {activeTab === "appearance" && (
+                <SettingsPanel
+                  title="Aparencia"
+                  description="Tema visual e cor de destaque da interface."
+                >
                 <div className="space-y-4 md:space-y-6">
-                  <h2 className="text-base md:text-lg font-semibold text-foreground">Aparência</h2>
 
                   <div className="space-y-4">
                     <div>
@@ -439,17 +503,21 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                     </div>
                   </div>
                 </div>
+                </SettingsPanel>
               )}
 
               {activeTab === "security" && (
+                <SettingsPanel
+                  title="Seguranca"
+                  description="Protecoes do terminal e regras para operacoes sensiveis."
+                >
                 <div className="space-y-4 md:space-y-6">
-                  <h2 className="text-base md:text-lg font-semibold text-foreground">Segurança</h2>
 
                   <div className="space-y-4">
                     <div className="flex items-center justify-between p-3 md:p-4 rounded-lg bg-secondary/50 gap-3">
                       <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground">Bloquear tela após inatividade</p>
-                        <p className="text-xs text-muted-foreground hidden sm:block">Bloqueia automaticamente após 5 minutos</p>
+                        <p className="text-sm font-medium text-foreground">Bloquear tela apos inatividade</p>
+                        <p className="text-xs text-muted-foreground hidden sm:block">Bloqueia automaticamente apos 5 minutos</p>
                       </div>
                       <button className="w-12 h-6 rounded-full bg-primary relative shrink-0">
                         <span className="absolute right-1 top-1 w-4 h-4 rounded-full bg-white" />
@@ -482,12 +550,13 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                     </div>
                   </div>
                 </div>
+                </SettingsPanel>
               )}
 
               {activeTab === "receipt" && (
                 <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
                   <Info24Regular className="w-10 h-10 mb-2 opacity-30" />
-                  <p className="text-sm">Configurações de Recibos</p>
+                  <p className="text-sm">Configuracoes de Recibos</p>
                   <p className="text-xs">Em desenvolvimento</p>
                 </div>
               )}
@@ -500,7 +569,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
 
               <div className="mt-6 md:mt-8 pt-4 md:pt-6 border-t border-border flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
                 <button className="fluent-button w-full sm:w-auto">Cancelar</button>
-                <button className="fluent-button fluent-button-primary w-full sm:w-auto">Salvar Alterações</button>
+                <button className="fluent-button fluent-button-primary w-full sm:w-auto">Salvar alteracoes</button>
               </div>
             </div>
           </div>
@@ -535,7 +604,7 @@ function PrinterSettings() {
 
   const loadPrinters = async () => {
     if (!isConnected) {
-      toast.error("Plugin de hardware não conectado");
+      toast.error("Plugin de hardware nÃ£o conectado");
       return;
     }
 
@@ -547,7 +616,7 @@ function PrinterSettings() {
       if (result.success && result.printers) {
         setPrinters(result.printers);
 
-        // Se não há impressora selecionada, usar a padrão
+        // Se nÃ£o hÃ¡ impressora selecionada, usar a padrÃ£o
         if (!selectedPrinter && result.printers.length > 0) {
           const defaultPrinter = result.printers.find(p => p.default);
           if (defaultPrinter) {
@@ -573,7 +642,7 @@ function PrinterSettings() {
     }
 
     if (!isConnected) {
-      toast.error("Plugin de hardware não conectado");
+      toast.error("Plugin de hardware nÃ£o conectado");
       return;
     }
 
@@ -599,7 +668,7 @@ function PrinterSettings() {
   return (
     <div className="space-y-4 md:space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-base md:text-lg font-semibold text-foreground">Configurações de Impressora</h2>
+        <h2 className="text-base md:text-lg font-semibold text-foreground">Configuracoes de Impressora</h2>
         {isConnected ? (
           <div className="flex items-center gap-2 text-xs text-emerald-500">
             <CheckmarkCircle24Regular className="w-4 h-4" />
@@ -628,7 +697,7 @@ function PrinterSettings() {
       {!isConnected && (
         <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
           <p className="text-sm text-warning">
-            O plugin de hardware não está conectado. Conecte o plugin para configurar a impressora.
+            O plugin de hardware nÃ£o estÃ¡ conectado. Conecte o plugin para configurar a impressora.
           </p>
         </div>
       )}
@@ -655,7 +724,7 @@ function PrinterSettings() {
                       <option value="">Selecione uma impressora</option>
                       {printers.map((printer) => (
                         <option key={printer.name} value={printer.name}>
-                          {printer.name} {printer.default ? "(Padrão)" : ""}
+                          {printer.name} {printer.default ? "(PadrÃ£o)" : ""}
                         </option>
                       ))}
                     </>
@@ -681,13 +750,13 @@ function PrinterSettings() {
             </div>
 
             <div className="p-4 rounded-lg bg-secondary/50 border border-border">
-              <h3 className="text-sm font-semibold text-foreground mb-2">Informações</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">Informacoes</h3>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li>• A impressora selecionada será usada para imprimir recibos de vendas</li>
-                <li>• A configuração é salva localmente no navegador</li>
-                <li>• Você pode alterar a impressora a qualquer momento</li>
+                <li>â€¢ A impressora selecionada serÃ¡ usada para imprimir recibos de vendas</li>
+                <li>â€¢ A configuraÃ§Ã£o Ã© salva localmente no navegador</li>
+                <li>â€¢ VocÃª pode alterar a impressora a qualquer momento</li>
                 {printers.length > 0 && (
-                  <li>• {printers.length} impressora(s) disponível(is)</li>
+                  <li>â€¢ {printers.length} impressora(s) disponÃ­vel(is)</li>
                 )}
               </ul>
             </div>
@@ -765,7 +834,7 @@ function InvoiceSection() {
         <div>
           <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
           <p className="text-sm text-muted-foreground">
-            Liste e gere faturas. Os itens são os produtos do PDV.
+            Liste e gere faturas. Os itens sÃ£o os produtos do PDV.
           </p>
         </div>
         <div className="flex gap-2">
@@ -786,7 +855,7 @@ function InvoiceSection() {
               <th className="px-3 py-2">Total</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Pagamento</th>
-              <th className="px-3 py-2">Ações</th>
+              <th className="px-3 py-2">AÃ§Ãµes</th>
             </tr>
           </thead>
           <tbody>
@@ -873,3 +942,4 @@ function InvoiceSection() {
     </div>
   );
 }
+
