@@ -403,6 +403,8 @@ export const suppliersApi = {
 // Inventário
 export const inventoryApi = {
   getReport: () => apiGet<InventoryReport>("/skypdv/inventory"),
+  getMovements: (skip = 0, limit = 100) =>
+    apiGet<StockMovement[]>(`/skypdv/inventory/movements?skip=${skip}&limit=${limit}`),
   adjust: (data: StockAdjustment) =>
     apiPost<StockMovement>("/skypdv/inventory/adjustment", data),
   transfer: (data: StockTransfer) =>

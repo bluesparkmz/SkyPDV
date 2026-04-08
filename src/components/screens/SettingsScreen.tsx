@@ -604,7 +604,7 @@ function PrinterSettings() {
 
   const loadPrinters = async () => {
     if (!isConnected) {
-      toast.error("Plugin de hardware nÃ£o conectado");
+      toast.error("Plugin de hardware nao conectado");
       return;
     }
 
@@ -616,7 +616,7 @@ function PrinterSettings() {
       if (result.success && result.printers) {
         setPrinters(result.printers);
 
-        // Se nÃ£o hÃ¡ impressora selecionada, usar a padrÃ£o
+        // Se nao ha impressora selecionada, usar a padrao
         if (!selectedPrinter && result.printers.length > 0) {
           const defaultPrinter = result.printers.find(p => p.default);
           if (defaultPrinter) {
@@ -642,7 +642,7 @@ function PrinterSettings() {
     }
 
     if (!isConnected) {
-      toast.error("Plugin de hardware nÃ£o conectado");
+      toast.error("Plugin de hardware nao conectado");
       return;
     }
 
@@ -697,7 +697,7 @@ function PrinterSettings() {
       {!isConnected && (
         <div className="p-4 rounded-lg bg-warning/10 border border-warning/20">
           <p className="text-sm text-warning">
-            O plugin de hardware nÃ£o estÃ¡ conectado. Conecte o plugin para configurar a impressora.
+            O plugin de hardware nao esta conectado. Conecte o plugin para configurar a impressora.
           </p>
         </div>
       )}
@@ -724,7 +724,7 @@ function PrinterSettings() {
                       <option value="">Selecione uma impressora</option>
                       {printers.map((printer) => (
                         <option key={printer.name} value={printer.name}>
-                          {printer.name} {printer.default ? "(PadrÃ£o)" : ""}
+                          {printer.name} {printer.default ? "(Padrao)" : ""}
                         </option>
                       ))}
                     </>
@@ -752,11 +752,11 @@ function PrinterSettings() {
             <div className="p-4 rounded-lg bg-secondary/50 border border-border">
               <h3 className="text-sm font-semibold text-foreground mb-2">Informacoes</h3>
               <ul className="text-xs text-muted-foreground space-y-1">
-                <li>â€¢ A impressora selecionada serÃ¡ usada para imprimir recibos de vendas</li>
-                <li>â€¢ A configuraÃ§Ã£o Ã© salva localmente no navegador</li>
-                <li>â€¢ VocÃª pode alterar a impressora a qualquer momento</li>
+                <li>- A impressora selecionada sera usada para imprimir recibos de vendas</li>
+                <li>- A configuracao e salva localmente no navegador</li>
+                <li>- Voce pode alterar a impressora a qualquer momento</li>
                 {printers.length > 0 && (
-                  <li>â€¢ {printers.length} impressora(s) disponÃ­vel(is)</li>
+                  <li>- {printers.length} impressora(s) disponivel(is)</li>
                 )}
               </ul>
             </div>
@@ -834,7 +834,7 @@ function InvoiceSection() {
         <div>
           <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
           <p className="text-sm text-muted-foreground">
-            Liste e gere faturas. Os itens sÃ£o os produtos do PDV.
+            Liste e gere faturas. Os itens sao os produtos do PDV.
           </p>
         </div>
         <div className="flex gap-2">
@@ -855,7 +855,7 @@ function InvoiceSection() {
               <th className="px-3 py-2">Total</th>
               <th className="px-3 py-2">Status</th>
               <th className="px-3 py-2">Pagamento</th>
-              <th className="px-3 py-2">AÃ§Ãµes</th>
+              <th className="px-3 py-2">Acoes</th>
             </tr>
           </thead>
           <tbody>
@@ -942,4 +942,5 @@ function InvoiceSection() {
     </div>
   );
 }
+
 
