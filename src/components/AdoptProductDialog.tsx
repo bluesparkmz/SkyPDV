@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search24Regular } from "@fluentui/react-icons";
 
 import { useAdoptProduct, useCatalogProducts } from "@/hooks/useProducts";
@@ -17,6 +17,7 @@ export function AdoptProductDialog({ open, onOpenChange }: AdoptProductDialogPro
   const [search, setSearch] = useState("");
   const [businessType, setBusinessType] = useState<"loja" | "restaurante">("loja");
   const [category, setCategory] = useState("all");
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const { data: categories = [] } = useCategories();
   const { data: products = [], isLoading } = useCatalogProducts({
     search: search || undefined,
@@ -31,13 +32,33 @@ export function AdoptProductDialog({ open, onOpenChange }: AdoptProductDialogPro
     [products]
   );
 
-  const handleAdopt = async (product: Product) => {
-    await adoptProduct.mutateAsync({
-      source_product_id: product.id,
-      price: product.price,
-      cost_price: product.cost_price,
-      initial_stock: "0",
-    });
+  useEffect(() => {
+    if (!open) {
+      setSelectedIds([]);
+    }
+  }, [open]);
+
+  const toggleSelection = (productId: number) => {
+    setSelectedIds((current) =>
+      current.includes(productId)
+        ? current.filter((id) => id !== productId)
+        : [...current, productId]
+    );
+  };
+
+  const handleAdoptSelected = async () => {
+    const selectedProducts = filteredProducts.filter((product) => selectedIds.includes(product.id));
+
+    for (const product of selectedProducts) {
+      await adoptProduct.mutateAsync({
+        source_product_id: product.id,
+        price: product.price,
+        cost_price: product.cost_price,
+        initial_stock: "0",
+      });
+    }
+
+    setSelectedIds([]);
     onOpenChange(false);
   };
 
@@ -85,15 +106,27 @@ export function AdoptProductDialog({ open, onOpenChange }: AdoptProductDialogPro
             </Select>
           </div>
 
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              {selectedIds.length} produto(s) selecionado(s)
+            </p>
+            <Button
+              onClick={handleAdoptSelected}
+              disabled={selectedIds.length === 0 || adoptProduct.isPending}
+            >
+              Adicionar selecionados
+            </Button>
+          </div>
+
           <div className="max-h-[420px] overflow-auto rounded-xl border border-border">
             <table className="w-full">
               <thead className="bg-secondary/50">
                 <tr>
+                  <th className="p-3 text-left text-sm font-semibold text-foreground">Sel.</th>
                   <th className="p-3 text-left text-sm font-semibold text-foreground">Produto</th>
                   <th className="p-3 text-left text-sm font-semibold text-foreground">Categoria</th>
                   <th className="p-3 text-left text-sm font-semibold text-foreground">Tipo</th>
                   <th className="p-3 text-left text-sm font-semibold text-foreground">Preco</th>
-                  <th className="p-3 text-right text-sm font-semibold text-foreground">Acao</th>
                 </tr>
               </thead>
               <tbody>
@@ -114,19 +147,18 @@ export function AdoptProductDialog({ open, onOpenChange }: AdoptProductDialogPro
                 {!isLoading &&
                   filteredProducts.map((product) => (
                     <tr key={product.id} className="border-t border-border">
+                      <td className="p-3 text-sm text-foreground">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.includes(product.id)}
+                          onChange={() => toggleSelection(product.id)}
+                          className="h-4 w-4"
+                        />
+                      </td>
                       <td className="p-3 text-sm text-foreground">{product.name}</td>
                       <td className="p-3 text-sm text-muted-foreground">{product.category || "-"}</td>
                       <td className="p-3 text-sm text-muted-foreground">{product.is_fastfood ? "Restaurante" : "Loja"}</td>
                       <td className="p-3 text-sm font-medium text-foreground">{parseFloat(product.price).toFixed(2)} MT</td>
-                      <td className="p-3 text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => handleAdopt(product)}
-                          disabled={adoptProduct.isPending}
-                        >
-                          Adicionar
-                        </Button>
-                      </td>
                     </tr>
                   ))}
               </tbody>
