@@ -2,25 +2,28 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownload24Regular,
-  ArrowLeftRight24Regular,
+  ArrowSync24Regular,
   ArrowUpload24Regular,
   CheckmarkCircle24Regular,
   ClipboardTaskListLtr24Regular,
   Edit24Regular,
   ErrorCircle24Regular,
   History24Regular,
+  Print24Regular,
   Search24Regular,
+  Settings24Regular,
   Warning24Regular,
 } from "@fluentui/react-icons";
 import { ProductImage } from "@/components/ProductImage";
 import { StockOperationDialog } from "@/components/StockOperationDialog";
+import { InventorySettingsDialog } from "@/components/InventorySettingsDialog";
 import { inventoryApi, type StockMovement } from "@/services/api";
 import { useProducts } from "@/hooks/useProducts";
 import { usePermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type OperationMode = "in" | "out" | "adjustment" | "transfer";
+type OperationMode = "in" | "out" | "adjustment" | "transfer" | "count";
 
 type DialogState = {
   open: boolean;
@@ -66,6 +69,7 @@ export function StockScreen() {
     productId: null,
     location: "balcao",
   });
+  const [settingsRowId, setSettingsRowId] = useState<number | null>(null);
 
   const { data: products = [], isLoading: productsLoading } = useProducts({ limit: 1000 });
   const { data: inventoryReport, isLoading: reportLoading } = useQuery({
@@ -162,6 +166,38 @@ export function StockScreen() {
     setDialogState({ open: true, mode, productId, location });
   };
 
+  const selectedSettingsRow = useMemo(
+    () => filteredRows.find((row) => row.id === settingsRowId) ?? stockRows.find((row) => row.id === settingsRowId) ?? null,
+    [filteredRows, stockRows, settingsRowId],
+  );
+
+  const exportCsv = () => {
+    const headers = ["Produto", "SKU", "Local", "Atual", "Minimo", "Maximo", "Reservado", "Estado", "Ultima reposicao", "Ultima contagem"];
+    const lines = filteredRows.map((row) => [
+      `"${(row.product?.name ?? row.product_name).replace(/"/g, '""')}"`,
+      `"${(row.product?.sku || row.product_sku || "").replace(/"/g, '""')}"`,
+      LOCATION_LABELS[row.storage_location],
+      row.quantityNumber.toFixed(3),
+      row.minQuantityNumber.toFixed(3),
+      row.max_quantity ?? "",
+      row.reservedNumber.toFixed(3),
+      row.status,
+      row.last_restock_at ? new Date(row.last_restock_at).toLocaleString("pt-MZ") : "",
+      row.last_count_at ? new Date(row.last_count_at).toLocaleString("pt-MZ") : "",
+    ].join(","));
+
+    const csv = [headers.join(","), ...lines].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "relatorio-estoque.csv";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handleDialogSuccess = () => {
     queryClient.invalidateQueries({ queryKey: ["inventory-report"] });
     queryClient.invalidateQueries({ queryKey: ["inventory-movements"] });
@@ -197,9 +233,17 @@ export function StockScreen() {
               <Edit24Regular className="h-4 w-4" />
               Ajuste
             </Button>
+            <Button variant="outline" className="gap-2" onClick={() => openDialog("count")} disabled={!permissions.can_manage_stock}>
+              <ClipboardTaskListLtr24Regular className="h-4 w-4" />
+              Contagem
+            </Button>
             <Button className="gap-2" onClick={() => openDialog("transfer")} disabled={!permissions.can_manage_stock}>
-              <ArrowLeftRight24Regular className="h-4 w-4" />
+              <ArrowSync24Regular className="h-4 w-4" />
               Transferencia
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={exportCsv}>
+              <Print24Regular className="h-4 w-4" />
+              Exportar CSV
             </Button>
           </div>
         </div>
@@ -283,6 +327,7 @@ export function StockScreen() {
                           <th className="p-3 text-left text-xs font-semibold text-foreground">Local</th>
                           <th className="p-3 text-center text-xs font-semibold text-foreground">Atual</th>
                           <th className="p-3 text-center text-xs font-semibold text-foreground">Minimo</th>
+                          <th className="p-3 text-center text-xs font-semibold text-foreground">Maximo</th>
                           <th className="p-3 text-center text-xs font-semibold text-foreground">Reservado</th>
                           <th className="p-3 text-center text-xs font-semibold text-foreground">Estado</th>
                           <th className="p-3 text-right text-xs font-semibold text-foreground">Acoes</th>
@@ -291,7 +336,7 @@ export function StockScreen() {
                       <tbody>
                         {filteredRows.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="p-8 text-center text-sm text-muted-foreground">
+                            <td colSpan={8} className="p-8 text-center text-sm text-muted-foreground">
                               Nenhum item encontrado para os filtros aplicados.
                             </td>
                           </tr>
@@ -322,6 +367,7 @@ export function StockScreen() {
                               <td className="p-3 text-sm text-foreground">{LOCATION_LABELS[row.storage_location]}</td>
                               <td className="p-3 text-center text-sm font-semibold text-foreground">{row.quantityNumber.toFixed(3)}</td>
                               <td className="p-3 text-center text-sm text-muted-foreground">{row.minQuantityNumber.toFixed(3)}</td>
+                              <td className="p-3 text-center text-sm text-muted-foreground">{row.max_quantity ?? "-"}</td>
                               <td className="p-3 text-center text-sm text-muted-foreground">{row.reservedNumber.toFixed(3)}</td>
                               <td className="p-3">
                                 <div className="flex items-center justify-center gap-2">
@@ -362,10 +408,10 @@ export function StockScreen() {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    onClick={() => openDialog("adjustment", row.product_id, row.storage_location)}
+                                    onClick={() => openDialog("count", row.product_id, row.storage_location)}
                                     disabled={!permissions.can_manage_stock}
                                   >
-                                    Ajuste
+                                    Contar
                                   </Button>
                                   <Button
                                     size="sm"
@@ -373,6 +419,14 @@ export function StockScreen() {
                                     disabled={!permissions.can_manage_stock}
                                   >
                                     Transferir
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => setSettingsRowId(row.id)}
+                                    disabled={!permissions.can_manage_stock}
+                                  >
+                                    <Settings24Regular className="h-4 w-4" />
                                   </Button>
                                 </div>
                               </td>
@@ -446,6 +500,14 @@ export function StockScreen() {
         inventoryRows={inventoryRows}
         initialProductId={dialogState.productId}
         initialLocation={dialogState.location}
+        onSuccess={handleDialogSuccess}
+      />
+      <InventorySettingsDialog
+        open={settingsRowId !== null}
+        onOpenChange={(open) => {
+          if (!open) setSettingsRowId(null);
+        }}
+        row={selectedSettingsRow}
         onSuccess={handleDialogSuccess}
       />
     </div>

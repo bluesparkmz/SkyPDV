@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type OperationMode = "in" | "out" | "adjustment" | "transfer";
+type OperationMode = "in" | "out" | "adjustment" | "transfer" | "count";
 
 type Props = {
   open: boolean;
@@ -41,6 +41,11 @@ const MODE_META: Record<OperationMode, { title: string; description: string; act
     title: "Ajuste de estoque",
     description: "Defina o estoque real encontrado na contagem fisica.",
     action: "Aplicar ajuste",
+  },
+  count: {
+    title: "Contagem fisica",
+    description: "Registre a quantidade real encontrada e ajuste o sistema para o valor contado.",
+    action: "Registrar contagem",
   },
   transfer: {
     title: "Transferencia de estoque",
@@ -112,8 +117,9 @@ export function StockOperationDialog({
 
   const quantityNumber = parseFloat(quantity) || 0;
   const isTransfer = mode === "transfer";
+  const isAbsoluteCount = mode === "adjustment" || mode === "count";
   const nextStock =
-    mode === "adjustment"
+    isAbsoluteCount
       ? quantityNumber
       : mode === "out"
         ? locationStock - quantityNumber
@@ -164,7 +170,7 @@ export function StockOperationDialog({
       } else {
         await inventoryApi.adjust({
           product_id: selectedProduct.id,
-          movement_type: mode,
+          movement_type: mode === "count" ? "adjustment" : mode,
           quantity: quantityNumber.toString(),
           notes,
           reference: reference || undefined,
@@ -264,7 +270,7 @@ export function StockOperationDialog({
 
           <div className="grid gap-2 md:grid-cols-2">
             <div className="grid gap-2">
-              <Label>{mode === "adjustment" ? "Estoque real contado" : "Quantidade"}</Label>
+              <Label>{isAbsoluteCount ? "Estoque real contado" : "Quantidade"}</Label>
               <Input
                 value={quantity}
                 onChange={(event) => setQuantity(event.target.value.replace(",", "."))}
@@ -276,12 +282,12 @@ export function StockOperationDialog({
             {!isTransfer && (
               <div className="rounded-xl border border-border bg-secondary/30 p-3">
                 <p className="text-xs text-muted-foreground">
-                  {mode === "adjustment" ? "Estoque atual" : "Resultado previsto"}
+                  {isAbsoluteCount ? "Estoque atual" : "Resultado previsto"}
                 </p>
                 <p className="mt-1 text-lg font-semibold text-foreground">
-                  {(mode === "adjustment" ? locationStock : nextStock).toFixed(3)} un
+                  {(isAbsoluteCount ? locationStock : nextStock).toFixed(3)} un
                 </p>
-                {mode !== "adjustment" && (
+                {!isAbsoluteCount && (
                   <p className="mt-1 text-xs text-muted-foreground">
                     Depois da operacao o local ficara com {nextStock.toFixed(3)} un
                   </p>

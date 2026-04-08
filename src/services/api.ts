@@ -405,6 +405,8 @@ export const inventoryApi = {
   getReport: () => apiGet<InventoryReport>("/skypdv/inventory"),
   getMovements: (skip = 0, limit = 100) =>
     apiGet<StockMovement[]>(`/skypdv/inventory/movements?skip=${skip}&limit=${limit}`),
+  update: (productId: number, data: InventorySettingsUpdate, storageLocation = "balcao") =>
+    apiPut<InventoryReport["products"][number]>(`/skypdv/inventory/${productId}?storage_location=${storageLocation}`, data),
   adjust: (data: StockAdjustment) =>
     apiPost<StockMovement>("/skypdv/inventory/adjustment", data),
   transfer: (data: StockTransfer) =>
@@ -966,6 +968,13 @@ export interface StockAdjustment {
   notes?: string;
   reference?: string;
   storage_location: "balcao" | "congelado" | "armazem";
+}
+
+export interface InventorySettingsUpdate {
+  quantity?: string;
+  min_quantity?: string;
+  max_quantity?: string;
+  storage_location?: "balcao" | "congelado" | "armazem";
 }
 
 export interface StockTransfer {
