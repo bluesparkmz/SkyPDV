@@ -21,7 +21,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     name: "",
     price: "",
     category: "",
-    stock: "",
+    initialStock: "",
     image: DEFAULT_EMOJI,
     emoji: DEFAULT_EMOJI,
     is_fastfood: false,
@@ -41,7 +41,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         name: product.name,
         price: product.price.toString(),
         category: product.category,
-        stock: product.stock.toString(),
+        initialStock: "",
         image: product.image || DEFAULT_EMOJI,
         emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : DEFAULT_EMOJI),
         is_fastfood: (product as any).is_fastfood || false,
@@ -53,7 +53,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       name: "",
       price: "",
       category: categoriesList[0] || "bebidas",
-      stock: "",
+      initialStock: "",
       image: DEFAULT_EMOJI,
       emoji: DEFAULT_EMOJI,
       is_fastfood: false,
@@ -99,7 +99,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       name: formData.name,
       price: parseFloat(formData.price) || 0,
       category: formData.category,
-      stock: parseInt(formData.stock, 10) || 0,
+      initialStock: parseInt(formData.initialStock, 10) || 0,
       image: finalImage,
       emoji: finalEmoji,
       is_fastfood: formData.is_fastfood,
@@ -191,7 +191,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className={`grid gap-4 ${isEditing ? "grid-cols-1" : "grid-cols-2"}`}>
             <div>
               <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
               <input
@@ -206,19 +206,28 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               />
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Estoque</label>
-              <input
-                type="number"
-                min="0"
-                value={formData.stock}
-                onChange={(event) => setFormData((prev) => ({ ...prev, stock: event.target.value }))}
-                placeholder="0"
-                required
-                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
+            {!isEditing && (
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial (Armazem)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.initialStock}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
+                  placeholder="0"
+                  required
+                  className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">Ao cadastrar, este valor entra primeiro no Armazem.</p>
+              </div>
+            )}
           </div>
+
+          {isEditing && (
+            <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
+              O estoque deste produto agora e gerido na tela de Estoque. Aqui podes editar apenas os dados do produto.
+            </div>
+          )}
 
           <div>
             <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>

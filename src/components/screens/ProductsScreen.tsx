@@ -54,7 +54,7 @@ export function ProductsScreen() {
     name: string;
     price: number;
     category: string;
-    stock: number;
+    initialStock?: number;
     image?: string;
     emoji?: string;
     is_fastfood?: boolean;
@@ -69,7 +69,6 @@ export function ProductsScreen() {
             category: productData.category,
             emoji: productData.emoji,
             image: productData.image,
-            initial_stock: productData.stock.toString(),
             is_fastfood: productData.is_fastfood,
           },
         });
@@ -80,7 +79,7 @@ export function ProductsScreen() {
           category: productData.category,
           emoji: productData.emoji || DEFAULT_EMOJI,
           image: productData.image,
-          initial_stock: productData.stock.toString(),
+          initial_stock: (productData.initialStock || 0).toString(),
           track_stock: true,
           is_fastfood: productData.is_fastfood || false,
         });
@@ -147,7 +146,6 @@ export function ProductsScreen() {
         name: selectedProduct.name,
         price: parseFloat(selectedProduct.price),
         category: selectedProduct.category || "",
-        stock: selectedProduct.inventory ? parseFloat(selectedProduct.inventory.quantity) : 0,
         image: selectedProduct.image || selectedProduct.emoji || DEFAULT_EMOJI,
         emoji: selectedProduct.emoji || DEFAULT_EMOJI,
         is_fastfood: selectedProduct.is_fastfood || false,
