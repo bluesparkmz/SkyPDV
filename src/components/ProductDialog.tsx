@@ -15,6 +15,36 @@ interface ProductDialogProps {
 
 const DEFAULT_EMOJI = "📦";
 const EMOJIS = ["📦", "🧃", "🍔", "🍕", "🌭", "🍟", "🍿", "🍫", "🍦", "🍰", "🍪", "🍩", "☕", "🧴", "💧", "🍹", "🍺", "🥗", "🥪", "🌮", "🧀"];
+const PRODUCT_FORM_PREFS_KEY = "skypdv_product_form_prefs";
+
+type ProductFormPrefs = {
+  category?: string;
+  initialStockLocation?: "balcao" | "armazem" | "congelado";
+  is_fastfood?: boolean;
+  track_stock?: boolean;
+};
+
+function loadProductFormPrefs(): ProductFormPrefs {
+  if (typeof window === "undefined") return {};
+
+  try {
+    const raw = window.localStorage.getItem(PRODUCT_FORM_PREFS_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as ProductFormPrefs;
+  } catch {
+    return {};
+  }
+}
+
+function saveProductFormPrefs(prefs: ProductFormPrefs) {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.localStorage.setItem(PRODUCT_FORM_PREFS_KEY, JSON.stringify(prefs));
+  } catch {
+    // ignore local storage errors
+  }
+}
 
 export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialogProps) {
   const [formData, setFormData] = useState({
@@ -53,18 +83,31 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       return;
     }
 
+    const savedPrefs = loadProductFormPrefs();
+
     setFormData({
       name: "",
       price: "",
-      category: categoriesList[0] || "bebidas",
+      category: savedPrefs.category || categoriesList[0] || "bebidas",
       initialStock: "",
-      initialStockLocation: "balcao",
+      initialStockLocation: savedPrefs.initialStockLocation || "balcao",
       image: DEFAULT_EMOJI,
       emoji: DEFAULT_EMOJI,
-      is_fastfood: false,
-      track_stock: true,
+      is_fastfood: savedPrefs.is_fastfood || false,
+      track_stock: savedPrefs.track_stock ?? true,
     });
   }, [product, isOpen, categoriesList]);
+
+  useEffect(() => {
+    if (!isOpen || product) return;
+
+    saveProductFormPrefs({
+      category: formData.category,
+      initialStockLocation: formData.initialStockLocation,
+      is_fastfood: formData.is_fastfood,
+      track_stock: formData.track_stock,
+    });
+  }, [formData.category, formData.initialStockLocation, formData.is_fastfood, formData.track_stock, isOpen, product]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
