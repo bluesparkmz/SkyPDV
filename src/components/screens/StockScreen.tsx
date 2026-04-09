@@ -76,6 +76,21 @@ const LOCATION_LABELS: Record<"balcao" | "congelado" | "armazem", string> = {
   congelado: "Congelado",
 };
 
+function normalizeStorageLocation(value?: string | null): "balcao" | "armazem" | "congelado" {
+  const normalized = String(value || "")
+    .toLowerCase()
+    .replace("storagelocationenum.", "")
+    .trim();
+
+  if (normalized === "armazem") return "armazem";
+  if (normalized === "congelado") return "congelado";
+  return "balcao";
+}
+
+function getLocationLabel(value?: string | null) {
+  return LOCATION_LABELS[normalizeStorageLocation(value)];
+}
+
 function getMovementLabel(type: StockMovement["movement_type"]) {
   switch (type) {
     case "in":
@@ -136,6 +151,7 @@ export function StockScreen() {
     return inventoryRows
       .map((row) => {
         const product = productMap.get(row.product_id);
+        const normalizedLocation = normalizeStorageLocation(row.storage_location);
         const quantity = parseFloat(row.quantity);
         const minQuantity = parseFloat(row.min_quantity);
         const reserved = parseFloat(row.reserved_quantity);
@@ -149,6 +165,7 @@ export function StockScreen() {
 
         return {
           ...row,
+          storage_location: normalizedLocation,
           product,
           quantityNumber: quantity,
           minQuantityNumber: minQuantity,
@@ -226,7 +243,7 @@ export function StockScreen() {
     const lines = filteredRows.map((row) => [
       `"${(row.product?.name ?? row.product_name).replace(/"/g, '""')}"`,
       `"${(row.product?.sku || row.product_sku || "").replace(/"/g, '""')}"`,
-      LOCATION_LABELS[row.storage_location],
+      getLocationLabel(row.storage_location),
       row.quantityNumber.toFixed(3),
       row.minQuantityNumber.toFixed(3),
       row.max_quantity ?? "",
@@ -451,7 +468,7 @@ export function StockScreen() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="p-3 text-sm text-foreground">{LOCATION_LABELS[row.storage_location]}</td>
+                              <td className="p-3 text-sm text-foreground">{getLocationLabel(row.storage_location)}</td>
                               <td className="p-3 text-center text-sm font-semibold text-foreground">{row.quantityNumber.toFixed(3)}</td>
                               <td className="p-3 text-center text-sm text-muted-foreground">{row.minQuantityNumber.toFixed(3)}</td>
                               <td className="p-3 text-center text-sm text-muted-foreground">{row.max_quantity ?? "-"}</td>
@@ -545,8 +562,8 @@ export function StockScreen() {
                             <p className="truncate text-sm font-medium text-foreground">{movement.productName}</p>
                             <p className="mt-1 text-xs text-muted-foreground">
                               {getMovementLabel(movement.movement_type)}
-                              {movement.from_location ? ` - ${LOCATION_LABELS[movement.from_location as "balcao" | "congelado" | "armazem"]}` : ""}
-                              {movement.to_location ? ` -> ${LOCATION_LABELS[movement.to_location as "balcao" | "congelado" | "armazem"]}` : ""}
+                              {movement.from_location ? ` - ${getLocationLabel(movement.from_location)}` : ""}
+                              {movement.to_location ? ` -> ${getLocationLabel(movement.to_location)}` : ""}
                             </p>
                           </div>
                           <span
@@ -597,8 +614,8 @@ export function StockScreen() {
                             <p className="truncate text-sm font-medium text-foreground">{movement.productName}</p>
                             <p className="mt-1 text-xs text-muted-foreground">
                               {getMovementLabel(movement.movement_type)}
-                              {movement.from_location ? ` - ${LOCATION_LABELS[movement.from_location as "balcao" | "congelado" | "armazem"]}` : ""}
-                              {movement.to_location ? ` -> ${LOCATION_LABELS[movement.to_location as "balcao" | "congelado" | "armazem"]}` : ""}
+                              {movement.from_location ? ` - ${getLocationLabel(movement.from_location)}` : ""}
+                              {movement.to_location ? ` -> ${getLocationLabel(movement.to_location)}` : ""}
                             </p>
                           </div>
                           <span
@@ -641,7 +658,7 @@ export function StockScreen() {
                             <div className="min-w-0">
                               <p className="truncate text-sm font-medium text-foreground">{row.product?.name ?? row.product_name}</p>
                               <p className="mt-1 text-xs text-muted-foreground">
-                                Local {LOCATION_LABELS[row.storage_location]} - Minimo {row.minQuantityNumber.toFixed(0)} un
+                                Local {getLocationLabel(row.storage_location)} - Minimo {row.minQuantityNumber.toFixed(0)} un
                               </p>
                             </div>
                             <span className={`text-xs font-semibold ${row.status === "critico" ? "text-destructive" : "text-warning"}`}>
