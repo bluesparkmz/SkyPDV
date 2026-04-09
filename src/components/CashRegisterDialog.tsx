@@ -18,6 +18,11 @@ interface CashRegisterDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+function parseServerUtcDate(value?: string | null) {
+  if (!value) return null;
+  return /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? new Date(value) : new Date(`${value}Z`);
+}
+
 export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogProps) {
   const { data: currentRegister } = useCashRegister();
   const openMutation = useOpenCashRegister();
@@ -29,7 +34,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
 
   const isOpen = currentRegister?.status === "open";
   const expiresAt = currentRegister?.opened_at
-    ? new Date(new Date(currentRegister.opened_at).getTime() + 24 * 60 * 60 * 1000)
+    ? new Date((parseServerUtcDate(currentRegister.opened_at)?.getTime() || 0) + 24 * 60 * 60 * 1000)
     : null;
   const expectedClosingAmount = currentRegister?.expected_amount
     ? parseFloat(currentRegister.expected_amount).toFixed(2)
@@ -115,7 +120,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
               {expiresAt && (
                 <div className="flex justify-between text-sm">
                   <span className="text-muted-foreground">Expira em:</span>
-                  <span className="font-medium">{expiresAt.toLocaleString("pt-BR")}</span>
+                  <span className="font-medium">{expiresAt.toLocaleString("pt-MZ")}</span>
                 </div>
               )}
             </div>

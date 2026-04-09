@@ -1386,10 +1386,12 @@ function CashRegistersView({
               <TableBody>
                 {registers.map((register) => {
                   const operatorName = cashierNameByUserId.get(register.user_id) || `Caixa ${register.user_id}`;
-                  const registerDate = format(parseISO(register.opened_at), "dd/MM/yyyy", { locale: ptBR });
-                  const openedAt = format(parseISO(register.opened_at), "dd/MM/yyyy HH:mm", { locale: ptBR });
+                  const openedAtDate = parseServerUtcDate(register.opened_at);
+                  const closedAtDate = parseServerUtcDate(register.closed_at);
+                  const registerDate = openedAtDate ? format(openedAtDate, "dd/MM/yyyy", { locale: ptBR }) : "-";
+                  const openedAt = openedAtDate ? format(openedAtDate, "dd/MM/yyyy HH:mm", { locale: ptBR }) : "-";
                   const closedAt = register.closed_at
-                    ? format(parseISO(register.closed_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                    ? format(closedAtDate!, "dd/MM/yyyy HH:mm", { locale: ptBR })
                     : "-";
                   return (
                     <TableRow key={register.id}>
@@ -1420,4 +1422,8 @@ function CashRegistersView({
       </div>
     </div>
   );
+}
+function parseServerUtcDate(value?: string | null) {
+  if (!value) return null;
+  return /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? new Date(value) : new Date(`${value}Z`);
 }
