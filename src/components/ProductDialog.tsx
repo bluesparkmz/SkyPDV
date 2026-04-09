@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+﻿import { useEffect, useRef, useState } from "react";
 import { Box24Regular, Dismiss24Regular, Image24Regular, Save24Regular } from "@fluentui/react-icons";
 
 import { useCategories } from "@/hooks/useCategories";
@@ -14,7 +14,7 @@ interface ProductDialogProps {
 }
 
 const DEFAULT_EMOJI = "📦";
-const EMOJIS = ["📦", "🥤", "🍔", "🍕", "🌭", "🍟", "🍿", "🍫", "🍦", "🍰", "🍪", "🍩", "☕", "🧃", "💧", "🍹", "🍺", "🥗", "🥪", "🌮", "🧀"];
+const EMOJIS = ["📦", "🧃", "🍔", "🍕", "🌭", "🍟", "🍿", "🍫", "🍦", "🍰", "🍪", "🍩", "☕", "🧴", "💧", "🍹", "🍺", "🥗", "🥪", "🌮", "🧀"];
 
 export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialogProps) {
   const [formData, setFormData] = useState({
@@ -116,7 +116,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[500px] bg-card border-border">
+      <DialogContent className="max-h-[88vh] overflow-hidden bg-card border-border sm:max-w-[640px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -126,189 +126,191 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Icone (Emoji ou Imagem)</label>
-            <div className="mb-2 flex max-h-24 flex-wrap gap-2 overflow-auto rounded-lg bg-secondary/50 p-3 windows-scrollbar">
-              {EMOJIS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => handleEmojiSelect(emoji)}
-                  className={`h-10 w-10 rounded-lg text-xl transition-all ${
-                    formData.image === emoji || formData.emoji === emoji
-                      ? "scale-110 bg-primary shadow-lg"
-                      : "bg-card hover:bg-secondary"
-                  }`}
-                >
-                  {emoji}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-                id="image-upload"
-              />
-              <label
-                htmlFor="image-upload"
-                className="flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-secondary/50 px-4 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
-              >
-                <Image24Regular className="h-4 w-4" />
-                {formData.image && !isEmoji(formData.image) ? "Trocar Imagem" : "Enviar Imagem"}
-              </label>
-
-              {formData.image && !isEmoji(formData.image) && (
-                <div className="relative mt-2">
-                  <img src={formData.image} alt="Preview" className="h-20 w-20 rounded-lg border border-border object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFormData((prev) => ({ ...prev, image: DEFAULT_EMOJI, emoji: DEFAULT_EMOJI }));
-                      if (fileInputRef.current) {
-                        fileInputRef.current.value = "";
-                      }
-                    }}
-                    className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600"
-                  >
-                    x
-                  </button>
+        <form onSubmit={handleSubmit} className="mt-4 flex max-h-[calc(88vh-110px)] flex-col">
+          <div className="windows-scrollbar space-y-4 overflow-y-auto pr-1">
+            <div className="grid gap-4 md:grid-cols-[120px_1fr]">
+              <div className="space-y-3">
+                <div className="flex h-24 items-center justify-center rounded-2xl border border-border bg-secondary/40">
+                  {formData.image && !isEmoji(formData.image) ? (
+                    <img src={formData.image} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
+                  ) : (
+                    <span className="text-4xl">{formData.emoji || DEFAULT_EMOJI}</span>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
 
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Nome do Produto</label>
-            <input
-              type="text"
-              value={formData.name}
-              onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-              placeholder="Ex: Coca-Cola 350ml"
-              required
-              className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
-          </div>
-
-          <div className={`grid gap-4 ${isEditing ? "grid-cols-1" : "grid-cols-2"}`}>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.price}
-                onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
-                placeholder="0.00"
-                required
-                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-              />
-            </div>
-
-            {!isEditing && formData.track_stock && (
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial (Armazem)</label>
                 <input
-                  type="number"
-                  min="0"
-                  value={formData.initialStock}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
-                  placeholder="0"
-                  required
-                  className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="image-upload"
                 />
-                <p className="mt-1 text-xs text-muted-foreground">Ao cadastrar, este valor entra primeiro no Armazem.</p>
-              </div>
-            )}
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
-            <div className="space-y-1 pr-4">
-              <label htmlFor="track_stock" className="cursor-pointer text-sm font-semibold text-foreground">
-                Controlar estoque
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Desative para produtos que podem ser vendidos sem quantidade armazenada.
-              </p>
-            </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                id="track_stock"
-                checked={formData.track_stock}
-                onChange={(event) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    track_stock: event.target.checked,
-                    initialStock: event.target.checked ? prev.initialStock : "",
-                  }))
-                }
-                className="peer sr-only"
-              />
-              <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
-            </label>
-          </div>
-
-          {!isEditing && !formData.track_stock && (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
-              Este produto ficara sempre disponivel para venda e nao entrara na gestao de estoque.
-            </div>
-          )}
-
-          {isEditing && (
-            <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
-              {formData.track_stock
-                ? "O estoque deste produto agora e gerido na tela de Estoque. Aqui podes editar apenas os dados do produto."
-                : "Este produto esta configurado para vender sem controle de estoque."}
-            </div>
-          )}
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
-            <select
-              value={formData.category}
-              onChange={(event) => setFormData((prev) => ({ ...prev, category: event.target.value }))}
-              className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-            >
-              <option value="">Sem Categoria</option>
-              {categoriesList.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex items-center justify-between rounded-lg border-2 border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950/20">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/30">
-                🍔
-              </div>
-              <div>
-                <label htmlFor="is_fastfood" className="cursor-pointer text-sm font-semibold text-foreground">
-                  Disponivel no Fastfood
+                <label
+                  htmlFor="image-upload"
+                  className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-secondary/50 px-3 py-2 text-sm text-foreground transition-colors hover:bg-secondary"
+                >
+                  <Image24Regular className="h-4 w-4" />
+                  {formData.image && !isEmoji(formData.image) ? "Trocar" : "Imagem"}
                 </label>
-                <p className="text-xs text-muted-foreground">Produto aparecera no app de delivery</p>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Icone Rapido</label>
+                  <div className="windows-scrollbar flex max-h-24 flex-wrap gap-2 overflow-y-auto rounded-lg bg-secondary/50 p-3">
+                    {EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => handleEmojiSelect(emoji)}
+                        className={`flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-all ${
+                          formData.image === emoji || formData.emoji === emoji
+                            ? "scale-105 bg-primary shadow-lg"
+                            : "bg-card hover:bg-secondary"
+                        }`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Nome do Produto</label>
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                    placeholder="Ex: Coca-Cola 350ml"
+                    required
+                    className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  />
+                </div>
+
+                <div className={`grid gap-4 ${isEditing || !formData.track_stock ? "grid-cols-1" : "grid-cols-2"}`}>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
+                      placeholder="0.00"
+                      required
+                      className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+
+                  {!isEditing && formData.track_stock && (
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial (Armazem)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.initialStock}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
+                        placeholder="0"
+                        required
+                        className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <p className="mt-1 text-xs text-muted-foreground">Ao cadastrar, este valor entra primeiro no Armazem.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-            <label className="relative inline-flex cursor-pointer items-center">
-              <input
-                type="checkbox"
-                id="is_fastfood"
-                checked={formData.is_fastfood}
-                onChange={(event) => setFormData((prev) => ({ ...prev, is_fastfood: event.target.checked }))}
-                className="peer sr-only"
-              />
-              <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-orange-500 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:bg-gray-700 dark:border-gray-600 dark:peer-focus:ring-orange-800 rtl:peer-checked:after:-translate-x-full" />
-            </label>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="rounded-lg border border-border bg-secondary/30 p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="space-y-1 pr-4">
+                    <label htmlFor="track_stock" className="cursor-pointer text-sm font-semibold text-foreground">
+                      Controlar estoque
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Desative para produtos que podem ser vendidos sem quantidade armazenada.
+                    </p>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      id="track_stock"
+                      checked={formData.track_stock}
+                      onChange={(event) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          track_stock: event.target.checked,
+                          initialStock: event.target.checked ? prev.initialStock : "",
+                        }))
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
+                  </label>
+                </div>
+
+                {!formData.track_stock && (
+                  <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+                    Este produto ficara sempre disponivel para venda e nao entrara na gestao de estoque.
+                  </p>
+                )}
+
+                {isEditing && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    {formData.track_stock
+                      ? "A quantidade deste produto e gerida na tela de Estoque."
+                      : "Este produto esta configurado para vender sem controle de estoque."}
+                  </p>
+                )}
+              </div>
+
+              <div className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950/20">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/30">
+                      🍔
+                    </div>
+                    <div>
+                      <label htmlFor="is_fastfood" className="cursor-pointer text-sm font-semibold text-foreground">
+                        Disponivel no Fastfood
+                      </label>
+                      <p className="text-xs text-muted-foreground">Produto aparecera no app de delivery</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      id="is_fastfood"
+                      checked={formData.is_fastfood}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, is_fastfood: event.target.checked }))}
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-orange-500 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:bg-gray-700 dark:border-gray-600 dark:peer-focus:ring-orange-800 rtl:peer-checked:after:-translate-x-full" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
+              <select
+                value={formData.category}
+                onChange={(event) => setFormData((prev) => ({ ...prev, category: event.target.value }))}
+                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="">Sem Categoria</option>
+                {categoriesList.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
             <button type="button" onClick={onClose} className="fluent-button gap-2">
               <Dismiss24Regular className="h-4 w-4" />
               Cancelar
