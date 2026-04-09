@@ -22,6 +22,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     price: "",
     category: "",
     initialStock: "",
+    initialStockLocation: "balcao" as "balcao" | "armazem" | "congelado",
     image: DEFAULT_EMOJI,
     emoji: DEFAULT_EMOJI,
     is_fastfood: false,
@@ -43,6 +44,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         price: product.price.toString(),
         category: product.category,
         initialStock: "",
+        initialStockLocation: "balcao",
         image: product.image || DEFAULT_EMOJI,
         emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : DEFAULT_EMOJI),
         is_fastfood: (product as any).is_fastfood || false,
@@ -56,6 +58,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       price: "",
       category: categoriesList[0] || "bebidas",
       initialStock: "",
+      initialStockLocation: "balcao",
       image: DEFAULT_EMOJI,
       emoji: DEFAULT_EMOJI,
       is_fastfood: false,
@@ -103,6 +106,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       price: parseFloat(formData.price) || 0,
       category: formData.category,
       initialStock: formData.track_stock ? parseInt(formData.initialStock, 10) || 0 : 0,
+      initialStockLocation: formData.initialStockLocation,
       image: finalImage,
       emoji: finalEmoji,
       is_fastfood: formData.is_fastfood,
@@ -204,18 +208,37 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                   </div>
 
                   {!isEditing && formData.track_stock && (
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial (Armazem)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.initialStock}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
-                        placeholder="0"
-                        required
-                        className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      />
-                      <p className="mt-1 text-xs text-muted-foreground">Ao cadastrar, este valor entra primeiro no Armazem.</p>
+                    <div className="space-y-4 rounded-xl border border-border bg-secondary/20 p-4">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial</label>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.initialStock}
+                          onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
+                          placeholder="0"
+                          required
+                          className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-foreground">Local Inicial</label>
+                        <select
+                          value={formData.initialStockLocation}
+                          onChange={(event) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              initialStockLocation: event.target.value as "balcao" | "armazem" | "congelado",
+                            }))
+                          }
+                          className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        >
+                          <option value="balcao">Balcao</option>
+                          <option value="armazem">Armazem</option>
+                          <option value="congelado">Congelador</option>
+                        </select>
+                        <p className="mt-1 text-xs text-muted-foreground">O cadastro entra por padrao no Balcao, mas pode ser ajustado aqui.</p>
+                      </div>
                     </div>
                   )}
                 </div>

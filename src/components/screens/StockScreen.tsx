@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDownload24Regular,
@@ -14,12 +14,25 @@ import {
   Settings24Regular,
   Warning24Regular,
 } from "@fluentui/react-icons";
+import type { DrawerProps } from "@fluentui/react-components";
+import {
+  Hamburger,
+  NavDrawer,
+  NavDrawerBody,
+  NavDrawerHeader,
+  NavItem,
+  NavSectionHeader,
+  makeStyles,
+  tokens,
+  useRestoreFocusTarget,
+} from "@fluentui/react-components";
 import { ProductImage } from "@/components/ProductImage";
 import { StockOperationDialog } from "@/components/StockOperationDialog";
 import { InventorySettingsDialog } from "@/components/InventorySettingsDialog";
 import { inventoryApi, type StockMovement } from "@/services/api";
 import { useProducts } from "@/hooks/useProducts";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -31,6 +44,31 @@ type DialogState = {
   productId: number | null;
   location: "balcao" | "congelado" | "armazem";
 };
+
+type StockView = "inventory" | "movements" | "alerts";
+
+const useStyles = makeStyles({
+  root: {
+    overflow: "hidden",
+    display: "flex",
+    flex: 1,
+    minHeight: 0,
+  },
+  nav: {
+    minWidth: "250px",
+  },
+  content: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+  },
+  drawerContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    height: "100%",
+  },
+});
 
 const LOCATION_LABELS: Record<"balcao" | "congelado" | "armazem", string> = {
   balcao: "Balcao",
@@ -58,8 +96,14 @@ function getMovementLabel(type: StockMovement["movement_type"]) {
 }
 
 export function StockScreen() {
+  const styles = useStyles();
+  const isMobile = useIsMobile();
+  const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const restoreFocusTargetAttributes = useRestoreFocusTarget();
   const queryClient = useQueryClient();
   const permissions = usePermissions();
+  const [activeView, setActiveView] = useState<StockView>("inventory");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState<"todos" | "balcao" | "armazem" | "congelado">("todos");
   const [statusFilter, setStatusFilter] = useState<"todos" | "ok" | "baixo" | "critico">("todos");
@@ -168,6 +212,15 @@ export function StockScreen() {
     [filteredRows, stockRows, settingsRowId],
   );
 
+  const criticalRows = useMemo(
+    () => stockRows.filter((row) => row.status === "critico" || row.status === "baixo"),
+    [stockRows],
+  );
+
+  useEffect(() => {
+    setIsNavOpen(!isMobile);
+  }, [isMobile]);
+
   const exportCsv = () => {
     const headers = ["Produto", "SKU", "Local", "Atual", "Minimo", "Maximo", "Reservado", "Estado", "Ultima reposicao", "Ultima contagem"];
     const lines = filteredRows.map((row) => [
@@ -202,10 +255,46 @@ export function StockScreen() {
   };
 
   return (
-    <div className="flex h-full flex-1 flex-col overflow-hidden">
+    <div className={styles.root}>
+      <NavDrawer
+        defaultSelectedValue={activeView}
+        open={isNavOpen}
+        type={drawerType}
+        className={styles.nav}
+        onOpenChange={(_, data) => setIsNavOpen(data.open)}
+        selectedValue={activeView}
+      >
+        <NavDrawerHeader>
+          <Hamburger {...restoreFocusTargetAttributes} onClick={() => setIsNavOpen(!isNavOpen)} />
+        </NavDrawerHeader>
+        <NavDrawerBody>
+          <div className={styles.drawerContent}>
+            <NavSectionHeader>Estoque</NavSectionHeader>
+            <NavItem icon={<ClipboardTaskListLtr24Regular />} value="inventory" onClick={() => setActiveView("inventory")}>
+              Inventario
+            </NavItem>
+            <NavItem icon={<History24Regular />} value="movements" onClick={() => setActiveView("movements")}>
+              Movimentos
+            </NavItem>
+            <NavItem icon={<Warning24Regular />} value="alerts" onClick={() => setActiveView("alerts")}>
+              Alertas
+            </NavItem>
+          </div>
+        </NavDrawerBody>
+      </NavDrawer>
+
+      <div className={styles.content}>
+        <div className="flex h-full flex-1 flex-col overflow-hidden">
       <div className="border-b border-border bg-background/80 p-3 backdrop-blur-md md:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
           <div className="flex items-center gap-3">
+            <button
+              className="fluent-button px-2 md:hidden"
+              onClick={() => setIsNavOpen(true)}
+              aria-label="Abrir menu de estoque"
+            >
+              <Hamburger />
+            </button>
             <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary text-white md:h-10 md:w-10">
               <ClipboardTaskListLtr24Regular className="h-5 w-5 md:h-6 md:w-6" />
             </div>
@@ -276,6 +365,7 @@ export function StockScreen() {
               </div>
             </div>
 
+            {activeView === "inventory" && (
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.7fr)_360px]">
               <div className="space-y-4">
                 <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_180px_180px]">
@@ -455,7 +545,7 @@ export function StockScreen() {
                             <p className="truncate text-sm font-medium text-foreground">{movement.productName}</p>
                             <p className="mt-1 text-xs text-muted-foreground">
                               {getMovementLabel(movement.movement_type)}
-                              {movement.from_location ? ` • ${LOCATION_LABELS[movement.from_location as "balcao" | "congelado" | "armazem"]}` : ""}
+                              {movement.from_location ? ` - ${LOCATION_LABELS[movement.from_location as "balcao" | "congelado" | "armazem"]}` : ""}
                               {movement.to_location ? ` -> ${LOCATION_LABELS[movement.to_location as "balcao" | "congelado" | "armazem"]}` : ""}
                             </p>
                           </div>
@@ -485,6 +575,108 @@ export function StockScreen() {
                 </div>
               </div>
             </div>
+            )}
+
+            {activeView === "movements" && (
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <History24Regular className="h-5 w-5 text-primary" />
+                  <h3 className="text-base font-semibold text-foreground">Historico de movimentos</h3>
+                </div>
+
+                {movementsLoading ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">Carregando movimentos...</p>
+                ) : formattedMovements.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-muted-foreground">Nenhuma movimentacao recente</p>
+                ) : (
+                  <div className="windows-scrollbar max-h-[60vh] space-y-3 overflow-auto pr-1">
+                    {formattedMovements.map((movement) => (
+                      <div key={movement.id} className="rounded-xl border border-border bg-background/70 p-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-medium text-foreground">{movement.productName}</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {getMovementLabel(movement.movement_type)}
+                              {movement.from_location ? ` - ${LOCATION_LABELS[movement.from_location as "balcao" | "congelado" | "armazem"]}` : ""}
+                              {movement.to_location ? ` -> ${LOCATION_LABELS[movement.to_location as "balcao" | "congelado" | "armazem"]}` : ""}
+                            </p>
+                          </div>
+                          <span
+                            className={`text-sm font-semibold ${
+                              movement.movement_type === "out" || movement.movement_type === "sale"
+                                ? "text-destructive"
+                                : "text-success"
+                            }`}
+                          >
+                            {movement.movement_type === "out" || movement.movement_type === "sale" ? "-" : "+"}
+                            {movement.quantityNumber.toFixed(3)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex items-center justify-between gap-2 text-xs text-muted-foreground">
+                          <span>{new Date(movement.created_at).toLocaleString("pt-MZ")}</span>
+                          <span>{movement.notes || movement.reference || "Sem observacoes"}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeView === "alerts" && (
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_320px]">
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <div className="mb-4 flex items-center gap-2">
+                    <Warning24Regular className="h-5 w-5 text-warning" />
+                    <h3 className="text-base font-semibold text-foreground">Produtos em alerta</h3>
+                  </div>
+
+                  {criticalRows.length === 0 ? (
+                    <p className="py-6 text-center text-sm text-muted-foreground">Nenhum alerta de estoque neste momento.</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {criticalRows.map((row) => (
+                        <div key={row.id} className="rounded-xl border border-border bg-background/70 p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">{row.product?.name ?? row.product_name}</p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Local {LOCATION_LABELS[row.storage_location]} - Minimo {row.minQuantityNumber.toFixed(0)} un
+                              </p>
+                            </div>
+                            <span className={`text-xs font-semibold ${row.status === "critico" ? "text-destructive" : "text-warning"}`}>
+                              {row.status === "critico" ? "Critico" : "Baixo"}
+                            </span>
+                          </div>
+                          <div className="mt-3 flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">Atual</span>
+                            <span className="font-semibold text-foreground">{row.quantityNumber.toFixed(3)} un</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                  <h3 className="text-base font-semibold text-foreground">Resumo de alertas</h3>
+                  <div className="mt-4 space-y-3">
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Itens baixos</p>
+                      <p className="mt-1 text-lg font-semibold text-warning">{summary.lowStock}</p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Itens sem estoque</p>
+                      <p className="mt-1 text-lg font-semibold text-destructive">{summary.criticalStock}</p>
+                    </div>
+                    <div className="rounded-xl border border-border bg-secondary/30 p-3">
+                      <p className="text-xs text-muted-foreground">Produtos controlados</p>
+                      <p className="mt-1 text-lg font-semibold text-foreground">{summary.controlledProducts}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
@@ -507,6 +699,9 @@ export function StockScreen() {
         row={selectedSettingsRow}
         onSuccess={handleDialogSuccess}
       />
+        </div>
+      </div>
     </div>
   );
 }
+

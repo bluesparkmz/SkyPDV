@@ -514,6 +514,7 @@ export interface CreateProduct {
   allow_decimal_quantity?: boolean;
   supplier_id?: number;
   initial_stock?: string;
+  initial_stock_location?: "balcao" | "armazem" | "congelado";
 }
 
 export interface UpdateProduct {

@@ -7,6 +7,7 @@ export interface Product {
   stock: number;
   track_stock?: boolean;
   is_fastfood?: boolean;
+  initialStockLocation?: "balcao" | "armazem" | "congelado";
 }
 
 export interface CartItem extends Product {
