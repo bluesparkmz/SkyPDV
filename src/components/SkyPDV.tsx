@@ -76,9 +76,10 @@ export function SkyPDV() {
   const [showInstallCard, setShowInstallCard] = useState(false);
   const [alertsPanelOpen, setAlertsPanelOpen] = useState(false);
   const [stockNotifications, setStockNotifications] = useState<StockAlertNotice[]>([]);
+  const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
   const previousNotificationCount = useRef(0);
   const previousAlertKeys = useRef<string[]>([]);
-  const alertsAutoOpened = useRef(false);
+  const dashboardLoaded = useRef(false);
 
   const { data: currentRegister } = useCashRegister();
   const { data: dashboard } = useDashboard();
@@ -339,11 +340,12 @@ export function SkyPDV() {
   }, [inventoryReport]);
 
   useEffect(() => {
-    if (notificationCount > previousNotificationCount.current) {
+    if (dashboardLoaded.current && notificationCount > previousNotificationCount.current) {
       toast.warning("Existem novos alertas de estoque critico.", {
         description: `${notificationCount} produto(s) precisam de atencao no estoque.`,
       });
     }
+    dashboardLoaded.current = true;
     previousNotificationCount.current = notificationCount;
   }, [notificationCount]);
 
@@ -355,6 +357,7 @@ export function SkyPDV() {
     );
 
     if (newAlerts.length > 0) {
+      setUnreadAlertsCount((prev) => prev + newAlerts.length);
       setStockNotifications((prev) => {
         const additions = newAlerts.map((alert) => {
           const quantity = parseFloat(alert.quantity || "0");
@@ -374,11 +377,10 @@ export function SkyPDV() {
   }, [criticalAlerts]);
 
   useEffect(() => {
-    if (!alertsAutoOpened.current && criticalAlerts.length > 0) {
-      setAlertsPanelOpen(true);
-      alertsAutoOpened.current = true;
+    if (alertsPanelOpen) {
+      setUnreadAlertsCount(0);
     }
-  }, [criticalAlerts]);
+  }, [alertsPanelOpen]);
 
   useEffect(() => {
     const handleIncomingNotification = (event: Event) => {
@@ -400,6 +402,7 @@ export function SkyPDV() {
         },
         ...prev,
       ].slice(0, 12));
+      setUnreadAlertsCount((prev) => prev + 1);
     };
 
     window.addEventListener("new-notification", handleIncomingNotification as EventListener);
@@ -475,20 +478,20 @@ export function SkyPDV() {
                   {/* Status bar */}
                   <div className="hidden sm:flex items-center gap-4 text-muted-foreground">
                     <div className="relative">
-                      <button
-                        type="button"
-                        onClick={() => setAlertsPanelOpen((prev) => !prev)}
+                        <button
+                          type="button"
+                          onClick={() => setAlertsPanelOpen((prev) => !prev)}
                         className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
                           notificationCount > 0
                             ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300"
                             : "border-border bg-card text-muted-foreground hover:text-foreground"
                         }`}
-                      >
-                        <AlertOff24Regular className={`w-5 h-5 ${notificationCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
-                        <span>
-                          {notificationCount} alerta{notificationCount === 1 ? "" : "s"}
-                        </span>
-                      </button>
+                        >
+                          <AlertOff24Regular className={`w-5 h-5 ${notificationCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+                          <span>
+                            {unreadAlertsCount} alerta{unreadAlertsCount === 1 ? "" : "s"}
+                          </span>
+                        </button>
 
                       {alertsPanelOpen && (
                         <div className="absolute right-0 top-12 z-30 w-[340px] rounded-xl border border-border bg-card p-3 shadow-2xl">
