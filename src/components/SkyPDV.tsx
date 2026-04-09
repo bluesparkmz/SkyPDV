@@ -41,7 +41,7 @@ import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { terminalApi } from "@/services/api";
+import { inventoryApi, terminalApi } from "@/services/api";
 
 import { Screen } from "@/types/screen";
 
@@ -51,6 +51,13 @@ type ParkedSale = {
   createdAt: string;
   items: CartItem[];
   customerName?: string;
+};
+
+type StockAlertNotice = {
+  id: string;
+  title: string;
+  description: string;
+  createdAt: string;
 };
 
 export function SkyPDV() {
@@ -67,7 +74,10 @@ export function SkyPDV() {
   const [showSetup, setShowSetup] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallCard, setShowInstallCard] = useState(false);
+  const [alertsPanelOpen, setAlertsPanelOpen] = useState(false);
+  const [stockNotifications, setStockNotifications] = useState<StockAlertNotice[]>([]);
   const previousNotificationCount = useRef(0);
+  const previousAlertKeys = useRef<string[]>([]);
 
   const { data: currentRegister } = useCashRegister();
   const { data: dashboard } = useDashboard();
@@ -79,6 +89,11 @@ export function SkyPDV() {
   const { data: terminal, error: terminalError } = useQuery({
     queryKey: ["terminal"],
     queryFn: () => terminalApi.get(),
+  });
+  const { data: inventoryReport } = useQuery({
+    queryKey: ["inventoryAlertsSummary"],
+    queryFn: () => inventoryApi.getReport(),
+    refetchInterval: 15000,
   });
 
   useEffect(() => {
@@ -304,14 +319,84 @@ export function SkyPDV() {
 
   const notificationCount = (dashboard?.low_stock_alerts || 0) + (dashboard?.out_of_stock || 0);
 
+  const criticalAlerts = useMemo(() => {
+    const items = inventoryReport?.products || [];
+    return items
+      .filter((item) => {
+        const quantity = parseFloat(item.quantity || "0");
+        const minimum = parseFloat(item.min_quantity || "0");
+        const threshold = minimum > 0 ? minimum : 5;
+        return quantity <= threshold;
+      })
+      .sort((a, b) => {
+        const qtyA = parseFloat(a.quantity || "0");
+        const qtyB = parseFloat(b.quantity || "0");
+        if (qtyA === qtyB) return a.product_name.localeCompare(b.product_name);
+        return qtyA - qtyB;
+      })
+      .slice(0, 8);
+  }, [inventoryReport]);
+
   useEffect(() => {
     if (notificationCount > previousNotificationCount.current) {
       toast.warning("Existem novos alertas de estoque critico.", {
-        description: `${notificationCount} produto(s) precisam de atencao no estoque.` ,
+        description: `${notificationCount} produto(s) precisam de atencao no estoque.`,
       });
     }
     previousNotificationCount.current = notificationCount;
   }, [notificationCount]);
+
+  useEffect(() => {
+    const nextKeys = criticalAlerts.map((alert) => `${alert.product_id}:${alert.storage_location}`);
+    const previousKeys = previousAlertKeys.current;
+    const newAlerts = criticalAlerts.filter(
+      (alert) => !previousKeys.includes(`${alert.product_id}:${alert.storage_location}`),
+    );
+
+    if (newAlerts.length > 0) {
+      setStockNotifications((prev) => {
+        const additions = newAlerts.map((alert) => {
+          const quantity = parseFloat(alert.quantity || "0");
+          const status = quantity <= 0 ? "Produto esgotado" : "Estoque critico";
+          return {
+            id: `${alert.product_id}:${alert.storage_location}:${Date.now()}:${Math.random()}`,
+            title: status,
+            description: `${alert.product_name} no ${alert.storage_location} com ${quantity.toFixed(0)} un.`,
+            createdAt: new Date().toISOString(),
+          };
+        });
+        return [...additions, ...prev].slice(0, 12);
+      });
+    }
+
+    previousAlertKeys.current = nextKeys;
+  }, [criticalAlerts]);
+
+  useEffect(() => {
+    const handleIncomingNotification = (event: Event) => {
+      const customEvent = event as CustomEvent<any>;
+      const payload = customEvent.detail || {};
+      const title = payload?.title || payload?.data?.title || payload?.type || "Notificacao";
+      const description =
+        payload?.message ||
+        payload?.detail ||
+        payload?.data?.message ||
+        "Nova notificacao recebida.";
+
+      setStockNotifications((prev) => [
+        {
+          id: `remote:${Date.now()}`,
+          title: String(title),
+          description: String(description),
+          createdAt: new Date().toISOString(),
+        },
+        ...prev,
+      ].slice(0, 12));
+    };
+
+    window.addEventListener("new-notification", handleIncomingNotification as EventListener);
+    return () => window.removeEventListener("new-notification", handleIncomingNotification as EventListener);
+  }, []);
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -381,11 +466,92 @@ export function SkyPDV() {
 
                   {/* Status bar */}
                   <div className="hidden sm:flex items-center gap-4 text-muted-foreground">
-                    <div className="flex items-center gap-2 text-sm">
-                      <AlertOff24Regular className={`w-5 h-5 ${notificationCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
-                      <span className={notificationCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}>
-                        {notificationCount} alerta{notificationCount === 1 ? "" : "s"}
-                      </span>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setAlertsPanelOpen((prev) => !prev)}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                          notificationCount > 0
+                            ? "border-amber-300 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-300"
+                            : "border-border bg-card text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <AlertOff24Regular className={`w-5 h-5 ${notificationCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+                        <span>
+                          {notificationCount} alerta{notificationCount === 1 ? "" : "s"}
+                        </span>
+                      </button>
+
+                      {alertsPanelOpen && (
+                        <div className="absolute right-0 top-12 z-30 w-[340px] rounded-xl border border-border bg-card p-3 shadow-2xl">
+                          <div className="mb-3 flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-semibold text-foreground">Alertas de Estoque</p>
+                              <p className="text-xs text-muted-foreground">Atualizacao automatica em tempo real</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setAlertsPanelOpen(false)}
+                              className="text-xs text-muted-foreground hover:text-foreground"
+                            >
+                              Fechar
+                            </button>
+                          </div>
+
+                          <div className="space-y-2">
+                            {criticalAlerts.length === 0 ? (
+                              <div className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                                Nenhum produto em alerta neste momento.
+                              </div>
+                            ) : (
+                              criticalAlerts.map((alert) => {
+                                const quantity = parseFloat(alert.quantity || "0");
+                                const isOut = quantity <= 0;
+                                return (
+                                  <div
+                                    key={`${alert.product_id}-${alert.storage_location}`}
+                                    className={`rounded-lg border px-3 py-2 ${
+                                      isOut
+                                        ? "border-red-200 bg-red-50 dark:border-red-900/50 dark:bg-red-950/20"
+                                        : "border-amber-200 bg-amber-50 dark:border-amber-900/50 dark:bg-amber-950/20"
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <p className="truncate text-sm font-medium text-foreground">{alert.product_name}</p>
+                                        <p className="text-xs text-muted-foreground">
+                                          Local: {alert.storage_location} • Min: {parseFloat(alert.min_quantity || "0").toFixed(0)} un
+                                        </p>
+                                      </div>
+                                      <span className={`text-xs font-semibold ${isOut ? "text-red-600 dark:text-red-300" : "text-amber-700 dark:text-amber-300"}`}>
+                                        {isOut ? "Esgotado" : `${quantity.toFixed(0)} un`}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          <div className="mt-3 border-t border-border pt-3">
+                            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                              Notificacoes Recentes
+                            </p>
+                            <div className="space-y-2">
+                              {stockNotifications.length === 0 ? (
+                                <p className="text-xs text-muted-foreground">Nenhuma notificacao recebida ainda.</p>
+                              ) : (
+                                stockNotifications.slice(0, 5).map((notice) => (
+                                  <div key={notice.id} className="rounded-lg bg-secondary/40 px-3 py-2">
+                                    <p className="text-xs font-semibold text-foreground">{notice.title}</p>
+                                    <p className="text-xs text-muted-foreground">{notice.description}</p>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Wifi124Regular className={`w-5 h-5 ${qualityColor}`} />

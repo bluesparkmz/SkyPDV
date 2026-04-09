@@ -19,6 +19,8 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegisterHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventoryAlertsSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
       queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
@@ -41,6 +43,8 @@ export function useVoidSale() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegisterHistory"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["inventoryAlertsSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
       queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
