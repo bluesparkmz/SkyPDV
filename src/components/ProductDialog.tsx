@@ -133,124 +133,124 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         <form onSubmit={handleSubmit} className="mt-4 flex max-h-[calc(88vh-110px)] flex-col">
           <div className="windows-scrollbar space-y-4 overflow-y-auto pr-1">
             <div className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-[96px_minmax(0,1fr)]">
-                <div className="space-y-2">
-                  <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-border bg-secondary/40">
-                    {formData.image && !isEmoji(formData.image) ? (
-                      <img src={formData.image} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
-                    ) : (
-                      <span className="text-4xl">{formData.emoji || DEFAULT_EMOJI}</span>
-                    )}
+              <div className="rounded-2xl border border-border bg-secondary/20 p-4">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                  <div className="flex flex-col items-center gap-2 md:w-[110px]">
+                    <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-border bg-background">
+                      {formData.image && !isEmoji(formData.image) ? (
+                        <img src={formData.image} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
+                      ) : (
+                        <span className="text-4xl">{formData.emoji || DEFAULT_EMOJI}</span>
+                      )}
+                    </div>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleImageUpload}
+                      className="hidden"
+                      id="image-upload"
+                    />
+                    <label
+                      htmlFor="image-upload"
+                      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground transition-colors hover:bg-secondary"
+                    >
+                      <Image24Regular className="h-4 w-4" />
+                      {formData.image && !isEmoji(formData.image) ? "Trocar" : "Imagem"}
+                    </label>
                   </div>
 
+                  <div className="min-w-0 flex-1">
+                    <label className="mb-2 block text-sm font-medium text-foreground">Icone Rapido</label>
+                    <div className="windows-scrollbar flex max-h-24 flex-wrap gap-2 overflow-y-auto rounded-lg bg-background p-3">
+                      {EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleEmojiSelect(emoji)}
+                          className={`flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-all ${
+                            formData.image === emoji || formData.emoji === emoji
+                              ? "scale-105 bg-primary shadow-lg"
+                              : "bg-card hover:bg-secondary"
+                          }`}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-foreground">Nome do Produto</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
+                  placeholder="Ex: Coca-Cola 350ml"
+                  required
+                  className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                />
+              </div>
+
+              <div className={`grid gap-4 ${isEditing || !formData.track_stock ? "md:grid-cols-2" : "md:grid-cols-[1fr_1fr_1fr]"}`}>
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
                   <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    id="image-upload"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.price}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
+                    placeholder="0.00"
+                    required
+                    className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
-                  <label
-                    htmlFor="image-upload"
-                    className="flex cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-secondary/50 px-3 py-2 text-xs text-foreground transition-colors hover:bg-secondary"
-                  >
-                    <Image24Regular className="h-4 w-4" />
-                    {formData.image && !isEmoji(formData.image) ? "Trocar" : "Imagem"}
-                  </label>
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium text-foreground">Nome do Produto</label>
-                    <input
-                      type="text"
-                      value={formData.name}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, name: event.target.value }))}
-                      placeholder="Ex: Coca-Cola 350ml"
-                      required
-                      className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                    />
-                  </div>
-
-                  <div className={`grid gap-4 ${isEditing || !formData.track_stock ? "md:grid-cols-2" : "md:grid-cols-[1fr_1fr_1fr]"}`}>
+                {!isEditing && formData.track_stock && (
+                  <>
                     <div>
-                      <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
+                      <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial</label>
                       <input
                         type="number"
-                        step="0.01"
                         min="0"
-                        value={formData.price}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
-                        placeholder="0.00"
+                        value={formData.initialStock}
+                        onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
+                        placeholder="0"
                         required
                         className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
                     </div>
 
-                    {!isEditing && formData.track_stock && (
-                      <>
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial</label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={formData.initialStock}
-                            onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
-                            placeholder="0"
-                            required
-                            className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="mb-2 block text-sm font-medium text-foreground">Local Inicial</label>
-                          <select
-                            value={formData.initialStockLocation}
-                            onChange={(event) =>
-                              setFormData((prev) => ({
-                                ...prev,
-                                initialStockLocation: event.target.value as "balcao" | "armazem" | "congelado",
-                              }))
-                            }
-                            className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                          >
-                            <option value="balcao">Balcao</option>
-                            <option value="armazem">Armazem</option>
-                            <option value="congelado">Congelador</option>
-                          </select>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {!isEditing && formData.track_stock && (
-                    <p className="rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
-                      O cadastro entra por padrao no Balcao, mas pode ser ajustado aqui.
-                    </p>
-                  )}
-                </div>
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-foreground">Local Inicial</label>
+                      <select
+                        value={formData.initialStockLocation}
+                        onChange={(event) =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            initialStockLocation: event.target.value as "balcao" | "armazem" | "congelado",
+                          }))
+                        }
+                        className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      >
+                        <option value="balcao">Balcao</option>
+                        <option value="armazem">Armazem</option>
+                        <option value="congelado">Congelador</option>
+                      </select>
+                    </div>
+                  </>
+                )}
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium text-foreground">Icone Rapido</label>
-                <div className="windows-scrollbar flex max-h-24 flex-wrap gap-2 overflow-y-auto rounded-lg bg-secondary/50 p-3">
-                  {EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      onClick={() => handleEmojiSelect(emoji)}
-                      className={`flex h-10 w-10 items-center justify-center rounded-lg text-xl transition-all ${
-                        formData.image === emoji || formData.emoji === emoji
-                          ? "scale-105 bg-primary shadow-lg"
-                          : "bg-card hover:bg-secondary"
-                      }`}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
+              {!isEditing && formData.track_stock && (
+                <p className="rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
+                  O cadastro entra por padrao no Balcao, mas pode ser ajustado aqui.
+                </p>
+              )}
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
