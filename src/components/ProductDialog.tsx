@@ -253,6 +253,22 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               )}
             </div>
 
+            <div>
+              <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
+              <select
+                value={formData.category}
+                onChange={(event) => setFormData((prev) => ({ ...prev, category: event.target.value }))}
+                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+              >
+                <option value="">Sem Categoria</option>
+                {categoriesList.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             <div className="space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
               <div className="flex items-start justify-between gap-3 rounded-lg bg-background px-3 py-3">
                 <div className="pr-4">
@@ -320,21 +336,6 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               )}
             </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
-              <select
-                value={formData.category}
-                onChange={(event) => setFormData((prev) => ({ ...prev, category: event.target.value }))}
-                className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value="">Sem Categoria</option>
-                {categoriesList.map((category) => (
-                  <option key={category} value={category}>
-                    {category}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
 
           <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
