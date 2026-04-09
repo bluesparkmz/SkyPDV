@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from "react";
+﻿import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Money24Regular,
-  WeatherSunny24Regular,
+  AlertOff24Regular,
   Wifi124Regular,
   BatteryCharge24Regular,
   Search24Regular,
@@ -29,6 +29,7 @@ import { FastfoodAdminScreen } from "./screens/FastfoodAdminScreen";
 import { FinanceScreen } from "./screens/FinanceScreen";
 import { useProducts } from "@/hooks/useProducts";
 import { useCashRegister } from "@/hooks/useCashRegister";
+import { useDashboard } from "@/hooks/useDashboard";
 import { useBattery } from "@/hooks/useBattery";
 import { useNetworkQuality } from "@/hooks/useNetworkQuality";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
@@ -66,8 +67,10 @@ export function SkyPDV() {
   const [showSetup, setShowSetup] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallCard, setShowInstallCard] = useState(false);
+  const previousNotificationCount = useRef(0);
 
   const { data: currentRegister } = useCashRegister();
+  const { data: dashboard } = useDashboard();
   const { level: batteryLevel, charging: isCharging, isSupported: batterySupported } = useBattery();
   const { qualityLabel, qualityColor, isOnline } = useNetworkQuality();
   const { isConnected: hardwareConnected, isConnecting: hardwareConnecting } = useHardwarePlugin();
@@ -130,7 +133,9 @@ export function SkyPDV() {
     return products.filter((product) => {
       const matchesCategory = activeCategory === "all" || product.category === activeCategory;
       const matchesSearch = !searchQuery || product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      return matchesCategory && matchesSearch && product.is_active;
+      const balcaoStock = product.inventory?.quantity ? parseFloat(product.inventory.quantity) : 0;
+      const canSellWithoutStock = product.track_stock === false;
+      return matchesCategory && matchesSearch && product.is_active && (canSellWithoutStock || balcaoStock > 0);
     });
   }, [products, activeCategory, searchQuery]);
 
@@ -147,23 +152,23 @@ export function SkyPDV() {
 
   const addToCart = (product: Product, quantity: number = 1) => {
     setCart((prev) => {
-      const productStock = product.inventory?.quantity
-        ? parseFloat(product.inventory.quantity)
-        : 0;
+      const productStock = product.track_stock === false
+        ? Number.MAX_SAFE_INTEGER
+        : product.inventory?.quantity
+          ? parseFloat(product.inventory.quantity)
+          : 0;
 
-      // Não permitir adicionar produtos com stock 0
-      if (productStock <= 0) {
-        toast.error("Este produto está sem stock e não pode ser vendido.");
+      if (product.track_stock !== false && productStock <= 0) {
+        toast.error("Este produto esta sem stock e nao pode ser vendido.");
         return prev;
       }
 
       const existing = prev.find((item) => item.id === product.id.toString());
 
-      // Se já existe no carrinho, verificar limite de stock
       if (existing) {
         const newQuantity = existing.quantity + quantity;
-        if (newQuantity > existing.stock) {
-          toast.error("Quantidade superior ao stock disponível para este produto.");
+        if (existing.track_stock !== false && newQuantity > existing.stock) {
+          toast.error("Quantidade superior ao stock disponivel para este produto.");
           return prev;
         }
 
@@ -174,24 +179,22 @@ export function SkyPDV() {
         );
       }
 
-      // Converter API Product para CartItem
       const cartItem: CartItem = {
         id: product.id.toString(),
         name: product.name,
         price: parseFloat(product.price),
         category: product.category || "",
-        image: product.emoji || product.image || "📦",
+        image: product.emoji || product.image || "ðŸ“¦",
         stock: productStock,
+        track_stock: product.track_stock,
         quantity,
-        // Preserve FastFood integration fields
         source_type: product.source_type,
         external_product_id: product.external_product_id,
         pdv_product_id: product.id,
       };
 
-      // Garantir que a quantidade inicial não ultrapasse o stock
-      if (cartItem.quantity > cartItem.stock) {
-        toast.error("Quantidade superior ao stock disponível para este produto.");
+      if (cartItem.track_stock !== false && cartItem.quantity > cartItem.stock) {
+        toast.error("Quantidade superior ao stock disponivel para este produto.");
         return prev;
       }
 
@@ -218,9 +221,8 @@ export function SkyPDV() {
       const item = prev.find((i) => i.id === id);
       if (!item) return prev;
 
-      // Bloquear quantidades acima do stock
-      if (quantity > item.stock) {
-        toast.error("Quantidade superior ao stock disponível para este produto.");
+      if (item.track_stock !== false && quantity > item.stock) {
+        toast.error("Quantidade superior ao stock disponivel para este produto.");
         return prev;
       }
 
@@ -236,11 +238,11 @@ export function SkyPDV() {
 
   const clearCart = () => {
     setCart([]);
-    // Não limpar vendas em espera, mas podemos limpar o nome atual
+    // NÃ£o limpar vendas em espera, mas podemos limpar o nome atual
     setCurrentCustomerName("");
   };
 
-  // Colocar venda atual em espera (PDV local, não FastFood)
+  // Colocar venda atual em espera (PDV local, nÃ£o FastFood)
   const parkCurrentSale = () => {
     if (cart.length === 0) {
       toast.error("Carrinho vazio. Nada para colocar em espera.");
@@ -265,10 +267,10 @@ export function SkyPDV() {
     setParkedSales((prev) => {
       const sale = prev.find((s) => s.id === id);
       if (!sale) {
-        toast.error("Venda em espera não encontrada.");
+        toast.error("Venda em espera nÃ£o encontrada.");
         return prev;
       }
-      // Se o carrinho atual tiver itens, avisar o usuário
+      // Se o carrinho atual tiver itens, avisar o usuÃ¡rio
       if (cart.length > 0) {
         toast.error("Limpe ou finalize a venda atual antes de recuperar uma venda em espera.");
         return prev;
@@ -286,7 +288,7 @@ export function SkyPDV() {
 
   const handleNavigate = (screen: Screen) => {
     if (screen === "finance" && !isAdmin) {
-      toast.error("Apenas administradores do terminal podem aceder às Finanças.");
+      toast.error("Apenas administradores do terminal podem aceder Ã s FinanÃ§as.");
       setIsStartOpen(false);
       return;
     }
@@ -299,6 +301,17 @@ export function SkyPDV() {
       setCurrentScreen("overview");
     }
   }, [currentScreen, isAdmin]);
+
+  const notificationCount = (dashboard?.low_stock_alerts || 0) + (dashboard?.out_of_stock || 0);
+
+  useEffect(() => {
+    if (notificationCount > previousNotificationCount.current) {
+      toast.warning("Existem novos alertas de estoque critico.", {
+        description: `${notificationCount} produto(s) precisam de atencao no estoque.` ,
+      });
+    }
+    previousNotificationCount.current = notificationCount;
+  }, [notificationCount]);
 
   const renderScreen = () => {
     switch (currentScreen) {
@@ -369,8 +382,10 @@ export function SkyPDV() {
                   {/* Status bar */}
                   <div className="hidden sm:flex items-center gap-4 text-muted-foreground">
                     <div className="flex items-center gap-2 text-sm">
-                      <WeatherSunny24Regular className="w-5 h-5" />
-                      <span>26°C</span>
+                      <AlertOff24Regular className={`w-5 h-5 ${notificationCount > 0 ? "text-amber-500" : "text-muted-foreground"}`} />
+                      <span className={notificationCount > 0 ? "text-amber-600 dark:text-amber-400" : ""}>
+                        {notificationCount} alerta{notificationCount === 1 ? "" : "s"}
+                      </span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Wifi124Regular className={`w-5 h-5 ${qualityColor}`} />
@@ -389,14 +404,14 @@ export function SkyPDV() {
                           {Math.round(batteryLevel * 100)}%
                         </span>
                         {isCharging && (
-                          <span className="text-xs text-emerald-500">⚡</span>
+                          <span className="text-xs text-emerald-500">âš¡</span>
                         )}
                       </div>
                     ) : (
                       <BatteryCharge24Regular className="w-5 h-5" />
                     )}
                     {/* Hardware Plugin Status */}
-                    <div className="flex items-center gap-1.5" title={hardwareConnected ? "Plugin de hardware conectado" : hardwareConnecting ? "Conectando ao plugin..." : "Plugin de hardware não conectado"}>
+                    <div className="flex items-center gap-1.5" title={hardwareConnected ? "Plugin de hardware conectado" : hardwareConnecting ? "Conectando ao plugin..." : "Plugin de hardware nÃ£o conectado"}>
                       <Print24Regular
                         className={`w-5 h-5 ${hardwareConnected ? "text-emerald-500" : hardwareConnecting ? "text-yellow-500 animate-pulse" : "text-muted-foreground opacity-50"}`}
                       />
@@ -415,7 +430,7 @@ export function SkyPDV() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">Instale o app SkyPDV</p>
-                  <p className="text-xs text-muted-foreground">Acesse mais rápido e use em modo offline.</p>
+                  <p className="text-xs text-muted-foreground">Acesse mais rÃ¡pido e use em modo offline.</p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -543,3 +558,7 @@ export function SkyPDV() {
     </div>
   );
 }
+
+
+
+

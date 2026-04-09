@@ -58,6 +58,7 @@ export function ProductsScreen() {
     image?: string;
     emoji?: string;
     is_fastfood?: boolean;
+    track_stock?: boolean;
   }) => {
     try {
       if (productData.id) {
@@ -70,6 +71,7 @@ export function ProductsScreen() {
             emoji: productData.emoji,
             image: productData.image,
             is_fastfood: productData.is_fastfood,
+            track_stock: productData.track_stock,
           },
         });
       } else {
@@ -79,8 +81,8 @@ export function ProductsScreen() {
           category: productData.category,
           emoji: productData.emoji || DEFAULT_EMOJI,
           image: productData.image,
-          initial_stock: (productData.initialStock || 0).toString(),
-          track_stock: true,
+          initial_stock: productData.track_stock === false ? "0" : (productData.initialStock || 0).toString(),
+          track_stock: productData.track_stock !== false,
           is_fastfood: productData.is_fastfood || false,
         });
       }
@@ -149,6 +151,7 @@ export function ProductsScreen() {
         image: selectedProduct.image || selectedProduct.emoji || DEFAULT_EMOJI,
         emoji: selectedProduct.emoji || DEFAULT_EMOJI,
         is_fastfood: selectedProduct.is_fastfood || false,
+        track_stock: selectedProduct.track_stock !== false,
       }
     : null;
 

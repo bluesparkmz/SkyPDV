@@ -25,6 +25,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     image: DEFAULT_EMOJI,
     emoji: DEFAULT_EMOJI,
     is_fastfood: false,
+    track_stock: true,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: categoriesList = [] } = useCategories();
@@ -45,6 +46,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         image: product.image || DEFAULT_EMOJI,
         emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : DEFAULT_EMOJI),
         is_fastfood: (product as any).is_fastfood || false,
+        track_stock: product.track_stock !== false,
       });
       return;
     }
@@ -57,6 +59,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       image: DEFAULT_EMOJI,
       emoji: DEFAULT_EMOJI,
       is_fastfood: false,
+      track_stock: true,
     });
   }, [product, isOpen, categoriesList]);
 
@@ -99,10 +102,11 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       name: formData.name,
       price: parseFloat(formData.price) || 0,
       category: formData.category,
-      initialStock: parseInt(formData.initialStock, 10) || 0,
+      initialStock: formData.track_stock ? parseInt(formData.initialStock, 10) || 0 : 0,
       image: finalImage,
       emoji: finalEmoji,
       is_fastfood: formData.is_fastfood,
+      track_stock: formData.track_stock,
     } as any);
 
     onClose();
@@ -206,7 +210,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               />
             </div>
 
-            {!isEditing && (
+            {!isEditing && formData.track_stock && (
               <div>
                 <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial (Armazem)</label>
                 <input
@@ -223,9 +227,44 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
             )}
           </div>
 
+          <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="space-y-1 pr-4">
+              <label htmlFor="track_stock" className="cursor-pointer text-sm font-semibold text-foreground">
+                Controlar estoque
+              </label>
+              <p className="text-xs text-muted-foreground">
+                Desative para produtos que podem ser vendidos sem quantidade armazenada.
+              </p>
+            </div>
+            <label className="relative inline-flex cursor-pointer items-center">
+              <input
+                type="checkbox"
+                id="track_stock"
+                checked={formData.track_stock}
+                onChange={(event) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    track_stock: event.target.checked,
+                    initialStock: event.target.checked ? prev.initialStock : "",
+                  }))
+                }
+                className="peer sr-only"
+              />
+              <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
+            </label>
+          </div>
+
+          {!isEditing && !formData.track_stock && (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+              Este produto ficara sempre disponivel para venda e nao entrara na gestao de estoque.
+            </div>
+          )}
+
           {isEditing && (
             <div className="rounded-lg border border-border bg-secondary/30 p-3 text-sm text-muted-foreground">
-              O estoque deste produto agora e gerido na tela de Estoque. Aqui podes editar apenas os dados do produto.
+              {formData.track_stock
+                ? "O estoque deste produto agora e gerido na tela de Estoque. Aqui podes editar apenas os dados do produto."
+                : "Este produto esta configurado para vender sem controle de estoque."}
             </div>
           )}
 

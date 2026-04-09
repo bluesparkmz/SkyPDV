@@ -5,6 +5,7 @@ export interface Product {
   category: string;
   image: string;
   stock: number;
+  track_stock?: boolean;
   is_fastfood?: boolean;
 }
 

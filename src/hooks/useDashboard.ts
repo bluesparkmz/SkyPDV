@@ -3,8 +3,9 @@ import { dashboardApi, DashboardStats, SalesSummary, SalesByPeriod, TopProduct }
 
 export function useDashboard() {
   return useQuery({
-    queryKey: ["dashboard"],
+    queryKey: ["dashboardStats"],
     queryFn: () => dashboardApi.get(),
+    refetchInterval: 60000,
   });
 }
 
