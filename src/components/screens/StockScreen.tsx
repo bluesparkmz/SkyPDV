@@ -128,22 +128,17 @@ export function StockScreen() {
   }, [stockRows, searchQuery, locationFilter, statusFilter]);
 
   const summary = useMemo(() => {
+    const uniqueProducts = new Set(stockRows.map((row) => row.product_id));
+    const totalUnits = stockRows.reduce((acc, row) => acc + row.quantityNumber, 0);
     const totalCost = stockRows.reduce((acc, row) => {
       const unitCost = row.product ? parseFloat(row.product.cost_price) : 0;
       return acc + unitCost * row.quantityNumber;
     }, 0);
 
     return {
+      controlledProducts: uniqueProducts.size,
+      totalUnits,
       totalCost,
-      balcaoUnits: stockRows
-        .filter((row) => row.storage_location === "balcao")
-        .reduce((acc, row) => acc + row.quantityNumber, 0),
-      armazemUnits: stockRows
-        .filter((row) => row.storage_location === "armazem")
-        .reduce((acc, row) => acc + row.quantityNumber, 0),
-      congeladoUnits: stockRows
-        .filter((row) => row.storage_location === "congelado")
-        .reduce((acc, row) => acc + row.quantityNumber, 0),
       lowStock: stockRows.filter((row) => row.status === "baixo").length,
       criticalStock: stockRows.filter((row) => row.status === "critico").length,
     };
@@ -260,16 +255,12 @@ export function StockScreen() {
           <>
             <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-5">
               <div className="fluent-card p-4">
-                <p className="text-xs text-muted-foreground md:text-sm">Balcao</p>
-                <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">{summary.balcaoUnits.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground md:text-sm">Produtos controlados</p>
+                <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">{summary.controlledProducts}</p>
               </div>
               <div className="fluent-card p-4">
-                <p className="text-xs text-muted-foreground md:text-sm">Armazem</p>
-                <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">{summary.armazemUnits.toFixed(0)}</p>
-              </div>
-              <div className="fluent-card p-4">
-                <p className="text-xs text-muted-foreground md:text-sm">Congelador</p>
-                <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">{summary.congeladoUnits.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground md:text-sm">Unidades totais</p>
+                <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">{summary.totalUnits.toFixed(0)}</p>
               </div>
               <div className="fluent-card p-4">
                 <p className="text-xs text-muted-foreground md:text-sm">Estoque baixo</p>
@@ -278,6 +269,10 @@ export function StockScreen() {
               <div className="fluent-card p-4">
                 <p className="text-xs text-muted-foreground md:text-sm">Sem estoque</p>
                 <p className="mt-1 text-xl font-bold text-destructive md:text-2xl">{summary.criticalStock}</p>
+              </div>
+              <div className="fluent-card p-4">
+                <p className="text-xs text-muted-foreground md:text-sm">Valor do estoque</p>
+                <p className="mt-1 text-xl font-bold text-primary md:text-2xl">{summary.totalCost.toFixed(2)} MT</p>
               </div>
             </div>
 
