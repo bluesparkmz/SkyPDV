@@ -78,6 +78,7 @@ export function SkyPDV() {
   const [stockNotifications, setStockNotifications] = useState<StockAlertNotice[]>([]);
   const previousNotificationCount = useRef(0);
   const previousAlertKeys = useRef<string[]>([]);
+  const alertsAutoOpened = useRef(false);
 
   const { data: currentRegister } = useCashRegister();
   const { data: dashboard } = useDashboard();
@@ -373,6 +374,13 @@ export function SkyPDV() {
   }, [criticalAlerts]);
 
   useEffect(() => {
+    if (!alertsAutoOpened.current && criticalAlerts.length > 0) {
+      setAlertsPanelOpen(true);
+      alertsAutoOpened.current = true;
+    }
+  }, [criticalAlerts]);
+
+  useEffect(() => {
     const handleIncomingNotification = (event: Event) => {
       const customEvent = event as CustomEvent<any>;
       const payload = customEvent.detail || {};
@@ -498,12 +506,13 @@ export function SkyPDV() {
                             </button>
                           </div>
 
-                          <div className="space-y-2">
-                            {criticalAlerts.length === 0 ? (
-                              <div className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
-                                Nenhum produto em alerta neste momento.
-                              </div>
-                            ) : (
+                          <div className="max-h-[420px] overflow-y-auto pr-1 windows-scrollbar">
+                            <div className="space-y-2">
+                              {criticalAlerts.length === 0 ? (
+                                <div className="rounded-lg border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                                  Nenhum produto em alerta neste momento.
+                                </div>
+                              ) : (
                               criticalAlerts.map((alert) => {
                                 const quantity = parseFloat(alert.quantity || "0");
                                 const isOut = quantity <= 0;
@@ -531,23 +540,24 @@ export function SkyPDV() {
                                 );
                               })
                             )}
-                          </div>
+                            </div>
 
-                          <div className="mt-3 border-t border-border pt-3">
-                            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                              Notificacoes Recentes
-                            </p>
-                            <div className="space-y-2">
-                              {stockNotifications.length === 0 ? (
-                                <p className="text-xs text-muted-foreground">Nenhuma notificacao recebida ainda.</p>
-                              ) : (
-                                stockNotifications.slice(0, 5).map((notice) => (
-                                  <div key={notice.id} className="rounded-lg bg-secondary/40 px-3 py-2">
-                                    <p className="text-xs font-semibold text-foreground">{notice.title}</p>
-                                    <p className="text-xs text-muted-foreground">{notice.description}</p>
-                                  </div>
-                                ))
-                              )}
+                            <div className="mt-3 border-t border-border pt-3">
+                              <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                Notificacoes Recentes
+                              </p>
+                              <div className="space-y-2">
+                                {stockNotifications.length === 0 ? (
+                                  <p className="text-xs text-muted-foreground">Nenhuma notificacao recebida ainda.</p>
+                                ) : (
+                                  stockNotifications.slice(0, 5).map((notice) => (
+                                    <div key={notice.id} className="rounded-lg bg-secondary/40 px-3 py-2">
+                                      <p className="text-xs font-semibold text-foreground">{notice.title}</p>
+                                      <p className="text-xs text-muted-foreground">{notice.description}</p>
+                                    </div>
+                                  ))
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
