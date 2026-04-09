@@ -77,7 +77,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         initialStockLocation: "balcao",
         image: product.image || DEFAULT_EMOJI,
         emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : DEFAULT_EMOJI),
-        is_fastfood: (product as any).is_fastfood || false,
+        is_fastfood: false,
         track_stock: product.track_stock !== false,
       });
       return;
@@ -93,7 +93,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       initialStockLocation: savedPrefs.initialStockLocation || "balcao",
       image: DEFAULT_EMOJI,
       emoji: DEFAULT_EMOJI,
-      is_fastfood: savedPrefs.is_fastfood || false,
+      is_fastfood: false,
       track_stock: savedPrefs.track_stock ?? true,
     });
   }, [product, isOpen, categoriesList]);
@@ -104,10 +104,10 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     saveProductFormPrefs({
       category: formData.category,
       initialStockLocation: formData.initialStockLocation,
-      is_fastfood: formData.is_fastfood,
+      is_fastfood: false,
       track_stock: formData.track_stock,
     });
-  }, [formData.category, formData.initialStockLocation, formData.is_fastfood, formData.track_stock, isOpen, product]);
+  }, [formData.category, formData.initialStockLocation, formData.track_stock, isOpen, product]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -152,7 +152,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       initialStockLocation: formData.initialStockLocation,
       image: finalImage,
       emoji: finalEmoji,
-      is_fastfood: formData.is_fastfood,
+      is_fastfood: false,
       track_stock: formData.track_stock,
     } as any);
 
@@ -349,18 +349,18 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                     <label htmlFor="is_fastfood" className="cursor-pointer text-sm font-semibold text-foreground">
                       Disponivel no Fastfood
                     </label>
-                    <p className="mt-1 text-xs text-muted-foreground">Produto aparecera no app de delivery</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Opcao desativada por enquanto.</p>
                   </div>
                 </div>
                 <label className="relative inline-flex cursor-pointer items-center">
                   <input
                     type="checkbox"
                     id="is_fastfood"
-                    checked={formData.is_fastfood}
-                    onChange={(event) => setFormData((prev) => ({ ...prev, is_fastfood: event.target.checked }))}
+                    checked={false}
+                    disabled
                     className="peer sr-only"
                   />
-                  <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-orange-500 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:bg-gray-700 dark:border-gray-600 dark:peer-focus:ring-orange-800 rtl:peer-checked:after:-translate-x-full" />
+                  <div className="h-6 w-11 rounded-full bg-gray-200 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] dark:bg-gray-700 dark:border-gray-600" />
                 </label>
               </div>
 
