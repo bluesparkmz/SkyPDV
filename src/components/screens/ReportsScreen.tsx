@@ -145,7 +145,10 @@ export function ReportsScreen() {
   }, [terminalUsers]);
 
   // Filtrar apenas caixas (cashier) para o seletor
-  const cashiers = terminalUsers.filter(u => u.role === "cashier" && u.is_active);
+  // Protege contra payloads incompletos (user_id nulo/indefinido) que quebram no toString().
+  const cashiers = terminalUsers.filter(
+    (u) => u.role === "cashier" && u.is_active && typeof u.user_id === "number" && Number.isFinite(u.user_id)
+  );
 
   // Buscar relatórios diários
   const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(startDate, endDate, selectedCashierId);
@@ -476,7 +479,12 @@ export function ReportsScreen() {
                 <Select
                   value={selectedCashierId?.toString() || "all"}
                   onValueChange={(value) => {
-                    setSelectedCashierId(value === "all" ? undefined : parseInt(value));
+                    if (value === "all") {
+                      setSelectedCashierId(undefined);
+                      return;
+                    }
+                    const parsed = Number(value);
+                    setSelectedCashierId(Number.isFinite(parsed) ? parsed : undefined);
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -485,7 +493,7 @@ export function ReportsScreen() {
                   <SelectContent>
                     <SelectItem value="all">Todos os caixas</SelectItem>
                     {cashiers.map((cashier) => (
-                      <SelectItem key={cashier.id} value={cashier.user_id.toString()}>
+                      <SelectItem key={cashier.id} value={String(cashier.user_id)}>
                         {cashier.user_name || cashier.user_email || `Caixa ${cashier.user_id}`}
                       </SelectItem>
                     ))}
