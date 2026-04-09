@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import {
-  Add24Regular,
   Box24Regular,
   Delete24Regular,
   Edit24Regular,
   Filter24Regular,
+  Add24Regular,
   Print24Regular,
   Search24Regular,
 } from "@fluentui/react-icons";
@@ -14,7 +14,6 @@ import { AdoptProductDialog } from "@/components/AdoptProductDialog";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 import { ProductDialog } from "@/components/ProductDialog";
 import { ProductImage } from "@/components/ProductImage";
-import { SupplyProductDialog } from "@/components/SupplyProductDialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useCreateProduct, useDeleteProduct, useProducts, useUpdateProduct } from "@/hooks/useProducts";
 import { dashboardApi, Product } from "@/services/api";
@@ -26,7 +25,6 @@ export function ProductsScreen() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isSupplyDialogOpen, setIsSupplyDialogOpen] = useState(false);
   const [isAdoptDialogOpen, setIsAdoptDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
@@ -114,11 +112,6 @@ export function ProductsScreen() {
   const openDeleteDialog = (product: Product) => {
     setSelectedProduct(product);
     setIsDeleteDialogOpen(true);
-  };
-
-  const openSupplyDialog = (product: Product) => {
-    setSelectedProduct(product);
-    setIsSupplyDialogOpen(true);
   };
 
   const openCreateDialog = () => {
@@ -252,15 +245,6 @@ export function ProductsScreen() {
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
-                      {product.track_stock && (
-                        <button
-                          onClick={() => openSupplyDialog(product)}
-                          className="rounded-lg bg-emerald-500/10 p-2 text-emerald-600"
-                          title="Fornecer"
-                        >
-                          <Add24Regular className="h-4 w-4" />
-                        </button>
-                      )}
                       <button onClick={() => openEditDialog(product)} className="rounded-lg bg-secondary p-2 text-muted-foreground">
                         <Edit24Regular className="h-4 w-4" />
                       </button>
@@ -339,15 +323,6 @@ export function ProductsScreen() {
                           </td>
                           <td className="p-4">
                             <div className="flex items-center justify-end gap-2">
-                              {product.track_stock && (
-                                <button
-                                  onClick={() => openSupplyDialog(product)}
-                                  className="rounded-lg p-2 text-emerald-600 transition-colors hover:bg-emerald-500/10 hover:text-emerald-700"
-                                  title="Fornecer produto"
-                                >
-                                  <Add24Regular className="h-4 w-4" />
-                                </button>
-                              )}
                               <button
                                 onClick={() => openEditDialog(product)}
                                 className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
@@ -397,14 +372,6 @@ export function ProductsScreen() {
           onClose={() => setIsDeleteDialogOpen(false)}
           onConfirm={handleDeleteProduct}
           product={productForDialog}
-        />
-        <SupplyProductDialog
-          open={isSupplyDialogOpen}
-          onOpenChange={setIsSupplyDialogOpen}
-          product={selectedProduct}
-          onSuccess={() => {
-            // O React Query atualiza os produtos automaticamente.
-          }}
         />
         <AdoptProductDialog open={isAdoptDialogOpen} onOpenChange={setIsAdoptDialogOpen} />
       </div>
