@@ -120,7 +120,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-h-[88vh] overflow-hidden bg-card border-border sm:max-w-[640px]">
+      <DialogContent className="max-h-[88vh] overflow-hidden border-border bg-card sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
@@ -253,75 +253,71 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               )}
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="rounded-lg border border-border bg-secondary/30 p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="space-y-1 pr-4">
-                    <label htmlFor="track_stock" className="cursor-pointer text-sm font-semibold text-foreground">
-                      Controlar estoque
+            <div className="space-y-3 rounded-xl border border-border bg-secondary/20 p-3">
+              <div className="flex items-start justify-between gap-3 rounded-lg bg-background px-3 py-3">
+                <div className="pr-4">
+                  <label htmlFor="track_stock" className="cursor-pointer text-sm font-semibold text-foreground">
+                    Controlar estoque
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Desative para produtos que podem ser vendidos sem quantidade armazenada.
+                  </p>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    id="track_stock"
+                    checked={formData.track_stock}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        track_stock: event.target.checked,
+                        initialStock: event.target.checked ? prev.initialStock : "",
+                      }))
+                    }
+                    className="peer sr-only"
+                  />
+                  <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
+                </label>
+              </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-lg bg-background px-3 py-3">
+                <div className="flex items-start gap-3 pr-4">
+                  <div className="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-white">
+                    🍔
+                  </div>
+                  <div>
+                    <label htmlFor="is_fastfood" className="cursor-pointer text-sm font-semibold text-foreground">
+                      Disponivel no Fastfood
                     </label>
-                    <p className="text-xs text-muted-foreground">
-                      Desative para produtos que podem ser vendidos sem quantidade armazenada.
-                    </p>
+                    <p className="mt-1 text-xs text-muted-foreground">Produto aparecera no app de delivery</p>
                   </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      id="track_stock"
-                      checked={formData.track_stock}
-                      onChange={(event) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          track_stock: event.target.checked,
-                          initialStock: event.target.checked ? prev.initialStock : "",
-                        }))
-                      }
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
-                  </label>
                 </div>
-
-                {!formData.track_stock && (
-                  <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
-                    Este produto ficara sempre disponivel para venda e nao entrara na gestao de estoque.
-                  </p>
-                )}
-
-                {isEditing && (
-                  <p className="mt-3 text-xs text-muted-foreground">
-                    {formData.track_stock
-                      ? "A quantidade deste produto e gerida na tela de Estoque."
-                      : "Este produto esta configurado para vender sem controle de estoque."}
-                  </p>
-                )}
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    id="is_fastfood"
+                    checked={formData.is_fastfood}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, is_fastfood: event.target.checked }))}
+                    className="peer sr-only"
+                  />
+                  <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-orange-500 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:bg-gray-700 dark:border-gray-600 dark:peer-focus:ring-orange-800 rtl:peer-checked:after:-translate-x-full" />
+                </label>
               </div>
 
-              <div className="rounded-lg border-2 border-orange-200 bg-orange-50 p-4 dark:border-orange-800 dark:bg-orange-950/20">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-500 text-white shadow-lg shadow-orange-500/30">
-                      🍔
-                    </div>
-                    <div>
-                      <label htmlFor="is_fastfood" className="cursor-pointer text-sm font-semibold text-foreground">
-                        Disponivel no Fastfood
-                      </label>
-                      <p className="text-xs text-muted-foreground">Produto aparecera no app de delivery</p>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      id="is_fastfood"
-                      checked={formData.is_fastfood}
-                      onChange={(event) => setFormData((prev) => ({ ...prev, is_fastfood: event.target.checked }))}
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-orange-500 peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-orange-300 dark:bg-gray-700 dark:border-gray-600 dark:peer-focus:ring-orange-800 rtl:peer-checked:after:-translate-x-full" />
-                  </label>
-                </div>
-              </div>
+              {!formData.track_stock && (
+                <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+                  Este produto ficara sempre disponivel para venda e nao entrara na gestao de estoque.
+                </p>
+              )}
+
+              {isEditing && (
+                <p className="text-xs text-muted-foreground">
+                  {formData.track_stock
+                    ? "A quantidade deste produto e gerida na tela de Estoque."
+                    : "Este produto esta configurado para vender sem controle de estoque."}
+                </p>
+              )}
             </div>
 
             <div>
