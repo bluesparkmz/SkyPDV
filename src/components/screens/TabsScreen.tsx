@@ -41,7 +41,7 @@ import {
   useUpdateAccount,
 } from "@/hooks/useAccounts";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
-import { formatAccountReceipt } from "@/lib/receiptFormat";
+import { formatAccountReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
 import { Account, CreateAccount, PaymentMethod, terminalApi } from "@/services/api";
 import { toast } from "sonner";
 
@@ -54,6 +54,9 @@ export function TabsScreen() {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);
+  const [kitchenSentByAccount, setKitchenSentByAccount] = useState<Record<number, number[]>>({});
+  const [kitchenTicketCountByAccount, setKitchenTicketCountByAccount] = useState<Record<number, number>>({});
 
   const { data: accounts = [], isLoading, refetch } = useAccounts(statusFilter);
   const { data: selectedAccount } = useAccount(selectedAccountId);
@@ -150,8 +153,60 @@ export function TabsScreen() {
     }
   };
 
+  const handlePrintKitchen = async () => {
+    if (!selectedAccount) return;
+    const alreadySent = kitchenSentByAccount[selectedAccount.id] || [];
+    const selectedItems = selectedAccount.items.filter(
+      (item) => selectedKitchenItems.includes(item.id) && !alreadySent.includes(item.id)
+    );
+    if (selectedItems.length === 0) {
+      toast.error("Selecione os itens para enviar a cozinha.");
+      return;
+    }
+    try {
+      const nextTicketNumber = (kitchenTicketCountByAccount[selectedAccount.id] || 0) + 1;
+      const receiptContent = formatKitchenTicket(selectedAccount, selectedItems, { terminal, ticketNumber: nextTicketNumber });
+      await printReceipt(receiptContent);
+      setKitchenSentByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: Array.from(new Set([...(prev[selectedAccount.id] || []), ...selectedItems.map((i) => i.id)])),
+      }));
+      setKitchenTicketCountByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: nextTicketNumber,
+      }));
+      setSelectedKitchenItems([]);
+    } catch (error) {
+      console.error("Erro ao imprimir cozinha:", error);
+    }
+  };
+
+  const handlePrintSingleKitchen = async (itemId: number) => {
+    if (!selectedAccount) return;
+    const alreadySent = kitchenSentByAccount[selectedAccount.id] || [];
+    if (alreadySent.includes(itemId)) return;
+    const item = selectedAccount.items.find((i) => i.id === itemId);
+    if (!item) return;
+    try {
+      const nextTicketNumber = (kitchenTicketCountByAccount[selectedAccount.id] || 0) + 1;
+      const receiptContent = formatKitchenTicket(selectedAccount, [item], { terminal, ticketNumber: nextTicketNumber });
+      await printReceipt(receiptContent);
+      setKitchenSentByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: Array.from(new Set([...(prev[selectedAccount.id] || []), itemId])),
+      }));
+      setKitchenTicketCountByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: nextTicketNumber,
+      }));
+    } catch (error) {
+      console.error("Erro ao imprimir cozinha:", error);
+    }
+  };
+
   const openDetail = (account: Account) => {
     setSelectedAccountId(account.id);
+    setSelectedKitchenItems([]);
     setIsDetailModalOpen(true);
   };
 
@@ -471,6 +526,24 @@ export function TabsScreen() {
                           </p>
                         </div>
                         <div className="font-semibold">{formatCurrency(item.subtotal)}</div>
+                        <div className="flex items-center gap-2">
+                          {(kitchenSentByAccount[selectedAccount.id] || []).includes(item.id) ? (
+                            <span className="text-xs text-emerald-600 font-semibold">Enviado</span>
+                          ) : (
+                            <Button variant="ghost" size="sm" onClick={() => handlePrintSingleKitchen(item.id)}>
+                              Enviar
+                            </Button>
+                          )}
+                          <input
+                            type="checkbox"
+                            checked={selectedKitchenItems.includes(item.id)}
+                            onChange={(e) => {
+                              setSelectedKitchenItems((prev) =>
+                                e.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id)
+                              );
+                            }}
+                          />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -482,11 +555,30 @@ export function TabsScreen() {
                 <span className="text-lg font-bold text-primary">{formatCurrency(selectedAccount.current_balance)}</span>
               </div>
 
-              <div className="flex justify-end">
-                <Button variant="outline" className="gap-2" onClick={() => handlePrintAccount(selectedAccount)}>
-                  <Print24Regular className="w-4 h-4" />
-                  Imprimir Conta
+              <div className="flex items-center justify-between gap-2">
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() => {
+                    const alreadySent = kitchenSentByAccount[selectedAccount.id] || [];
+                    const available = selectedAccount.items.filter((item) => !alreadySent.includes(item.id)).map((item) => item.id);
+                    setSelectedKitchenItems(
+                      selectedKitchenItems.length === available.length ? [] : available
+                    );
+                  }}
+                >
+                  {selectedKitchenItems.length === (selectedAccount.items.filter((item) => !(kitchenSentByAccount[selectedAccount.id] || []).includes(item.id)).length) ? "Limpar selecao" : "Selecionar tudo"}
                 </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" className="gap-2" onClick={handlePrintKitchen}>
+                    <Print24Regular className="w-4 h-4" />
+                    Enviar cozinha
+                  </Button>
+                  <Button variant="outline" className="gap-2" onClick={() => handlePrintAccount(selectedAccount)}>
+                    <Print24Regular className="w-4 h-4" />
+                    Imprimir Conta
+                  </Button>
+                </div>
               </div>
             </div>
           ) : (

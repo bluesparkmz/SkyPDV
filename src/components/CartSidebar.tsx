@@ -176,7 +176,7 @@ function CartContent({
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-2">
+        <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => setReserveDialogOpen(true)}
             disabled={items.length === 0}

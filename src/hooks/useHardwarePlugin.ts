@@ -1,32 +1,22 @@
 import { useState, useEffect } from "react";
 import { getHardwarePlugin, connectHardwarePlugin } from "@/lib/hardwarePlugin";
-import { toast } from "sonner";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export function useHardwarePlugin() {
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
-  const isMobile = useIsMobile();
 
   useEffect(() => {
     const plugin = getHardwarePlugin();
 
-    // Handlers para eventos
     const handleConnected = () => {
       setIsConnected(true);
       setIsConnecting(false);
-      console.log('✅ Hardware plugin conectado');
-      if (!isMobile) {
-        toast.success("Plugin de hardware conectado!", { duration: 2000 });
-      }
+      console.log("Hardware plugin conectado");
     };
 
     const handleDisconnected = () => {
       setIsConnected(false);
-      console.log('❌ Hardware plugin desconectado');
-      if (!isMobile) {
-        toast.warning("Plugin de hardware desconectado", { duration: 2000 });
-      }
+      console.log("Hardware plugin desconectado");
     };
 
     const handleError = () => {
@@ -34,21 +24,18 @@ export function useHardwarePlugin() {
       setIsConnecting(false);
     };
 
-    // Verificar conexão inicial
     checkConnection();
 
-    // Adicionar listeners
-    plugin.on('connected', handleConnected);
-    plugin.on('disconnected', handleDisconnected);
-    plugin.on('error', handleError);
+    plugin.on("connected", handleConnected);
+    plugin.on("disconnected", handleDisconnected);
+    plugin.on("error", handleError);
 
     return () => {
-      // Remover listeners
-      plugin.off('connected', handleConnected);
-      plugin.off('disconnected', handleDisconnected);
-      plugin.off('error', handleError);
+      plugin.off("connected", handleConnected);
+      plugin.off("disconnected", handleDisconnected);
+      plugin.off("error", handleError);
     };
-  }, [isMobile]);
+  }, []);
 
   const checkConnection = async () => {
     const plugin = getHardwarePlugin();
@@ -57,7 +44,7 @@ export function useHardwarePlugin() {
       try {
         await connectHardwarePlugin();
         setIsConnected(true);
-      } catch (error) {
+      } catch {
         setIsConnected(false);
       } finally {
         setIsConnecting(false);
@@ -76,10 +63,7 @@ export function useHardwarePlugin() {
         setIsConnected(true);
       } catch {
         setIsConnected(false);
-        if (!isMobile) {
-          toast.error("Plugin de hardware não conectado. Inicie o plugin local (WebSocket).");
-        }
-        return { success: false, error: "Não conectado ao plugin" };
+        return { success: false, error: "Nao conectado ao plugin" };
       } finally {
         setIsConnecting(false);
       }
@@ -87,22 +71,12 @@ export function useHardwarePlugin() {
 
     try {
       const result = await plugin.printReceipt(content);
-
-      if (result.success) {
-        if (!isMobile) {
-          toast.success("Recibo impresso com sucesso!");
-        }
-      } else {
-        if (!isMobile) {
-          toast.error(`Erro ao imprimir: ${result.error}`);
-        }
+      if (!result.success) {
+        console.error("Erro ao imprimir:", result.error);
       }
-
       return result;
     } catch (error: any) {
-      if (!isMobile) {
-        toast.error(`Erro ao imprimir: ${error.message}`);
-      }
+      console.error("Erro ao imprimir:", error.message);
       return { success: false, error: error.message };
     }
   };
@@ -114,31 +88,18 @@ export function useHardwarePlugin() {
         await connectHardwarePlugin();
         setIsConnected(true);
       } catch {
-        if (!isMobile) {
-          toast.error("Plugin de hardware não conectado");
-        }
-        return { success: false, error: "Não conectado ao plugin" };
+        return { success: false, error: "Nao conectado ao plugin" };
       }
     }
 
     try {
       const result = await plugin.openCashDrawer(port);
-
-      if (result.success) {
-        if (!isMobile) {
-          toast.success("Gaveta aberta!");
-        }
-      } else {
-        if (!isMobile) {
-          toast.warning(`Gaveta não disponível: ${result.error}`);
-        }
+      if (!result.success) {
+        console.error("Gaveta nao disponivel:", result.error);
       }
-
       return result;
     } catch (error: any) {
-      if (!isMobile) {
-        toast.error(`Erro ao abrir gaveta: ${error.message}`);
-      }
+      console.error("Erro ao abrir gaveta:", error.message);
       return { success: false, error: error.message };
     }
   };
@@ -151,4 +112,3 @@ export function useHardwarePlugin() {
     reconnect: checkConnection,
   };
 }
-

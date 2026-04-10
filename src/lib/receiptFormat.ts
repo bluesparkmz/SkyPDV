@@ -116,7 +116,7 @@ export function formatAccountReceipt(
 export function formatKitchenTicket(
   account: Account,
   items: Account["items"],
-  opts?: { terminal?: Terminal | null; printedAt?: string }
+  opts?: { terminal?: Terminal | null; printedAt?: string; ticketNumber?: number }
 ): string {
   const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
   const printedAt = opts?.printedAt
@@ -129,6 +129,9 @@ export function formatKitchenTicket(
   lines.push("PEDIDO COZINHA");
   lines.push("=".repeat(42));
   lines.push(`Data: ${printedAt}`);
+  if (opts?.ticketNumber) {
+    lines.push(`Pedido: #${opts.ticketNumber}`);
+  }
   lines.push(`Conta: ${account.client_name}`);
   lines.push(`Referencia: #${account.id}`);
   if (account.opened_by_name) lines.push(`Caixa: ${account.opened_by_name}`);
