@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   PeopleTeam24Regular,
@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   useAccount,
   useAccounts,
@@ -56,7 +57,7 @@ export function TabsScreen() {
   const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState("");
-  const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("not_given");
+  const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);
   const [kitchenSentByAccount, setKitchenSentByAccount] = useState<Record<number, number[]>>({});
   const [kitchenTicketCountByAccount, setKitchenTicketCountByAccount] = useState<Record<number, number>>({});
@@ -85,6 +86,16 @@ export function TabsScreen() {
     return parts.includes(normalizedSearch);
   });
   const openBalance = openAccounts.reduce((sum, account) => sum + Number(account.current_balance), 0);
+  const closeChangeAmount = Math.max(
+    0,
+    Number(amountPaid || 0) - Number(selectedAccount?.current_balance || 0)
+  );
+
+  useEffect(() => {
+    if (closeChangeAmount <= 0 && changeStatus !== "given") {
+      setChangeStatus("given");
+    }
+  }, [closeChangeAmount, changeStatus]);
 
   const formatCurrency = (value: string | number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "MZN" }).format(Number(value || 0));
@@ -159,7 +170,7 @@ export function TabsScreen() {
     setIsCloseModalOpen(false);
     setPaymentMethod("cash");
     setAmountPaid("");
-    setChangeStatus("not_given");
+    setChangeStatus("given");
     refetch();
   };
 
@@ -398,7 +409,15 @@ export function TabsScreen() {
                       Ver
                     </Button>
                     {account.status === "open" ? (
-                      <Button size="sm" className="gap-1 text-[10px] h-7" onClick={() => { setSelectedAccountId(account.id); setIsCloseModalOpen(true); }}>
+                      <Button
+                        size="sm"
+                        className="gap-1 text-[10px] h-7"
+                        onClick={() => {
+                          setSelectedAccountId(account.id);
+                          setChangeStatus("given");
+                          setIsCloseModalOpen(true);
+                        }}
+                      >
                         <Checkmark24Regular className="w-4 h-4" />
                         Fechar
                       </Button>
@@ -522,18 +541,19 @@ export function TabsScreen() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="change_status">Estado do Troco</Label>
-              <Select value={changeStatus} onValueChange={(value: "given" | "not_given") => setChangeStatus(value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="not_given">Nao entregue</SelectItem>
-                  <SelectItem value="given">Entregue</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {closeChangeAmount > 0 && (
+              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <div>
+                  <Label htmlFor="change_status">Troco nao entregue</Label>
+                  <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+                </div>
+                <Switch
+                  id="change_status"
+                  checked={changeStatus === "not_given"}
+                  onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
+                />
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="amount_paid">Valor Entregue</Label>
               <Input
@@ -545,7 +565,7 @@ export function TabsScreen() {
                 placeholder="0.00"
               />
               <div className="text-xs text-muted-foreground">
-                Troco: {Math.max(0, Number(amountPaid || 0) - Number(selectedAccount?.current_balance || 0)).toFixed(2)} MT
+                Troco: {closeChangeAmount.toFixed(2)} MT
               </div>
             </div>
           </div>

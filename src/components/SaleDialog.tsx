@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -58,6 +59,12 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       setAmountPaid(total.toFixed(2));
     }
   }, [open, total]);
+
+  useEffect(() => {
+    if (changeAmount <= 0 && changeStatus !== "given") {
+      setChangeStatus("given");
+    }
+  }, [changeAmount, changeStatus]);
 
   const formatReceipt = (saleData: CreateSale, receiptNumber?: string): string => {
     const date = new Date().toLocaleString('pt-MZ');
@@ -255,17 +262,16 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
 
 
           {changeAmount > 0 && (
-            <div className="space-y-2">
-              <Label htmlFor="change_status">Troco</Label>
-              <Select value={changeStatus} onValueChange={(value: "given" | "not_given") => setChangeStatus(value)}>
-                <SelectTrigger id="change_status">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="given">Entregue</SelectItem>
-                  <SelectItem value="not_given">Nao entregue</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+              <div>
+                <Label htmlFor="change_status">Troco nao entregue</Label>
+                <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+              </div>
+              <Switch
+                id="change_status"
+                checked={changeStatus === "not_given"}
+                onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
+              />
             </div>
           )}
           {/* Customer Info */}
