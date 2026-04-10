@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateSale } from "@/hooks/useSales";
 import { CartItem } from "@/types/product";
-import { CreateSale } from "@/services/api";
+import { CreateSale, PaymentMethod } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
 
@@ -34,7 +34,7 @@ interface SaleDialogProps {
 
 export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: SaleDialogProps) {
   const createSale = useCreateSale();
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "skywallet" | "mpesa" | "mixed">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -50,6 +50,13 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   // IVA = diferença entre total e subtotal
   const taxAmount = total - calculatedSubtotal;
   const changeAmount = parseFloat(amountPaid || "0") - total;
+
+  useEffect(() => {
+    if (open) {
+      setPaymentMethod("cash");
+      setAmountPaid(total.toFixed(2));
+    }
+  }, [open, total]);
 
   const formatReceipt = (saleData: CreateSale, receiptNumber?: string): string => {
     const date = new Date().toLocaleString('pt-MZ');
@@ -102,10 +109,10 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
 
   const getPaymentMethodLabel = (method: string): string => {
     const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      card: "Cartão",
-      skywallet: "SkyWallet",
-      mpesa: "M-Pesa",
+      cash: "Cash",
+      card: "BCI POS",
+      skywallet: "E-Mola",
+      mpesa: "M-pesa",
       mixed: "Misto",
     };
     return labels[method] || method;
@@ -215,11 +222,10 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Dinheiro</SelectItem>
-                <SelectItem value="card">Cartão</SelectItem>
-                <SelectItem value="skywallet">SkyWallet</SelectItem>
-                <SelectItem value="mpesa">M-Pesa</SelectItem>
-                <SelectItem value="mixed">Misto</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+                <SelectItem value="mpesa">M-pesa</SelectItem>
+                <SelectItem value="skywallet">E-Mola</SelectItem>
+                <SelectItem value="card">BCI POS</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -292,4 +298,3 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     </Dialog>
   );
 }
-

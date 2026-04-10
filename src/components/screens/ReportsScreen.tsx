@@ -53,7 +53,6 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useSales } from "@/hooks/useSales";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -303,7 +302,7 @@ export function ReportsScreen() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      toast.error(err?.message || `Erro ao baixar ${type === "pdf" ? "PDF" : "Excel"}`);
+      console.error(err?.message || `Erro ao baixar ${type === "pdf" ? "PDF" : "Excel"}`);
     }
   };
 
@@ -354,11 +353,8 @@ export function ReportsScreen() {
       window.URL.revokeObjectURL(url);
 
       // placeholder para envio ao WhatsApp
-      if (whatsappPrefs.enabled && whatsappPrefs.phone) {
-        toast.success(`Enviaremos o relatório para o WhatsApp ${whatsappPrefs.phone}. (placeholder)`);
-      }
     } catch (e: any) {
-      toast.error(e?.message || `Falha ao gerar o ${type === "pdf" ? "PDF" : "Excel"}`);
+      console.error(e?.message || `Falha ao gerar o ${type === "pdf" ? "PDF" : "Excel"}`);
     }
   };
 

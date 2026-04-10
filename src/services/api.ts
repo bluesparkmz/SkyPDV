@@ -138,6 +138,47 @@ export async function apiDelete<T>(endpoint: string): Promise<T> {
 
 // === Endpoints do SkyPDV ===
 
+export type PaymentMethod = "cash" | "mpesa" | "emola" | "bci_pos";
+type BackendPaymentMethod = "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+
+function toBackendPaymentMethod(method: PaymentMethod): BackendPaymentMethod {
+  switch (method) {
+    case "bci_pos":
+      return "card";
+    case "emola":
+      return "skywallet";
+    case "mpesa":
+      return "mpesa";
+    case "cash":
+    default:
+      return "cash";
+  }
+}
+
+function fromBackendPaymentMethod(method?: string | null): PaymentMethod {
+  switch ((method || "").toLowerCase()) {
+    case "card":
+    case "pos":
+    case "bci_pos":
+      return "bci_pos";
+    case "skywallet":
+    case "emola":
+      return "emola";
+    case "mpesa":
+      return "mpesa";
+    case "cash":
+    default:
+      return "cash";
+  }
+}
+
+function normalizeSale<T extends { payment_method?: string | null }>(sale: T): T {
+  return {
+    ...sale,
+    payment_method: fromBackendPaymentMethod(sale.payment_method),
+  };
+}
+
 // Terminal
 export const terminalApi = {
   get: () => apiGet<Terminal>("/skypdv/terminal"),
@@ -205,28 +246,30 @@ export const cashRegisterApi = {
 
 // Vendas
 export const salesApi = {
-  create: (data: CreateSale) => apiPost<Sale>("/skypdv/sales", data),
+  create: (data: CreateSale) =>
+    apiPost<Sale>("/skypdv/sales", { ...data, payment_method: toBackendPaymentMethod(data.payment_method) }).then(normalizeSale),
   list: (params?: SalesParams & { user_id?: number }) => {
     const query = new URLSearchParams();
     if (params?.start_date) query.append("start_date", params.start_date);
     if (params?.end_date) query.append("end_date", params.end_date);
     if (params?.source_type) query.append("source_type", params.source_type);
-    if (params?.payment_method) query.append("payment_method", params.payment_method);
+    if (params?.payment_method) query.append("payment_method", toBackendPaymentMethod(params.payment_method));
     if (params?.sale_type) query.append("sale_type", params.sale_type);
     if (params?.status) query.append("status", params.status);
     if (params?.skip) query.append("skip", String(params.skip));
     if (params?.limit) query.append("limit", String(params.limit));
     if (params?.user_id) query.append("user_id", String(params.user_id));
     const queryString = query.toString();
-    return apiGet<Sale[]>(`/skypdv/sales${queryString ? `?${queryString}` : ""}`);
+    return apiGet<Sale[]>(`/skypdv/sales${queryString ? `?${queryString}` : ""}`).then((sales) => sales.map(normalizeSale));
   },
-  get: (id: number) => apiGet<Sale>(`/skypdv/sales/${id}`),
-  void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`),
+  get: (id: number) => apiGet<Sale>(`/skypdv/sales/${id}`).then(normalizeSale),
+  void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`).then(normalizeSale),
 };
 
 // Faturas (mesma estrutura de vendas, mas status pendente/pago)
 export const invoicesApi = {
-  create: (data: CreateSale) => apiPost<Sale>("/skypdv/invoices", data),
+  create: (data: CreateSale) =>
+    apiPost<Sale>("/skypdv/invoices", { ...data, payment_method: toBackendPaymentMethod(data.payment_method) }).then(normalizeSale),
   list: (params?: { start_date?: string; end_date?: string; payment_status?: string; skip?: number; limit?: number; user_id?: number }) => {
     const query = new URLSearchParams();
     if (params?.start_date) query.append("start_date", params.start_date);
@@ -236,13 +279,29 @@ export const invoicesApi = {
     if (params?.limit) query.append("limit", String(params.limit));
     if (params?.user_id) query.append("user_id", String(params.user_id));
     const qs = query.toString();
-    return apiGet<Sale[]>(`/skypdv/invoices${qs ? `?${qs}` : ""}`);
+    return apiGet<Sale[]>(`/skypdv/invoices${qs ? `?${qs}` : ""}`).then((sales) => sales.map(normalizeSale));
   },
-  pay: (id: number) => apiPost<Sale>(`/skypdv/invoices/${id}/pay`),
+  pay: (id: number) => apiPost<Sale>(`/skypdv/invoices/${id}/pay`).then(normalizeSale),
   downloadPdf: (id: number, phone?: string) => {
     const qs = phone ? `?phone=${encodeURIComponent(phone)}` : "";
     return apiGetBlob(`/skypdv/invoices/${id}/pdf${qs}`);
   }
+};
+
+export const accountsApi = {
+  list: (status?: "open" | "closed" | "all") => {
+    const query = new URLSearchParams();
+    if (status && status !== "all") query.append("status", status);
+    const qs = query.toString();
+    return apiGet<Account[]>(`/skypdv/accounts${qs ? `?${qs}` : ""}`);
+  },
+  create: (data: CreateAccount) => apiPost<Account>("/skypdv/accounts", data),
+  get: (id: number) => apiGet<Account>(`/skypdv/accounts/${id}`),
+  update: (id: number, data: UpdateAccount) => apiPut<Account>(`/skypdv/accounts/${id}`, data),
+  addItems: (id: number, items: CreateAccountItem[]) => apiPost<Account>(`/skypdv/accounts/${id}/items`, items),
+  close: (id: number, payment_method: PaymentMethod) =>
+    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method: toBackendPaymentMethod(payment_method) }),
+  remove: (id: number) => apiDelete<{ message: string }>(`/skypdv/accounts/${id}`),
 };
 
 // Perfil
@@ -688,7 +747,7 @@ export interface Sale {
   discount_percent: string;
   tax_amount: string;
   total: string;
-  payment_method: "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+  payment_method: PaymentMethod;
   payment_status: string;
   amount_paid: string;
   change_amount: string;
@@ -726,7 +785,7 @@ export interface CreateSale {
   customer_id?: number;
   customer_name?: string;
   customer_phone?: string;
-  payment_method: "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+  payment_method: PaymentMethod;
   amount_paid?: string;
   discount_amount?: string;
   discount_percent?: string;
@@ -748,11 +807,61 @@ export interface CreateSaleItem {
   notes?: string;
 }
 
+export interface AccountItem {
+  id: number;
+  account_id: number;
+  product_id: number;
+  product_name: string;
+  quantity: string;
+  unit_price: string;
+  subtotal: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Account {
+  id: number;
+  terminal_id: number;
+  linked_sale_id: number | null;
+  client_name: string;
+  client_phone: string | null;
+  status: "open" | "closed";
+  current_balance: string;
+  opened_by_user_id: number | null;
+  opened_by_name: string | null;
+  closed_by_user_id: number | null;
+  closed_by_name: string | null;
+  notes: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: AccountItem[];
+}
+
+export interface CreateAccountItem {
+  product_id: number;
+  quantity: string;
+  unit_price?: string;
+}
+
+export interface CreateAccount {
+  client_name: string;
+  client_phone?: string;
+  notes?: string;
+  items?: CreateAccountItem[];
+}
+
+export interface UpdateAccount {
+  client_name?: string;
+  client_phone?: string;
+  notes?: string;
+}
+
 export interface SalesParams {
   start_date?: string;
   end_date?: string;
   source_type?: string;
-  payment_method?: string;
+  payment_method?: PaymentMethod;
   sale_type?: string;
   status?: string;
   skip?: number;
