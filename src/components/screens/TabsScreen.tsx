@@ -55,6 +55,7 @@ export function TabsScreen() {
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [amountPaid, setAmountPaid] = useState("");
   const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);
   const [kitchenSentByAccount, setKitchenSentByAccount] = useState<Record<number, number[]>>({});
   const [kitchenTicketCountByAccount, setKitchenTicketCountByAccount] = useState<Record<number, number>>({});
@@ -137,11 +138,18 @@ export function TabsScreen() {
 
   const handleClose = async () => {
     if (!selectedAccountId) return;
-    const closedAccount = await closeAccount.mutateAsync({ id: selectedAccountId, payment_method: paymentMethod });
+    const total = selectedAccount?.current_balance ? Number(selectedAccount.current_balance) : 0;
+    const paid = Number(amountPaid || 0);
+    if (!paid || paid < total) {
+      toast.error("Valor entregue deve ser igual ou maior que o total.");
+      return;
+    }
+    const closedAccount = await closeAccount.mutateAsync({ id: selectedAccountId, payment_method: paymentMethod, amount_paid: amountPaid });
     try {
       const receiptContent = formatAccountReceipt(closedAccount, {
         terminal,
         paymentMethod,
+        amountPaid: paid,
       });
       await printReceipt(receiptContent);
     } catch (error) {
@@ -149,6 +157,7 @@ export function TabsScreen() {
     }
     setIsCloseModalOpen(false);
     setPaymentMethod("cash");
+    setAmountPaid("");
     refetch();
   };
 
@@ -490,6 +499,20 @@ export function TabsScreen() {
                   <SelectItem value="bci_pos">BCI POS</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="amount_paid">Valor Entregue</Label>
+              <Input
+                id="amount_paid"
+                type="number"
+                step="0.01"
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+                placeholder="0.00"
+              />
+              <div className="text-xs text-muted-foreground">
+                Troco: {Math.max(0, Number(amountPaid || 0) - Number(selectedAccount?.current_balance || 0)).toFixed(2)} MT
+              </div>
             </div>
           </div>
           <DialogFooter>

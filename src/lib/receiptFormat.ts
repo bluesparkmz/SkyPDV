@@ -64,6 +64,7 @@ export function formatAccountReceipt(
   opts?: {
     terminal?: Terminal | null;
     paymentMethod?: string;
+    amountPaid?: number;
     printedAt?: string;
   }
 ): string {
@@ -94,6 +95,13 @@ export function formatAccountReceipt(
   }
   if (opts?.paymentMethod) {
     lines.push(`Pagamento: ${getPaymentMethodLabel(opts.paymentMethod)}`);
+  }
+  if (typeof opts?.amountPaid === "number") {
+    lines.push(`Valor Pago: ${formatMoney(opts.amountPaid)}`);
+    const change = opts.amountPaid - total;
+    if (change > 0) {
+      lines.push(`Troco: ${formatMoney(change)}`);
+    }
   }
   lines.push("-".repeat(42));
   lines.push("ITENS:");

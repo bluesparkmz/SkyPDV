@@ -299,8 +299,8 @@ export const accountsApi = {
   get: (id: number) => apiGet<Account>(`/skypdv/accounts/${id}`),
   update: (id: number, data: UpdateAccount) => apiPut<Account>(`/skypdv/accounts/${id}`, data),
   addItems: (id: number, items: CreateAccountItem[]) => apiPost<Account>(`/skypdv/accounts/${id}/items`, items),
-  close: (id: number, payment_method: PaymentMethod) =>
-    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method: toBackendPaymentMethod(payment_method) }),
+  close: (id: number, payment_method: PaymentMethod, amount_paid: string) =>
+    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method: toBackendPaymentMethod(payment_method), amount_paid }),
   remove: (id: number) => apiDelete<{ message: string }>(`/skypdv/accounts/${id}`),
 };
 
@@ -827,6 +827,8 @@ export interface Account {
   client_phone: string | null;
   status: "open" | "closed";
   current_balance: string;
+  amount_paid: string;
+  change_amount: string;
   opened_by_user_id: number | null;
   opened_by_name: string | null;
   closed_by_user_id: number | null;
