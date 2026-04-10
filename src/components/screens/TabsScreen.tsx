@@ -90,6 +90,7 @@ export function TabsScreen() {
     0,
     Number(amountPaid || 0) - Number(selectedAccount?.current_balance || 0)
   );
+  const isCloseCash = paymentMethod === "cash";
 
   useEffect(() => {
     if (closeChangeAmount <= 0 && changeStatus !== "given") {
@@ -541,17 +542,22 @@ export function TabsScreen() {
                 </SelectContent>
               </Select>
             </div>
-            {closeChangeAmount > 0 && (
-              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                <div>
-                  <Label htmlFor="change_status">Troco nao entregue</Label>
-                  <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+            {isCloseCash && closeChangeAmount > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <div>
+                    <Label htmlFor="change_status">Troco nao entregue</Label>
+                    <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+                  </div>
+                  <Switch
+                    id="change_status"
+                    checked={changeStatus === "not_given"}
+                    onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
+                  />
                 </div>
-                <Switch
-                  id="change_status"
-                  checked={changeStatus === "not_given"}
-                  onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
-                />
+                {changeStatus === "given" && (
+                  <p className="text-xs text-muted-foreground">Troco entregue.</p>
+                )}
               </div>
             )}
             <div className="space-y-2">

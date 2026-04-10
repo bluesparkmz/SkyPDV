@@ -52,6 +52,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   // IVA = diferença entre total e subtotal
   const taxAmount = total - calculatedSubtotal;
   const changeAmount = parseFloat(amountPaid || "0") - total;
+  const isCash = paymentMethod === "cash";
 
   useEffect(() => {
     if (open) {
@@ -261,17 +262,22 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
           </div>
 
 
-          {changeAmount > 0 && (
-            <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-              <div>
-                <Label htmlFor="change_status">Troco nao entregue</Label>
-                <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+          {isCash && changeAmount > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <div>
+                  <Label htmlFor="change_status">Troco nao entregue</Label>
+                  <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+                </div>
+                <Switch
+                  id="change_status"
+                  checked={changeStatus === "not_given"}
+                  onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
+                />
               </div>
-              <Switch
-                id="change_status"
-                checked={changeStatus === "not_given"}
-                onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
-              />
+              {changeStatus === "given" && (
+                <p className="text-xs text-muted-foreground">Troco entregue.</p>
+              )}
             </div>
           )}
           {/* Customer Info */}
