@@ -299,8 +299,8 @@ export const accountsApi = {
   get: (id: number) => apiGet<Account>(`/skypdv/accounts/${id}`),
   update: (id: number, data: UpdateAccount) => apiPut<Account>(`/skypdv/accounts/${id}`, data),
   addItems: (id: number, items: CreateAccountItem[]) => apiPost<Account>(`/skypdv/accounts/${id}/items`, items),
-  close: (id: number, payment_method: PaymentMethod, amount_paid: string) =>
-    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method: toBackendPaymentMethod(payment_method), amount_paid }),
+  close: (id: number, payment_method: PaymentMethod, amount_paid: string, change_status: "given" | "not_given") =>
+    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method: toBackendPaymentMethod(payment_method), amount_paid, change_status }),
   remove: (id: number) => apiDelete<{ message: string }>(`/skypdv/accounts/${id}`),
 };
 
@@ -646,11 +646,13 @@ export interface CashRegister {
 export interface OpenCashRegister {
   opening_amount: string;
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface CloseCashRegister {
   closing_amount: string;
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface DashboardStats {
@@ -751,6 +753,7 @@ export interface Sale {
   payment_status: string;
   amount_paid: string;
   change_amount: string;
+  change_status: "given" | "not_given";
   sale_type: "local" | "delivery" | "online";
   status: "completed" | "cancelled";
   delivery_address: string | null;
@@ -787,12 +790,14 @@ export interface CreateSale {
   customer_phone?: string;
   payment_method: PaymentMethod;
   amount_paid?: string;
+  change_status?: "given" | "not_given";
   discount_amount?: string;
   discount_percent?: string;
   sale_type?: "local" | "delivery" | "online";
   delivery_address?: string;
   delivery_notes?: string;
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface CreateSaleItem {
@@ -805,6 +810,7 @@ export interface CreateSaleItem {
   discount_percent?: string;
   item_type?: "menu_item" | "drink";
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface AccountItem {
@@ -829,6 +835,7 @@ export interface Account {
   current_balance: string;
   amount_paid: string;
   change_amount: string;
+  change_status: "given" | "not_given";
   opened_by_user_id: number | null;
   opened_by_name: string | null;
   closed_by_user_id: number | null;
@@ -850,6 +857,7 @@ export interface CreateAccount {
   client_name: string;
   client_phone?: string;
   notes?: string;
+  change_status?: "given" | "not_given";
   items?: CreateAccountItem[];
 }
 
@@ -857,6 +865,7 @@ export interface UpdateAccount {
   client_name?: string;
   client_phone?: string;
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface SalesParams {
@@ -990,6 +999,7 @@ export interface CreateSupplier {
   contact_email?: string;
   address?: string;
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface UpdateSupplier {
@@ -999,6 +1009,7 @@ export interface UpdateSupplier {
   contact_email?: string;
   address?: string;
   notes?: string;
+  change_status?: "given" | "not_given";
   is_active?: boolean;
 }
 
@@ -1078,6 +1089,7 @@ export interface StockAdjustment {
   movement_type: "in" | "out" | "adjustment";
   quantity: string;
   notes?: string;
+  change_status?: "given" | "not_given";
   reference?: string;
   storage_location: "balcao" | "congelado" | "armazem";
 }
@@ -1095,6 +1107,7 @@ export interface StockTransfer {
   to_location: "balcao" | "congelado" | "armazem";
   quantity: string;
   notes?: string;
+  change_status?: "given" | "not_given";
 }
 
 export interface AdoptProduct {
@@ -1116,4 +1129,5 @@ export interface PDVTaxSummary {
 export interface PDVTaxSummaryUpdate {
   is_paid: boolean;
   notes?: string;
+  change_status?: "given" | "not_given";
 }

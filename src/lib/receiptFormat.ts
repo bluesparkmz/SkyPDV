@@ -103,6 +103,9 @@ export function formatAccountReceipt(
       lines.push(`Troco: ${formatMoney(change)}`);
     }
   }
+  if (account.change_status) {
+    lines.push(`Troco: ${account.change_status === "given" ? "Entregue" : "Nao entregue"}`);
+  }
   lines.push("-".repeat(42));
   lines.push("ITENS:");
   lines.push("-".repeat(42));

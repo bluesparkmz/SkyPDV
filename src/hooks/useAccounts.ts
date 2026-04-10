@@ -64,8 +64,8 @@ export function useAddAccountItems() {
 export function useCloseAccount() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payment_method, amount_paid }: { id: number; payment_method: PaymentMethod; amount_paid: string }) =>
-      accountsApi.close(id, payment_method, amount_paid),
+    mutationFn: ({ id, payment_method, amount_paid, change_status }: { id: number; payment_method: PaymentMethod; amount_paid: string; change_status: "given" | "not_given" }) =>
+      accountsApi.close(id, payment_method, amount_paid, change_status),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
       queryClient.invalidateQueries({ queryKey: ["account", variables.id] });

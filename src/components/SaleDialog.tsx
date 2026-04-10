@@ -36,6 +36,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   const createSale = useCreateSale();
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState("");
+  const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
@@ -133,6 +134,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       })),
       payment_method: paymentMethod,
       amount_paid: amountPaid,
+      change_status: changeStatus,
       customer_name: customerName || undefined,
       customer_phone: customerPhone || undefined,
       notes: notes || undefined,
@@ -161,6 +163,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       setCustomerPhone("");
       setNotes("");
       setPaymentMethod("cash");
+      setChangeStatus("given");
     } catch (error) {
       // Error handled by mutation
     }
@@ -250,6 +253,21 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
             )}
           </div>
 
+
+          {changeAmount > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="change_status">Troco</Label>
+              <Select value={changeStatus} onValueChange={(value: "given" | "not_given") => setChangeStatus(value)}>
+                <SelectTrigger id="change_status">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="given">Entregue</SelectItem>
+                  <SelectItem value="not_given">Nao entregue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {/* Customer Info */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">

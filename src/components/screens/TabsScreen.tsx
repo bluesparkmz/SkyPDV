@@ -56,6 +56,7 @@ export function TabsScreen() {
   const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState("");
+  const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("not_given");
   const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);
   const [kitchenSentByAccount, setKitchenSentByAccount] = useState<Record<number, number[]>>({});
   const [kitchenTicketCountByAccount, setKitchenTicketCountByAccount] = useState<Record<number, number>>({});
@@ -144,7 +145,7 @@ export function TabsScreen() {
       toast.error("Valor entregue deve ser igual ou maior que o total.");
       return;
     }
-    const closedAccount = await closeAccount.mutateAsync({ id: selectedAccountId, payment_method: paymentMethod, amount_paid: amountPaid });
+    const closedAccount = await closeAccount.mutateAsync({ id: selectedAccountId, payment_method: paymentMethod, amount_paid: amountPaid, change_status: changeStatus });
     try {
       const receiptContent = formatAccountReceipt(closedAccount, {
         terminal,
@@ -158,6 +159,7 @@ export function TabsScreen() {
     setIsCloseModalOpen(false);
     setPaymentMethod("cash");
     setAmountPaid("");
+    setChangeStatus("not_given");
     refetch();
   };
 
@@ -368,6 +370,26 @@ export function TabsScreen() {
                       <p className="text-muted-foreground">Produtos</p>
                       <p className="font-medium">{account.items.length}</p>
                     </div>
+                    {account.status === "closed" && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Troco</p>
+                        <p
+                          className={`font-medium ${
+                            account.change_status === "given" ? "text-emerald-600" : "text-amber-600"
+                          }`}
+                        >
+                          {account.change_status === "given" ? "Entregue" : "Pendente"}
+                        </p>
+                      </div>
+                    )}
+                    {account.status === "closed" && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Troco</p>
+                        <p className="font-medium">
+                          {account.change_status === "given" ? "Entregue" : "Nao entregue"}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid grid-cols-3 gap-1 mt-auto">
@@ -501,6 +523,18 @@ export function TabsScreen() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="change_status">Estado do Troco</Label>
+              <Select value={changeStatus} onValueChange={(value: "given" | "not_given") => setChangeStatus(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="not_given">Nao entregue</SelectItem>
+                  <SelectItem value="given">Entregue</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="amount_paid">Valor Entregue</Label>
               <Input
                 id="amount_paid"
@@ -549,6 +583,26 @@ export function TabsScreen() {
                   <p className="text-muted-foreground">Fechamento</p>
                   <p className="font-semibold">{formatDate(selectedAccount.closed_at)}</p>
                 </div>
+                {selectedAccount.status === "closed" && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-muted-foreground">Estado do Troco</p>
+                    <p className="font-semibold">
+                      {selectedAccount.change_status === "given" ? "Entregue" : "Nao entregue"}
+                    </p>
+                  </div>
+                )}
+                {selectedAccount.status === "closed" && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-muted-foreground">Valor Entregue</p>
+                    <p className="font-semibold">{formatCurrency(selectedAccount.amount_paid)}</p>
+                  </div>
+                )}
+                {selectedAccount.status === "closed" && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-muted-foreground">Troco</p>
+                    <p className="font-semibold">{formatCurrency(selectedAccount.change_amount)}</p>
+                  </div>
+                )}
               </div>
 
               <div className="rounded-xl border border-border overflow-hidden">
@@ -596,6 +650,22 @@ export function TabsScreen() {
               </div>
 
               <div className="flex items-center justify-between gap-2">
+              {selectedAccount.status === "closed" && selectedAccount.change_status === "not_given" && (
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={async () => {
+                    await updateAccount.mutateAsync({
+                      id: selectedAccount.id,
+                      data: { change_status: "given" },
+                    });
+                    refetch();
+                  }}
+                >
+                  Marcar troco entregue
+                </Button>
+              )}
+              
                 <Button
                   variant="secondary"
                   className="gap-2"
