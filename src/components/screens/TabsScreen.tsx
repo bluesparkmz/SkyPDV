@@ -414,8 +414,8 @@ export function TabsScreen() {
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>
                   <SelectItem value="mpesa">M-pesa</SelectItem>
-                  <SelectItem value="skywallet">E-Mola</SelectItem>
-                  <SelectItem value="card">BCI POS</SelectItem>
+                  <SelectItem value="emola">E-Mola</SelectItem>
+                  <SelectItem value="bci_pos">BCI POS</SelectItem>
                 </SelectContent>
               </Select>
             </div>

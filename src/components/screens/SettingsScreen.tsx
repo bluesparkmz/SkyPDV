@@ -309,7 +309,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                       <p className="mt-1 text-xs text-muted-foreground">Canal principal de comunicacao</p>
                     </div>
                     <div className="rounded-xl border border-border bg-background/80 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo SkyWallet</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo E-Mola</p>
                       <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-emerald-600">
                         <Money24Regular className="w-4 h-4" />
                         {u?.wallet_balance?.toLocaleString() || "0"} MZN

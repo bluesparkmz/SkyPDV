@@ -167,10 +167,12 @@ export function SalesHistoryScreen() {
 
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      card: "Cartão",
-      skywallet: "SkyWallet",
-      mpesa: "M-Pesa",
+      cash: "Cash",
+      bci_pos: "BCI POS",
+      card: "BCI POS",
+      emola: "E-Mola",
+      skywallet: "E-Mola",
+      mpesa: "M-pesa",
       mixed: "Misto",
     };
     return labels[method] || method;

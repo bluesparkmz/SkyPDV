@@ -11,7 +11,9 @@ export function getPaymentMethodLabel(method: string): string {
   const labels: Record<string, string> = {
     cash: "Cash",
     bci_pos: "BCI POS",
+    card: "BCI POS",
     emola: "E-Mola",
+    skywallet: "E-Mola",
     mpesa: "M-pesa",
   };
   return labels[method] || method;
@@ -107,6 +109,37 @@ export function formatAccountReceipt(
   lines.push(`TOTAL: ${formatMoney(total)}`);
   lines.push("=".repeat(42));
   lines.push("Venda confirmada no fecho da conta.");
+  lines.push("");
+  return lines.join("\n");
+}
+
+export function formatKitchenTicket(
+  account: Account,
+  items: Account["items"],
+  opts?: { terminal?: Terminal | null; printedAt?: string }
+): string {
+  const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
+  const printedAt = opts?.printedAt
+    ? new Date(opts.printedAt).toLocaleString("pt-MZ")
+    : new Date().toLocaleString("pt-MZ");
+
+  const lines: string[] = [];
+  lines.push("=".repeat(42));
+  lines.push(establishmentName.toUpperCase());
+  lines.push("PEDIDO COZINHA");
+  lines.push("=".repeat(42));
+  lines.push(`Data: ${printedAt}`);
+  lines.push(`Conta: ${account.client_name}`);
+  lines.push(`Referencia: #${account.id}`);
+  if (account.opened_by_name) lines.push(`Caixa: ${account.opened_by_name}`);
+  lines.push("-".repeat(42));
+  lines.push("ITENS PARA COZINHA:");
+  lines.push("-".repeat(42));
+  items.forEach((item) => {
+    lines.push(item.product_name);
+    lines.push(`  Qtd: ${Number(item.quantity)}`);
+  });
+  lines.push("=".repeat(42));
   lines.push("");
   return lines.join("\n");
 }

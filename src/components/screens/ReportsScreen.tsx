@@ -264,10 +264,12 @@ export function ReportsScreen() {
 
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      card: "Cartão",
-      skywallet: "SkyWallet",
-      mpesa: "M-Pesa",
+      cash: "Cash",
+      bci_pos: "BCI POS",
+      card: "BCI POS",
+      emola: "E-Mola",
+      skywallet: "E-Mola",
+      mpesa: "M-pesa",
       mixed: "Misto",
     };
     return labels[method] || method;
@@ -892,25 +894,25 @@ function DashboardView({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {summary.cash_sales && parseFloat(summary.cash_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Dinheiro</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">Cash</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.cash_sales)}</p>
               </div>
             )}
             {summary.card_sales && parseFloat(summary.card_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Cartão</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">BCI POS</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.card_sales)}</p>
               </div>
             )}
             {summary.skywallet_sales && parseFloat(summary.skywallet_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">SkyWallet</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">E-Mola</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.skywallet_sales)}</p>
               </div>
             )}
             {summary.mpesa_sales && parseFloat(summary.mpesa_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">M-Pesa</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">M-pesa</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.mpesa_sales)}</p>
               </div>
             )}
