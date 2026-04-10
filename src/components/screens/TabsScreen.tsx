@@ -41,12 +41,13 @@ import {
   useUpdateAccount,
 } from "@/hooks/useAccounts";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
-import { formatAccountReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
+import { formatAccountReceipt, formatAccountItemsReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
 import { Account, CreateAccount, PaymentMethod, terminalApi } from "@/services/api";
 import { toast } from "sonner";
 
 export function TabsScreen() {
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -71,6 +72,16 @@ export function TabsScreen() {
   const deleteAccount = useDeleteAccount();
 
   const openAccounts = accounts.filter((account) => account.status === "open");
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredAccounts = accounts.filter((account) => {
+    if (!normalizedSearch) return true;
+    const parts = [
+      account.client_name,
+      account.client_phone || "",
+      account.opened_by_name || "",
+    ].join(" ").toLowerCase();
+    return parts.includes(normalizedSearch);
+  });
   const openBalance = openAccounts.reduce((sum, account) => sum + Number(account.current_balance), 0);
 
   const formatCurrency = (value: string | number) =>
@@ -143,10 +154,10 @@ export function TabsScreen() {
 
   const handlePrintAccount = async (account: Account) => {
     try {
-      const receiptContent = formatAccountReceipt(account, {
-        terminal,
-        paymentMethod: account.status === "closed" ? undefined : paymentMethod,
-      });
+      const receiptContent =
+        account.status === "open"
+          ? formatAccountItemsReceipt(account, { terminal })
+          : formatAccountReceipt(account, { terminal, paymentMethod });
       await printReceipt(receiptContent);
     } catch (error) {
       console.error("Erro ao imprimir conta:", error);
@@ -269,8 +280,14 @@ export function TabsScreen() {
               <SelectItem value="closed">Fechadas</SelectItem>
             </SelectContent>
           </Select>
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Pesquisar conta..."
+            className="w-[200px] md:w-[260px] h-9 md:h-10 text-xs md:text-sm"
+          />
           <div className="text-[10px] md:text-sm text-muted-foreground">
-            {accounts.length} encontrada{accounts.length !== 1 ? "s" : ""}
+            {filteredAccounts.length} encontrada{filteredAccounts.length !== 1 ? "s" : ""}
           </div>
         </div>
 
@@ -279,7 +296,7 @@ export function TabsScreen() {
             <div className="flex items-center justify-center h-64">
               <div className="text-muted-foreground">Carregando contas...</div>
             </div>
-          ) : accounts.length === 0 ? (
+          ) : filteredAccounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <PeopleTeam24Regular className="w-16 h-16 mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-semibold mb-2">Nenhuma conta encontrada</h3>
@@ -290,20 +307,20 @@ export function TabsScreen() {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
-              {accounts.map((account) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
+              {filteredAccounts.map((account) => (
                 <div
                   key={account.id}
-                  className={`fluent-card p-3 md:p-4 hover:shadow-md transition-shadow flex flex-col ${
+                  className={`fluent-card p-2 hover:shadow-md transition-shadow flex flex-col ${
                     account.status === "open" ? "border-l-4 border-l-success" : "border-l-4 border-l-muted-foreground"
                   }`}
                 >
-                  <div className="flex items-start justify-between mb-2 md:mb-3">
+                  <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm md:text-lg mb-0.5 md:mb-1 truncate">{account.client_name}</h3>
+                      <h3 className="font-bold text-sm mb-0.5 truncate">{account.client_name}</h3>
                       {account.client_phone && (
-                        <div className="flex items-center gap-1 text-[10px] md:text-sm text-muted-foreground">
-                          <Phone24Regular className="w-3 h-3 md:w-4 md:h-4" />
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Phone24Regular className="w-3 h-3" />
                           {account.client_phone}
                         </div>
                       )}
@@ -316,13 +333,13 @@ export function TabsScreen() {
                     </Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-3 md:mb-4 bg-secondary/30 p-2 rounded-lg text-xs">
+                  <div className="grid grid-cols-2 gap-1 mb-2 bg-secondary/30 p-2 rounded-lg text-[10px]">
                     <div>
                       <p className="text-muted-foreground flex items-center gap-1">
                         <Money24Regular className="w-3 h-3" />
                         Saldo
                       </p>
-                      <p className="font-bold text-base md:text-lg text-primary">{formatCurrency(account.current_balance)}</p>
+                      <p className="font-bold text-sm text-primary">{formatCurrency(account.current_balance)}</p>
                     </div>
                     <div>
                       <p className="text-muted-foreground flex items-center gap-1">
@@ -344,33 +361,33 @@ export function TabsScreen() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mt-auto">
-                    <Button variant="outline" size="sm" className="gap-2" onClick={() => openDetail(account)}>
+                  <div className="grid grid-cols-3 gap-1 mt-auto">
+                    <Button variant="outline" size="sm" className="gap-1 text-[10px] h-7" onClick={() => openDetail(account)}>
                       <Eye24Regular className="w-4 h-4" />
                       Ver
                     </Button>
                     {account.status === "open" ? (
-                      <Button size="sm" className="gap-2" onClick={() => { setSelectedAccountId(account.id); setIsCloseModalOpen(true); }}>
+                      <Button size="sm" className="gap-1 text-[10px] h-7" onClick={() => { setSelectedAccountId(account.id); setIsCloseModalOpen(true); }}>
                         <Checkmark24Regular className="w-4 h-4" />
                         Fechar
                       </Button>
                     ) : (
-                      <Button variant="secondary" size="sm" disabled>
+                      <Button variant="secondary" size="sm" disabled className="text-[10px] h-7">
                         Fechada
                       </Button>
                     )}
                   </div>
-                  <Button variant="ghost" size="sm" className="gap-2 mt-2" onClick={() => handlePrintAccount(account)}>
+                  <Button variant="ghost" size="sm" className="gap-1 mt-1 text-[10px] h-7" onClick={() => handlePrintAccount(account)}>
                     <Print24Regular className="w-4 h-4" />
                     Imprimir
                   </Button>
                   {account.status === "open" && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      <Button variant="ghost" size="sm" className="gap-2" onClick={() => openEdit(account)}>
+                    <div className="grid grid-cols-2 gap-1 mt-1">
+                      <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-7" onClick={() => openEdit(account)}>
                         <Edit24Regular className="w-4 h-4" />
                         Editar
                       </Button>
-                      <Button variant="ghost" size="sm" className="gap-2 text-destructive" onClick={() => handleDelete(account.id)}>
+                      <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-7 text-destructive" onClick={() => handleDelete(account.id)}>
                         <Delete24Regular className="w-4 h-4" />
                         Excluir
                       </Button>

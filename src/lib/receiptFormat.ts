@@ -146,3 +146,33 @@ export function formatKitchenTicket(
   lines.push("");
   return lines.join("\n");
 }
+
+export function formatAccountItemsReceipt(
+  account: Account,
+  opts?: { terminal?: Terminal | null; printedAt?: string }
+): string {
+  const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
+  const printedAt = opts?.printedAt
+    ? new Date(opts.printedAt).toLocaleString("pt-MZ")
+    : new Date().toLocaleString("pt-MZ");
+
+  const lines: string[] = [];
+  lines.push("=".repeat(42));
+  lines.push(establishmentName.toUpperCase());
+  lines.push("CONTA ABERTA - PRODUTOS");
+  lines.push("=".repeat(42));
+  lines.push(`Data: ${printedAt}`);
+  lines.push(`Conta: ${account.client_name}`);
+  lines.push(`Referencia: #${account.id}`);
+  if (account.opened_by_name) lines.push(`Caixa: ${account.opened_by_name}`);
+  lines.push("-".repeat(42));
+  lines.push("ITENS:");
+  lines.push("-".repeat(42));
+  account.items.forEach((item) => {
+    lines.push(item.product_name);
+    lines.push(`  ${Number(item.quantity)}x ${formatMoney(item.unit_price)}`);
+  });
+  lines.push("=".repeat(42));
+  lines.push("");
+  return lines.join("\n");
+}
