@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { accountsApi, CreateAccount, CreateAccountItem, PaymentMethod, UpdateAccount } from "@/services/api";
+import { accountsApi, CreateAccount, CreateAccountItem, PaymentMethod, UpdateAccount, UpdateAccountItem } from "@/services/api";
 import { toast } from "sonner";
 
 export function useAccounts(status?: "open" | "closed" | "all") {
@@ -74,6 +74,38 @@ export function useCloseAccount() {
     },
     onError: (error: any) => {
       toast.error(error.message || "Erro ao fechar conta");
+    },
+  });
+}
+
+export function useUpdateAccountItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, itemId, data }: { accountId: number; itemId: number; data: UpdateAccountItem }) =>
+      accountsApi.updateItem(accountId, itemId, data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["account", variables.accountId] });
+      toast.success("Item atualizado com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao atualizar item");
+    },
+  });
+}
+
+export function useRemoveAccountItem() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ accountId, itemId }: { accountId: number; itemId: number }) =>
+      accountsApi.removeItem(accountId, itemId),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+      queryClient.invalidateQueries({ queryKey: ["account", variables.accountId] });
+      toast.success("Item removido com sucesso!");
+    },
+    onError: (error: any) => {
+      toast.error(error.message || "Erro ao remover item");
     },
   });
 }

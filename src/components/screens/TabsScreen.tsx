@@ -6,6 +6,7 @@ import {
   Checkmark24Regular,
   Edit24Regular,
   Delete24Regular,
+  Subtract24Regular,
   Money24Regular,
   Phone24Regular,
   Calendar24Regular,
@@ -36,6 +37,8 @@ import { Switch } from "@/components/ui/switch";
 import {
   useAccount,
   useAccounts,
+  useUpdateAccountItem,
+  useRemoveAccountItem,
   useCloseAccount,
   useCreateAccount,
   useDeleteAccount,
@@ -72,6 +75,8 @@ export function TabsScreen() {
   const createAccount = useCreateAccount();
   const updateAccount = useUpdateAccount();
   const closeAccount = useCloseAccount();
+  const updateAccountItem = useUpdateAccountItem();
+  const removeAccountItem = useRemoveAccountItem();
   const deleteAccount = useDeleteAccount();
 
   const openAccounts = accounts.filter((account) => account.status === "open");
@@ -236,6 +241,34 @@ export function TabsScreen() {
     } catch (error) {
       console.error("Erro ao imprimir cozinha:", error);
     }
+  };
+
+  const handleDecreaseItem = async (itemId: number, currentQuantity: string) => {
+    if (!selectedAccount) return;
+    if (selectedAccount.status !== "open") return;
+    const qty = Number(currentQuantity || 0);
+    if (!Number.isFinite(qty) || qty <= 0) return;
+
+    if (qty <= 1) {
+      await removeAccountItem.mutateAsync({ accountId: selectedAccount.id, itemId });
+      setSelectedKitchenItems((prev) => prev.filter((id) => id !== itemId));
+    } else {
+      const nextQty = qty - 1;
+      await updateAccountItem.mutateAsync({
+        accountId: selectedAccount.id,
+        itemId,
+        data: { quantity: String(nextQty) },
+      });
+    }
+    refetch();
+  };
+
+  const handleRemoveItem = async (itemId: number) => {
+    if (!selectedAccount) return;
+    if (selectedAccount.status !== "open") return;
+    await removeAccountItem.mutateAsync({ accountId: selectedAccount.id, itemId });
+    setSelectedKitchenItems((prev) => prev.filter((id) => id !== itemId));
+    refetch();
   };
 
   const openDetail = (account: Account) => {
@@ -647,6 +680,28 @@ export function TabsScreen() {
                         </div>
                         <div className="font-semibold">{formatCurrency(item.subtotal)}</div>
                         <div className="flex items-center gap-2">
+                          {selectedAccount.status === "open" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => handleDecreaseItem(item.id, item.quantity)}
+                                title="Diminuir"
+                              >
+                                <Subtract24Regular className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-destructive"
+                                onClick={() => handleRemoveItem(item.id)}
+                                title="Eliminar"
+                              >
+                                <Delete24Regular className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
                           {(kitchenSentByAccount[selectedAccount.id] || []).includes(item.id) ? (
                             <span className="text-xs text-emerald-600 font-semibold">Enviado</span>
                           ) : (

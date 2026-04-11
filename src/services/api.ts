@@ -299,6 +299,10 @@ export const accountsApi = {
   get: (id: number) => apiGet<Account>(`/skypdv/accounts/${id}`),
   update: (id: number, data: UpdateAccount) => apiPut<Account>(`/skypdv/accounts/${id}`, data),
   addItems: (id: number, items: CreateAccountItem[]) => apiPost<Account>(`/skypdv/accounts/${id}/items`, items),
+  updateItem: (accountId: number, itemId: number, data: UpdateAccountItem) =>
+    apiPatch<Account>(`/skypdv/accounts/${accountId}/items/${itemId}`, data),
+  removeItem: (accountId: number, itemId: number) =>
+    apiDelete<Account>(`/skypdv/accounts/${accountId}/items/${itemId}`),
   close: (id: number, payment_method: PaymentMethod, amount_paid: string, change_status: "given" | "not_given") =>
     apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method: toBackendPaymentMethod(payment_method), amount_paid, change_status }),
   remove: (id: number) => apiDelete<{ message: string }>(`/skypdv/accounts/${id}`),
@@ -851,6 +855,10 @@ export interface CreateAccountItem {
   product_id: number;
   quantity: string;
   unit_price?: string;
+}
+
+export interface UpdateAccountItem {
+  quantity: string;
 }
 
 export interface CreateAccount {
