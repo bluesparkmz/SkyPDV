@@ -651,13 +651,13 @@ export function TabsScreen() {
       </Dialog>
 
       <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
-        <DialogContent className="sm:max-w-[720px] max-h-[80vh] overflow-hidden">
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-hidden">
           <DialogHeader className="sticky top-0 z-10 bg-background pb-3">
             <DialogTitle>Detalhes da Conta</DialogTitle>
             <DialogDescription>Veja o caixa que abriu, os produtos consumidos e o estado atual da conta.</DialogDescription>
           </DialogHeader>
           {selectedAccount ? (
-            <div className="space-y-4 overflow-y-auto pr-1 max-h-[70vh]">
+            <div className="space-y-4 overflow-y-auto pr-1 max-h-[78vh]">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                 <div className="rounded-lg border border-border p-3">
                   <p className="text-muted-foreground">Cliente</p>
