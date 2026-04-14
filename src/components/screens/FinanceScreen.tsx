@@ -265,14 +265,15 @@ export function FinanceScreen() {
     }
   };
 
-  const handleExport = async (type: "pdf" | "excel") => {
+  const handleExport = async (type: "pdf" | "excel", opts?: { skipPhoneCheck?: boolean }) => {
     try {
-      if (!whatsappPrefs.phone) {
+      const hasPhone = !!whatsappPrefs.phone?.trim();
+      if (!hasPhone && !opts?.skipPhoneCheck) {
         setPendingExport(type);
         setShowWhatsappDialog(true);
         return;
       }
-      const phoneParam = whatsappPrefs.enabled ? whatsappPrefs.phone : undefined;
+      const phoneParam = whatsappPrefs.enabled && hasPhone ? whatsappPrefs.phone : undefined;
       const { blob, filename } = type === "pdf"
         ? await financeApi.downloadSummaryPdf(startDate, endDate, undefined, phoneParam)
         : await financeApi.downloadSummaryExcel(startDate, endDate, undefined, phoneParam);
@@ -605,8 +606,8 @@ export function FinanceScreen() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="ghost" onClick={() => { setShowWhatsappDialog(false); if (pendingExport) handleExport(pendingExport); }}>Imprimir sem WhatsApp</Button>
-            <Button onClick={() => { setWhatsappPrefs({ phone: tempPhone, enabled: true }); saveToBackend(tempPhone); setShowWhatsappDialog(false); if (pendingExport) handleExport(pendingExport); }} disabled={!tempPhone.trim()}>Salvar e continuar</Button>
+            <Button variant="ghost" onClick={() => { setShowWhatsappDialog(false); if (pendingExport) handleExport(pendingExport, { skipPhoneCheck: true }); }}>Imprimir sem WhatsApp</Button>
+            <Button onClick={() => { setWhatsappPrefs({ phone: tempPhone, enabled: true }); saveToBackend(tempPhone); setShowWhatsappDialog(false); if (pendingExport) handleExport(pendingExport, { skipPhoneCheck: true }); }} disabled={!tempPhone.trim()}>Salvar e continuar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

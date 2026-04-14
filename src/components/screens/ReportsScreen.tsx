@@ -324,9 +324,10 @@ export function ReportsScreen() {
     setIsSaleDetailOpen(true);
   };
 
-  const handleExport = async (type: "pdf" | "excel") => {
+  const handleExport = async (type: "pdf" | "excel", opts?: { skipPhoneCheck?: boolean }) => {
     try {
-      if (!whatsappPrefs.phone) {
+      const hasPhone = !!whatsappPrefs.phone?.trim();
+      if (!hasPhone && !opts?.skipPhoneCheck) {
         setPendingExportType(type);
         setShowWhatsappDialog(true);
         return;
@@ -336,7 +337,7 @@ export function ReportsScreen() {
       const exportStart = isDailyView ? selectedDate : startDate;
       const exportEnd = isDailyView ? selectedDate : endDate;
 
-      const phoneParam = whatsappPrefs.enabled ? whatsappPrefs.phone : undefined;
+      const phoneParam = whatsappPrefs.enabled && hasPhone ? whatsappPrefs.phone : undefined;
       const { blob, filename: apiFilename } =
         type === "pdf"
           ? await dashboardApi.downloadSalesSummaryPdf(exportStart!, exportEnd!, selectedCashierId, phoneParam)
@@ -794,7 +795,7 @@ export function ReportsScreen() {
                 variant="ghost"
                 onClick={() => {
                   setShowWhatsappDialog(false);
-                  if (pendingExportType) handleExport(pendingExportType);
+                  if (pendingExportType) handleExport(pendingExportType, { skipPhoneCheck: true });
                 }}
               >
                 Imprimir sem WhatsApp
@@ -804,7 +805,7 @@ export function ReportsScreen() {
                   setWhatsappPrefs({ phone: tempPhone, enabled: true });
                   saveToBackend(tempPhone);
                   setShowWhatsappDialog(false);
-                  if (pendingExportType) handleExport(pendingExportType);
+                  if (pendingExportType) handleExport(pendingExportType, { skipPhoneCheck: true });
                 }}
                 disabled={!tempPhone.trim()}
               >
