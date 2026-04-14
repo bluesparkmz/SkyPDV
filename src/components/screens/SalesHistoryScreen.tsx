@@ -103,6 +103,12 @@ export function SalesHistoryScreen() {
     return map;
   }, [terminalUsers]);
 
+  const formatQuantity = (value: string | number) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (Number.isNaN(num)) return String(value);
+    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
+  };
+
   const isAdmin = useMemo(() => {
     const uid = authUser?.user?.id;
     if (!uid) return false;
@@ -559,7 +565,7 @@ export function SalesHistoryScreen() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product_name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {item.quantity}x {formatCurrency(item.unit_price)}
+                              {formatQuantity(item.quantity)}x {formatCurrency(item.unit_price)}
                             </p>
                           </div>
                           <p className="font-semibold">{formatCurrency(item.subtotal)}</p>

@@ -214,6 +214,12 @@ export function ReportsScreen() {
     }).format(num) + " MT";
   };
 
+  const formatQuantity = (value: string | number) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (Number.isNaN(num)) return String(value);
+    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
+  };
+
   const formatDate = (dateString: string) => {
     return format(parseISO(dateString), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
@@ -700,7 +706,7 @@ export function ReportsScreen() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product_name || `Produto #${item.product_id}`}</p>
                             <p className="text-sm text-muted-foreground">
-                              {item.quantity} x {formatCurrency(item.unit_price || 0)}
+                              {formatQuantity(item.quantity)} x {formatCurrency(item.unit_price || 0)}
                             </p>
                           </div>
                           <div className="text-right">
