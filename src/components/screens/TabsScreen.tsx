@@ -355,11 +355,12 @@ export function TabsScreen() {
           </Select>
           <div className="flex items-center gap-2">
             <Calendar24Regular className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Data</span>
             <Input
               type="date"
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
-              className="w-[150px] md:w-[170px] h-9 md:h-10 text-xs md:text-sm"
+              className="w-[170px] md:w-[190px] h-9 md:h-10 text-xs md:text-sm"
             />
           </div>
           <Input
