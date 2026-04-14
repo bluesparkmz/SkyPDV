@@ -118,12 +118,10 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
 
   const getPaymentMethodLabel = (method: string): string => {
     const labels: Record<string, string> = {
-      cash: "Cash",
-      bci_pos: "BCI POS",
-      card: "BCI POS",
-      emola: "E-Mola",
+      cash: "Dinheiro",
+      card: "Cartão/TPA",
+      mpesa: "M-Pesa",
       skywallet: "E-Mola",
-      mpesa: "M-pesa",
       mixed: "Misto",
     };
     return labels[method] || method;
@@ -235,10 +233,11 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Cash</SelectItem>
-                <SelectItem value="mpesa">M-pesa</SelectItem>
-                <SelectItem value="emola">E-Mola</SelectItem>
-                <SelectItem value="bci_pos">BCI POS</SelectItem>
+                <SelectItem value="cash">Dinheiro</SelectItem>
+                <SelectItem value="mpesa">M-Pesa</SelectItem>
+                <SelectItem value="card">Cartão/TPA</SelectItem>
+                <SelectItem value="skywallet">E-Mola</SelectItem>
+                <SelectItem value="mixed">Misto</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -66,6 +66,7 @@ function CartContent({
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
   const [clearCartDialogOpen, setClearCartDialogOpen] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const { openCashDrawer } = useHardwarePlugin();
 
   const handleFinalizeSale = () => {
@@ -129,15 +130,35 @@ function CartContent({
               <div className="flex items-center gap-1">
                 <div className="quantity-control">
                   <button
-                    onClick={() => onUpdateQuantity(item.id, item.quantity - 1)}
+                    onClick={async () => {
+                      setUpdatingId(item.id);
+                      await onUpdateQuantity(item.id, item.quantity - 1);
+                      setUpdatingId(null);
+                    }}
                     className="quantity-btn"
-                    disabled={item.quantity <= 1}
+                    disabled={item.quantity <= 1 || updatingId === item.id}
                   >
-                    <Subtract24Regular className="w-3 h-3" />
+                    {updatingId === item.id ? (
+                      <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
+                    ) : (
+                      <Subtract24Regular className="w-3 h-3" />
+                    )}
                   </button>
                   <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                  <button onClick={() => onUpdateQuantity(item.id, item.quantity + 1)} className="quantity-btn">
-                    <Add24Regular className="w-3 h-3" />
+                  <button
+                    onClick={async () => {
+                      setUpdatingId(item.id);
+                      await onUpdateQuantity(item.id, item.quantity + 1);
+                      setUpdatingId(null);
+                    }}
+                    className="quantity-btn"
+                    disabled={updatingId === item.id}
+                  >
+                    {updatingId === item.id ? (
+                      <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
+                    ) : (
+                      <Add24Regular className="w-3 h-3" />
+                    )}
                   </button>
                 </div>
 
