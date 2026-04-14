@@ -45,6 +45,7 @@ import { toast } from "sonner";
 import { TerminalUsersSettings } from "./TerminalUsersSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BuildingShop24Regular } from "@fluentui/react-icons";
+import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
 import { invoicesApi } from "@/services/api";
@@ -586,6 +587,14 @@ function PrinterSettings() {
   const [loading, setLoading] = useState(false);
   const [savedPrinter, setSavedPrinter] = useState<string | null>(null);
 
+  const handleDownloadPlugin = () => {
+    if (!HARDWARE_PLUGIN_URL) {
+      toast.error("Link do plugin nao configurado");
+      return;
+    }
+    window.open(HARDWARE_PLUGIN_URL, "_blank", "noopener,noreferrer");
+  };
+
   // Carregar impressora salva do localStorage
   useEffect(() => {
     const saved = localStorage.getItem("skypdv_selected_printer");
@@ -692,6 +701,40 @@ function PrinterSettings() {
             </Button>
           </div>
         )}
+      </div>
+
+      <div className="rounded-xl border border-border bg-secondary/30 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Plugin de Hardware</h3>
+            <p className="text-xs text-muted-foreground">
+              Baixe e instale o plugin para habilitar impressora termica e gaveta.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPlugin}
+            disabled={!HARDWARE_PLUGIN_URL}
+            className="shrink-0"
+          >
+            Download do Plugin
+          </Button>
+        </div>
+        {!HARDWARE_PLUGIN_URL && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Link nao configurado. Defina `VITE_SKYPDV_HARDWARE_PLUGIN_URL` no ambiente.
+          </p>
+        )}
+        <div className="mt-4 rounded-lg border border-border bg-background/70 p-3">
+          <p className="text-xs font-semibold text-foreground">Como instalar</p>
+          <ol className="mt-2 space-y-1 text-xs text-muted-foreground list-decimal pl-4">
+            <li>Baixe o ZIP do plugin.</li>
+            <li>Extraia a pasta em qualquer local do Windows.</li>
+            <li>Dentro do ZIP devem existir: `skypdv_plugin.exe` e `skypdv.bat`.</li>
+            <li>Execute `skypdv.bat` para instalar e iniciar o servico.</li>
+          </ol>
+        </div>
       </div>
 
       {!isConnected && (

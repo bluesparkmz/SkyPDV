@@ -50,8 +50,16 @@ import { Account, CreateAccount, PaymentMethod, terminalApi } from "@/services/a
 import { toast } from "sonner";
 
 export function TabsScreen() {
+  const getLocalDateValue = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState(getLocalDateValue(new Date()));
   const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -79,9 +87,18 @@ export function TabsScreen() {
   const removeAccountItem = useRemoveAccountItem();
   const deleteAccount = useDeleteAccount();
 
-  const openAccounts = accounts.filter((account) => account.status === "open");
+  const matchesDate = (account: Account) => {
+    if (!dateFilter) return true;
+    const sourceDate =
+      account.created_at || account.closed_at || account.updated_at;
+    if (!sourceDate) return false;
+    return getLocalDateValue(new Date(sourceDate)) === dateFilter;
+  };
+
+  const dateFilteredAccounts = accounts.filter(matchesDate);
+  const openAccounts = dateFilteredAccounts.filter((account) => account.status === "open");
   const normalizedSearch = searchTerm.trim().toLowerCase();
-  const filteredAccounts = accounts.filter((account) => {
+  const filteredAccounts = dateFilteredAccounts.filter((account) => {
     if (!normalizedSearch) return true;
     const parts = [
       account.client_name,
@@ -320,12 +337,12 @@ export function TabsScreen() {
             <p className="text-sm md:text-xl font-bold text-emerald-600">{openAccounts.length}</p>
           </div>
           <div className="fluent-card p-3 md:p-4 bg-secondary/50 border-l-4 border-l-muted-foreground hidden sm:block">
-            <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Total de Contas</p>
-            <p className="text-sm md:text-xl font-bold text-foreground">{accounts.length}</p>
+            <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Total de Contas (Dia)</p>
+            <p className="text-sm md:text-xl font-bold text-foreground">{dateFilteredAccounts.length}</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-4 md:mb-6">
+        <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-6">
           <Select value={statusFilter} onValueChange={(v: "all" | "open" | "closed") => setStatusFilter(v)}>
             <SelectTrigger className="w-[160px] md:w-[190px] h-9 md:h-10 text-xs md:text-sm">
               <SelectValue placeholder="Status" />
@@ -336,6 +353,15 @@ export function TabsScreen() {
               <SelectItem value="closed">Fechadas</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2">
+            <Calendar24Regular className="w-4 h-4 text-muted-foreground" />
+            <Input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-[150px] md:w-[170px] h-9 md:h-10 text-xs md:text-sm"
+            />
+          </div>
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
