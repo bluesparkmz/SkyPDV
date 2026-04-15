@@ -57,7 +57,7 @@ async function request<T>(endpoint: string, init: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       localStorage.removeItem("skypdv_token");
       window.dispatchEvent(new Event("skypdv:logout"));
     }
@@ -93,7 +93,7 @@ export async function apiGetBlob(endpoint: string): Promise<{ blob: Blob; filena
   });
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       localStorage.removeItem("skypdv_token");
       window.dispatchEvent(new Event("skypdv:logout"));
     }

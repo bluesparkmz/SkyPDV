@@ -90,7 +90,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         setToken(null);
         setUser(null);
         localStorage.removeItem(TOKEN_STORAGE_KEY);
