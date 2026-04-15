@@ -117,7 +117,10 @@ export function ReportsScreen() {
   const [operatorNameFilter, setOperatorNameFilter] = useState("");
   const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady, saveToBackend } = useWhatsappPrefs();
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
+  const [showPrintOptionsDialog, setShowPrintOptionsDialog] = useState(false);
   const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
+  const [pendingProductScope, setPendingProductScope] = useState<"all" | "beverages">("all");
+  const [printProductScope, setPrintProductScope] = useState<"all" | "beverages">("all");
   const [tempPhone, setTempPhone] = useState("");
 
   useEffect(() => {
@@ -324,11 +327,15 @@ export function ReportsScreen() {
     setIsSaleDetailOpen(true);
   };
 
-  const handleExport = async (type: "pdf" | "excel", opts?: { skipPhoneCheck?: boolean }) => {
+  const handleExport = async (
+    type: "pdf" | "excel",
+    opts?: { skipPhoneCheck?: boolean; productScope?: "all" | "beverages" }
+  ) => {
     try {
       const hasPhone = !!whatsappPrefs.phone?.trim();
       if (!hasPhone && !opts?.skipPhoneCheck) {
         setPendingExportType(type);
+        setPendingProductScope(opts?.productScope || "all");
         setShowWhatsappDialog(true);
         return;
       }
@@ -340,7 +347,13 @@ export function ReportsScreen() {
       const phoneParam = whatsappPrefs.enabled && hasPhone ? whatsappPrefs.phone : undefined;
       const { blob, filename: apiFilename } =
         type === "pdf"
-          ? await dashboardApi.downloadSalesSummaryPdf(exportStart!, exportEnd!, selectedCashierId, phoneParam)
+          ? await dashboardApi.downloadSalesSummaryPdf(
+              exportStart!,
+              exportEnd!,
+              selectedCashierId,
+              phoneParam,
+              opts?.productScope
+            )
           : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId, phoneParam);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
@@ -367,7 +380,13 @@ export function ReportsScreen() {
     }
   };
 
-  const handleExportPDF = () => handleExport("pdf");
+  const handleExportPDF = () => {
+    if (activeView === "daily" && selectedDate) {
+      setShowPrintOptionsDialog(true);
+      return;
+    }
+    handleExport("pdf", { productScope: "all" });
+  };
 
   const handleQuickFilter = (period: 'today' | 'yesterday' | 'week' | 'month') => {
     const end = new Date();
@@ -580,7 +599,7 @@ export function ReportsScreen() {
           <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
           {(selectedDate || activeView === "all-sales") && (
             <>
-              <Button onClick={() => handleExport("pdf")} className="gap-2" variant="outline">
+              <Button onClick={handleExportPDF} className="gap-2" variant="outline">
                 <Print24Regular className="w-4 h-4" />
                 PDF
               </Button>
@@ -795,7 +814,12 @@ export function ReportsScreen() {
                 variant="ghost"
                 onClick={() => {
                   setShowWhatsappDialog(false);
-                  if (pendingExportType) handleExport(pendingExportType, { skipPhoneCheck: true });
+                  if (pendingExportType) {
+                    handleExport(pendingExportType, {
+                      skipPhoneCheck: true,
+                      productScope: pendingProductScope,
+                    });
+                  }
                 }}
               >
                 Imprimir sem WhatsApp
@@ -805,11 +829,70 @@ export function ReportsScreen() {
                   setWhatsappPrefs({ phone: tempPhone, enabled: true });
                   saveToBackend(tempPhone);
                   setShowWhatsappDialog(false);
-                  if (pendingExportType) handleExport(pendingExportType, { skipPhoneCheck: true });
+                  if (pendingExportType) {
+                    handleExport(pendingExportType, {
+                      skipPhoneCheck: true,
+                      productScope: pendingProductScope,
+                    });
+                  }
                 }}
                 disabled={!tempPhone.trim()}
               >
                 Salvar e continuar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showPrintOptionsDialog} onOpenChange={setShowPrintOptionsDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Opções de impressão</DialogTitle>
+              <DialogDescription>
+                Escolha quais produtos devem aparecer no relatório diário impresso.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3 py-3">
+              <button
+                type="button"
+                onClick={() => setPrintProductScope("all")}
+                className={cn(
+                  "w-full rounded-lg border p-4 text-left transition-colors",
+                  printProductScope === "all" ? "border-primary bg-primary/5" : "border-border"
+                )}
+              >
+                <p className="font-medium">Imprimir tudo</p>
+                <p className="text-sm text-muted-foreground">
+                  Inclui todos os produtos vendidos, entradas, saídas e stock atual.
+                </p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setPrintProductScope("beverages")}
+                className={cn(
+                  "w-full rounded-lg border p-4 text-left transition-colors",
+                  printProductScope === "beverages" ? "border-primary bg-primary/5" : "border-border"
+                )}
+              >
+                <p className="font-medium">Imprimir apenas bebidas</p>
+                <p className="text-sm text-muted-foreground">
+                  Mostra somente bebidas vendidas com entradas, saídas e stock atual.
+                </p>
+              </button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowPrintOptionsDialog(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowPrintOptionsDialog(false);
+                  handleExport("pdf", { productScope: printProductScope });
+                }}
+                className="gap-2"
+              >
+                <Print24Regular className="w-4 h-4" />
+                Continuar
               </Button>
             </DialogFooter>
           </DialogContent>

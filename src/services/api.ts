@@ -389,12 +389,19 @@ export const dashboardApi = {
     const queryString = query.toString();
     return apiGet<SalesSummary>(`/skypdv/reports/sales-summary${queryString ? `?${queryString}` : ""}`);
   },
-  downloadSalesSummaryPdf: (startDate?: string, endDate?: string, userId?: number, phone?: string) => {
+  downloadSalesSummaryPdf: (
+    startDate?: string,
+    endDate?: string,
+    userId?: number,
+    phone?: string,
+    productScope?: "all" | "beverages"
+  ) => {
     const query = new URLSearchParams();
     if (startDate) query.append("start_date", startDate);
     if (endDate) query.append("end_date", endDate);
     if (userId) query.append("user_id", String(userId));
     if (phone) query.append("phone", phone);
+    if (productScope) query.append("product_scope", productScope);
     const queryString = query.toString();
     return apiGetBlob(`/skypdv/reports/sales-summary.pdf${queryString ? `?${queryString}` : ""}`);
   },
