@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
   ArrowDownload24Regular,
   ArrowSync24Regular,
@@ -271,6 +272,23 @@ export function StockScreen() {
     queryClient.invalidateQueries({ queryKey: ["products"] });
   };
 
+  const printDailyStock = async () => {
+    try {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { blob, filename } = await inventoryApi.downloadDailyStockPdf(today);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `stock-dia-${today}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao imprimir stock do dia", error);
+    }
+  };
+
   return (
     <div className={styles.root}>
       <NavDrawer
@@ -343,6 +361,10 @@ export function StockScreen() {
             <Button className="gap-2" onClick={() => openDialog("transfer")} disabled={!permissions.can_manage_stock}>
               <ArrowSync24Regular className="h-4 w-4" />
               Transferencia
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={printDailyStock}>
+              <Print24Regular className="h-4 w-4" />
+              Imprimir stock do dia
             </Button>
             <Button variant="outline" className="gap-2" onClick={exportCsv}>
               <Print24Regular className="h-4 w-4" />
@@ -721,4 +743,3 @@ export function StockScreen() {
     </div>
   );
 }
-

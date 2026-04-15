@@ -483,6 +483,12 @@ export const inventoryApi = {
   getReport: () => apiGet<InventoryReport>("/skypdv/inventory"),
   getMovements: (skip = 0, limit = 100) =>
     apiGet<StockMovement[]>(`/skypdv/inventory/movements?skip=${skip}&limit=${limit}`),
+  downloadDailyStockPdf: (date?: string) => {
+    const query = new URLSearchParams();
+    if (date) query.append("date", date);
+    const queryString = query.toString();
+    return apiGetBlob(`/skypdv/reports/stock-day.pdf${queryString ? `?${queryString}` : ""}`);
+  },
   update: (productId: number, data: InventorySettingsUpdate, storageLocation = "balcao") =>
     apiPut<InventoryReport["products"][number]>(`/skypdv/inventory/${productId}?storage_location=${storageLocation}`, data),
   adjust: (data: StockAdjustment) =>
