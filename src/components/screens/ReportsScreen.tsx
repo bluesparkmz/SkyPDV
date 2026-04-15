@@ -117,10 +117,8 @@ export function ReportsScreen() {
   const [operatorNameFilter, setOperatorNameFilter] = useState("");
   const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady, saveToBackend } = useWhatsappPrefs();
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
-  const [showPrintOptionsDialog, setShowPrintOptionsDialog] = useState(false);
   const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
   const [pendingProductScope, setPendingProductScope] = useState<"all" | "beverages">("all");
-  const [printProductScope, setPrintProductScope] = useState<"all" | "beverages">("all");
   const [tempPhone, setTempPhone] = useState("");
 
   useEffect(() => {
@@ -381,10 +379,6 @@ export function ReportsScreen() {
   };
 
   const handleExportPDF = () => {
-    if (activeView === "daily" && selectedDate) {
-      setShowPrintOptionsDialog(true);
-      return;
-    }
     handleExport("pdf", { productScope: "all" });
   };
 
@@ -844,59 +838,6 @@ export function ReportsScreen() {
           </DialogContent>
         </Dialog>
 
-        <Dialog open={showPrintOptionsDialog} onOpenChange={setShowPrintOptionsDialog}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Opções de impressão</DialogTitle>
-              <DialogDescription>
-                Escolha quais produtos devem aparecer no relatório diário impresso.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-3">
-              <button
-                type="button"
-                onClick={() => setPrintProductScope("all")}
-                className={cn(
-                  "w-full rounded-lg border p-4 text-left transition-colors",
-                  printProductScope === "all" ? "border-primary bg-primary/5" : "border-border"
-                )}
-              >
-                <p className="font-medium">Imprimir tudo</p>
-                <p className="text-sm text-muted-foreground">
-                  Inclui todos os produtos vendidos, entradas, saídas e stock atual.
-                </p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPrintProductScope("beverages")}
-                className={cn(
-                  "w-full rounded-lg border p-4 text-left transition-colors",
-                  printProductScope === "beverages" ? "border-primary bg-primary/5" : "border-border"
-                )}
-              >
-                <p className="font-medium">Imprimir apenas bebidas</p>
-                <p className="text-sm text-muted-foreground">
-                  Mostra somente bebidas vendidas com entradas, saídas e stock atual.
-                </p>
-              </button>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowPrintOptionsDialog(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={() => {
-                  setShowPrintOptionsDialog(false);
-                  handleExport("pdf", { productScope: printProductScope });
-                }}
-                className="gap-2"
-              >
-                <Print24Regular className="w-4 h-4" />
-                Continuar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
   );

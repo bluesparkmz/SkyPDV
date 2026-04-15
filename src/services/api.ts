@@ -483,9 +483,10 @@ export const inventoryApi = {
   getReport: () => apiGet<InventoryReport>("/skypdv/inventory"),
   getMovements: (skip = 0, limit = 100) =>
     apiGet<StockMovement[]>(`/skypdv/inventory/movements?skip=${skip}&limit=${limit}`),
-  downloadDailyStockPdf: (date?: string) => {
+  downloadDailyStockPdf: (date?: string, productScope?: "all" | "beverages" | "important") => {
     const query = new URLSearchParams();
     if (date) query.append("date", date);
+    if (productScope) query.append("product_scope", productScope);
     const queryString = query.toString();
     return apiGetBlob(`/skypdv/reports/stock-day.pdf${queryString ? `?${queryString}` : ""}`);
   },
