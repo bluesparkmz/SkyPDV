@@ -784,7 +784,7 @@ export function StockScreen() {
                 printProductScope === "important" ? "border-primary bg-primary/5" : "border-border"
               }`}
             >
-              <p className="font-medium">Imprimir o que importa no estoque</p>
+              <p className="font-medium">Imprimir apenas produtos com estoque controlado</p>
               <p className="text-sm text-muted-foreground">
                 Mostra apenas produtos com controlo de stock (ignora produtos que nao precisam de estoque).
               </p>
