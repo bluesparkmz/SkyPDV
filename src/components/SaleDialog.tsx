@@ -10,7 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -38,9 +37,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [notes, setNotes] = useState("");
   const { isConnected: hardwareConnected, isConnecting: isConnectingHardware, printReceipt, openCashDrawer } =
     useHardwarePlugin();
 
@@ -80,12 +76,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     }
     lines.push('-'.repeat(42));
     
-    if (customerName) {
-      lines.push(`Cliente: ${customerName}`);
-    }
-    if (customerPhone) {
-      lines.push(`Telefone: ${customerPhone}`);
-    }
     lines.push('-'.repeat(42));
     lines.push('PRODUTOS:');
     lines.push('-'.repeat(42));
@@ -141,9 +131,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       payment_method: paymentMethod,
       amount_paid: amountPaid,
       change_status: changeStatus,
-      customer_name: customerName || undefined,
-      customer_phone: customerPhone || undefined,
-      notes: notes || undefined,
       sale_type: "local",
     };
 
@@ -165,9 +152,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       onOpenChange(false);
       // Reset form
       setAmountPaid("");
-      setCustomerName("");
-      setCustomerPhone("");
-      setNotes("");
       setPaymentMethod("cash");
       setChangeStatus("given");
     } catch (error) {
@@ -279,39 +263,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
               )}
             </div>
           )}
-          {/* Customer Info */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="customerName">Nome do Cliente (opcional)</Label>
-              <Input
-                id="customerName"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Nome"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerPhone">Telefone (opcional)</Label>
-              <Input
-                id="customerPhone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="841234567"
-              />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notas adicionais..."
-              rows={2}
-            />
-          </div>
         </div>
         
         <DialogFooter>
