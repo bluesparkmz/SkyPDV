@@ -40,8 +40,9 @@ import { Product } from "@/services/api";
 import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { inventoryApi, terminalApi } from "@/services/api";
+import { productsApi } from "@/services/api";
 
 import { Screen } from "@/types/screen";
 
@@ -61,6 +62,7 @@ type StockAlertNotice = {
 };
 
 export function SkyPDV() {
+  const queryClient = useQueryClient();
   const [isStartOpen, setIsStartOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,6 +146,12 @@ export function SkyPDV() {
     search: searchQuery || undefined,
     category: activeCategory !== "all" ? activeCategory : undefined,
     limit: 100,
+  });
+  const { data: categorySalesSummary, isLoading: categorySalesLoading } = useQuery({
+    queryKey: ["categorySalesSummaryToday", activeCategory],
+    queryFn: () => productsApi.getCategorySalesSummaryToday(activeCategory),
+    enabled: currentScreen === "pdv" && activeCategory !== "all",
+    refetchInterval: 30000,
   });
 
   const filteredProducts = useMemo(() => {
@@ -299,8 +307,10 @@ export function SkyPDV() {
   };
 
   const handleSaleComplete = () => {
-    // Refresh products to update stock
-    // Query will auto-refetch
+    queryClient.invalidateQueries({ queryKey: ["products"] });
+    queryClient.invalidateQueries({ queryKey: ["categorySalesSummaryToday"] });
+    queryClient.invalidateQueries({ queryKey: ["inventoryAlertsSummary"] });
+    queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
   };
 
   const handleNavigate = (screen: Screen) => {
@@ -642,6 +652,65 @@ export function SkyPDV() {
                 activeCategory={activeCategory}
                 onCategoryChange={setActiveCategory}
               />
+
+              {activeCategory !== "all" && (
+                <div className="mb-3 mt-3 rounded-2xl border border-border bg-card p-3 md:p-4">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                    <div>
+                      <p className="text-sm font-semibold text-foreground">
+                        Resumo de {activeCategory} hoje
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Saidas detalhadas por produto na categoria selecionada.
+                      </p>
+                    </div>
+
+                    {!categorySalesLoading && categorySalesSummary && (
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                        <div className="rounded-xl bg-secondary/40 px-3 py-2">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos</p>
+                          <p className="text-sm font-semibold text-foreground">{categorySalesSummary.products_count}</p>
+                        </div>
+                        <div className="rounded-xl bg-secondary/40 px-3 py-2">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Quantidade</p>
+                          <p className="text-sm font-semibold text-foreground">{parseFloat(categorySalesSummary.total_quantity_sold || "0").toFixed(0)}</p>
+                        </div>
+                        <div className="rounded-xl bg-secondary/40 px-3 py-2 col-span-2 md:col-span-1">
+                          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Valor</p>
+                          <p className="text-sm font-semibold text-primary">{parseFloat(categorySalesSummary.total_amount || "0").toFixed(2)} MT</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3">
+                    {categorySalesLoading ? (
+                      <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                        Carregando saidas da categoria...
+                      </div>
+                    ) : categorySalesSummary && categorySalesSummary.items.length > 0 ? (
+                      <div className="windows-scrollbar flex gap-2 overflow-x-auto pb-1">
+                        {categorySalesSummary.items.map((item) => (
+                          <div
+                            key={item.product_id}
+                            className="min-w-[190px] rounded-xl border border-border bg-secondary/30 px-3 py-3"
+                          >
+                            <p className="truncate text-sm font-semibold text-foreground">{item.product_name}</p>
+                            <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                              <p>{parseFloat(item.quantity_sold || "0").toFixed(0)} unidades vendidas</p>
+                              <p className="font-semibold text-primary">{parseFloat(item.total_amount || "0").toFixed(2)} MT</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                        Nenhuma saida hoje para esta categoria.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Products Grid */}
               <div className="flex-1 overflow-auto windows-scrollbar pb-16 lg:pb-0">

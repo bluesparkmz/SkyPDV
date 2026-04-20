@@ -174,6 +174,8 @@ export const productsApi = {
   delete: (id: number) => apiDelete<void>(`/skypdv/products/${id}`),
   getMovements: (id: number, skip = 0, limit = 100) =>
     apiGet<StockMovement[]>(`/skypdv/products/${id}/movements?skip=${skip}&limit=${limit}`),
+  getCategorySalesSummaryToday: (category: string) =>
+    apiGet<CategorySalesSummary>(`/skypdv/products/category-summary/today?category=${encodeURIComponent(category)}`),
 };
 
 // Categorias
@@ -543,6 +545,22 @@ export interface ProductsParams {
   is_fastfood?: boolean;
   skip?: number;
   limit?: number;
+}
+
+export interface CategorySalesSummaryItem {
+  product_id: number;
+  product_name: string;
+  quantity_sold: string;
+  total_amount: string;
+}
+
+export interface CategorySalesSummary {
+  category: string;
+  date: string;
+  products_count: number;
+  total_quantity_sold: string;
+  total_amount: string;
+  items: CategorySalesSummaryItem[];
 }
 
 export interface StockMovement {
