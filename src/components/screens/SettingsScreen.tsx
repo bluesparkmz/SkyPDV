@@ -862,6 +862,7 @@ function InvoiceSection() {
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [clientNuit, setClientNuit] = useState("");
+  const [clientAddress, setClientAddress] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [companyNuit, setCompanyNuit] = useState("");
   const [companyContacts, setCompanyContacts] = useState("");
@@ -886,6 +887,7 @@ function InvoiceSection() {
     setCustomerName("");
     setCustomerPhone("");
     setClientNuit("");
+    setClientAddress("");
     setPaymentMethod("cash");
     setInvoiceItems([createEmptyInvoiceItem()]);
   }, [open, terminal]);
@@ -951,6 +953,7 @@ function InvoiceSection() {
       invoice_date: invoiceDate,
       client_name: customerName,
       client_nuit: clientNuit,
+      client_address: clientAddress,
       payment_method_label: paymentMethod,
       logo_url: logoUrl,
       tax_rate: String(taxRate),
@@ -1120,6 +1123,10 @@ function InvoiceSection() {
                 <div className="space-y-2">
                   <Label>NUIT do cliente</Label>
                   <Input value={clientNuit} onChange={(e) => setClientNuit(e.target.value)} placeholder="Opcional" />
+                </div>
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Morada do cliente</Label>
+                  <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="Morada" />
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                   <Label>Contactos do cliente</Label>
