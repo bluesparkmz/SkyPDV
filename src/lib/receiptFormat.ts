@@ -167,6 +167,9 @@ export function formatAccountItemsReceipt(
   const printedAt = opts?.printedAt
     ? new Date(opts.printedAt).toLocaleString("pt-MZ")
     : new Date().toLocaleString("pt-MZ");
+  const total = Number(account.current_balance || 0);
+  const subtotal = total / (1 + IVA_RATE);
+  const ivaAmount = total - subtotal;
 
   const lines: string[] = [];
   lines.push("=".repeat(42));
@@ -184,6 +187,11 @@ export function formatAccountItemsReceipt(
     lines.push(item.product_name);
     lines.push(`  ${Number(item.quantity)}x ${formatMoney(item.unit_price)}`);
   });
+  lines.push("-".repeat(42));
+  lines.push(`Subtotal: ${formatMoney(subtotal)}`);
+  lines.push(`IVA (16%): ${formatMoney(ivaAmount)}`);
+  lines.push("=".repeat(42));
+  lines.push(`TOTAL: ${formatMoney(total)}`);
   lines.push("=".repeat(42));
   lines.push("");
   return lines.join("\n");
