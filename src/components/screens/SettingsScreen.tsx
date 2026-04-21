@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, type ReactNode } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import type { DrawerProps } from "@fluentui/react-components";
@@ -853,6 +853,7 @@ function createEmptyInvoiceItem(): InvoiceDraftItem {
 const INVOICE_SETTINGS_STORAGE_KEY = "skypdv_invoice_settings_local";
 
 function InvoiceSection() {
+  const queryClient = useQueryClient();
   const { data: invoices, isLoading } = useInvoices();
   const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });
   const { data: terminal } = useQuery({
@@ -984,6 +985,7 @@ function InvoiceSection() {
         },
       });
 
+      queryClient.invalidateQueries({ queryKey: ["terminal"] });
       toast.success("Configuracao da fatura guardada");
     } catch (error: any) {
       toast.error(error?.message || "Nao foi possivel guardar no servidor. A configuracao ficou guardada neste dispositivo");
@@ -1055,6 +1057,7 @@ function InvoiceSection() {
           ...nextInvoiceDefaults,
         },
       });
+      queryClient.invalidateQueries({ queryKey: ["terminal"] });
     } catch {
       // Se a gravacao no servidor falhar, a fatura ainda deve ser criada
       // com os dados manuais e a configuracao local mantida.
@@ -1252,6 +1255,10 @@ function InvoiceSection() {
                 <div className="space-y-2">
                   <Label>Logotipo (URL)</Label>
                   <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+                </div>
+                <div className="space-y-2">
+                  <Label>Carimbo (URL)</Label>
+                  <Input value={companyConfigStamp} readOnly placeholder="Link do carimbo padrao" />
                 </div>
               </div>
             </div>
