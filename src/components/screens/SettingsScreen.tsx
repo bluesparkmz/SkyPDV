@@ -214,10 +214,10 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                     size="sm"
                     variant="default"
                     className="flex items-center gap-2"
-                    onClick={onOpenSetup}
+                    onClick={() => setActiveTab("invoice")}
                   >
                     <Building24Regular className="w-4 h-4" />
-                    Abrir Setup do PDV
+                    Configurar fatura
                   </Button>
                 </div>
               )}
@@ -858,6 +858,11 @@ function InvoiceSection() {
     queryFn: () => terminalApi.get(),
   });
   const [open, setOpen] = useState(false);
+  const [companyConfigName, setCompanyConfigName] = useState("");
+  const [companyConfigNuit, setCompanyConfigNuit] = useState("");
+  const [companyConfigContacts, setCompanyConfigContacts] = useState("");
+  const [companyConfigLogo, setCompanyConfigLogo] = useState("");
+  const [companyConfigLocation, setCompanyConfigLocation] = useState("");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceDraftItem[]>([createEmptyInvoiceItem()]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
@@ -876,12 +881,21 @@ function InvoiceSection() {
   const products = productsData || [];
 
   useEffect(() => {
+    const invoiceSettings = (terminal?.settings as Record<string, string> | null) || {};
+    setCompanyConfigName(String(invoiceSettings.invoice_company_name || terminal?.name || ""));
+    setCompanyConfigNuit(String(invoiceSettings.invoice_nuit || ""));
+    setCompanyConfigContacts(String(invoiceSettings.invoice_contacts || terminal?.phone || ""));
+    setCompanyConfigLogo(String(invoiceSettings.invoice_logo || terminal?.logo || ""));
+    setCompanyConfigLocation(String(invoiceSettings.invoice_location || ""));
+  }, [terminal]);
+
+  useEffect(() => {
     if (!open) return;
     const invoiceSettings = (terminal?.settings as Record<string, string> | null) || {};
-    setCompanyName(String(invoiceSettings.invoice_company_name || terminal?.name || ""));
-    setCompanyNuit(String(invoiceSettings.invoice_nuit || ""));
-    setCompanyContacts(String(invoiceSettings.invoice_contacts || terminal?.phone || ""));
-    setLogoUrl(String(invoiceSettings.invoice_logo || terminal?.logo || ""));
+    setCompanyName(String(invoiceSettings.invoice_company_name || companyConfigName || terminal?.name || ""));
+    setCompanyNuit(String(invoiceSettings.invoice_nuit || companyConfigNuit || ""));
+    setCompanyContacts(String(invoiceSettings.invoice_contacts || companyConfigContacts || terminal?.phone || ""));
+    setLogoUrl(String(invoiceSettings.invoice_logo || companyConfigLogo || terminal?.logo || ""));
     setInvoiceDate(new Date().toISOString().split("T")[0]);
     setInvoiceNumber(String(invoiceSettings.invoice_last_number || `FT-${Date.now().toString().slice(-6)}`));
     setCustomerName("");
@@ -890,7 +904,7 @@ function InvoiceSection() {
     setClientAddress("");
     setPaymentMethod("cash");
     setInvoiceItems([createEmptyInvoiceItem()]);
-  }, [open, terminal]);
+  }, [open, terminal, companyConfigContacts, companyConfigLogo, companyConfigName, companyConfigNuit]);
 
   const invoiceItemsWithProducts = invoiceItems.map((item) => {
     const product = products.find((p) => p.id === item.product_id) || null;
@@ -929,6 +943,34 @@ function InvoiceSection() {
     setInvoiceItems((current) => (current.length > 1 ? current.filter((item) => item.id !== id) : current));
   };
 
+  const handleSaveInvoiceConfig = async () => {
+    if (!companyConfigName.trim()) {
+      toast.error("Informe o nome da empresa");
+      return;
+    }
+    if (!companyConfigNuit.trim()) {
+      toast.error("Informe o NUIT da empresa");
+      return;
+    }
+
+    try {
+      await terminalApi.update({
+        settings: {
+          ...(terminal?.settings || {}),
+          invoice_company_name: companyConfigName,
+          invoice_nuit: companyConfigNuit,
+          invoice_contacts: companyConfigContacts,
+          invoice_logo: companyConfigLogo,
+          invoice_location: companyConfigLocation,
+        },
+      });
+
+      toast.success("Configuracao da fatura guardada");
+    } catch (error: any) {
+      toast.error(error?.message || "Nao foi possivel guardar a configuracao da fatura");
+    }
+  };
+
   const handleCreate = async () => {
     if (!companyName.trim()) {
       toast.error("Informe o nome da empresa");
@@ -949,6 +991,7 @@ function InvoiceSection() {
       company_name: companyName,
       company_nuit: companyNuit,
       company_contacts: companyContacts,
+      company_location: companyConfigLocation,
       invoice_number: invoiceNumber,
       invoice_date: invoiceDate,
       client_name: customerName,
@@ -1006,6 +1049,44 @@ function InvoiceSection() {
 
   return (
     <div className="space-y-4 md:space-y-6">
+      <SettingsPanel
+        title="Empresa da fatura"
+        description="Defina os dados padrao da empresa para preencher automaticamente ao criar faturas."
+      >
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <Label>Nome da empresa</Label>
+            <Input value={companyConfigName} onChange={(e) => setCompanyConfigName(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>NUIT</Label>
+            <Input value={companyConfigNuit} onChange={(e) => setCompanyConfigNuit(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Contacto</Label>
+            <Input value={companyConfigContacts} onChange={(e) => setCompanyConfigContacts(e.target.value)} />
+          </div>
+          <div className="space-y-2">
+            <Label>Logotipo (URL)</Label>
+            <Input value={companyConfigLogo} onChange={(e) => setCompanyConfigLogo(e.target.value)} placeholder="https://..." />
+          </div>
+          <div className="space-y-2 md:col-span-2">
+            <Label>Morada curta da empresa</Label>
+            <Input
+              value={companyConfigLocation}
+              onChange={(e) => setCompanyConfigLocation(e.target.value)}
+              placeholder="Ex: LICHINGA-NIASSA"
+            />
+            <p className="text-xs text-muted-foreground">
+              Essa linha aparece abaixo do contacto no PDF da fatura.
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button onClick={handleSaveInvoiceConfig}>Guardar configuracao</Button>
+        </div>
+      </SettingsPanel>
+
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
