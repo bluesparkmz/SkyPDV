@@ -481,6 +481,7 @@ export function TabsScreen() {
                         className="gap-1 text-[10px] h-7"
                         onClick={() => {
                           setSelectedAccountId(account.id);
+                          setAmountPaid(Number(account.current_balance || 0).toFixed(2));
                           setChangeStatus("given");
                           setIsCloseModalOpen(true);
                         }}
