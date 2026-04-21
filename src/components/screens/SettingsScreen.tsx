@@ -969,6 +969,7 @@ export function InvoiceSection() {
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [logoUrl, setLogoUrl] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "mpesa" | "skywallet" | "mixed">("cash");
+  const [taxIncludedInPrice, setTaxIncludedInPrice] = useState(true);
   const createInvoice = useCreateInvoice();
   const payInvoice = usePayInvoice();
 
@@ -1006,6 +1007,7 @@ export function InvoiceSection() {
     setClientNuit("");
     setClientAddress("");
     setPaymentMethod("cash");
+    setTaxIncludedInPrice(true);
     setInvoiceItems([createEmptyInvoiceItem()]);
   }, [open, terminal, companyConfigContacts, companyConfigLocation, companyConfigLogo, companyConfigName, companyConfigNuit]);
 
@@ -1017,10 +1019,12 @@ export function InvoiceSection() {
     return { ...item, product, unitPrice, quantity, total };
   });
 
-  const subtotal = invoiceItemsWithProducts.reduce((sum, item) => sum + item.total, 0);
   const taxRate = terminal?.tax_rate ? parseFloat(terminal.tax_rate) || 0 : 16;
-  const taxAmount = subtotal * (taxRate / 100);
-  const totalAmount = subtotal + taxAmount;
+  const taxFactor = 1 + (taxRate / 100);
+  const grossTotal = invoiceItemsWithProducts.reduce((sum, item) => sum + item.total, 0);
+  const subtotal = taxIncludedInPrice ? (grossTotal / taxFactor) : grossTotal;
+  const taxAmount = taxIncludedInPrice ? (grossTotal - subtotal) : (subtotal * (taxRate / 100));
+  const totalAmount = taxIncludedInPrice ? grossTotal : (subtotal + taxAmount);
 
   const handleItemChange = (id: string, field: keyof InvoiceDraftItem, value: string | number | null) => {
     setInvoiceItems((current) =>
@@ -1127,6 +1131,7 @@ export function InvoiceSection() {
       logo_url: logoUrl || companyConfigLogo || localInvoiceSettings.invoice_logo || "",
       stamp_url: companyConfigStamp || localInvoiceSettings.invoice_stamp || "",
       tax_rate: String(taxRate),
+      tax_included_in_price: taxIncludedInPrice ? "yes" : "no",
     };
 
     console.info("[invoice-create] terminal settings", terminal?.settings || {});
@@ -1160,7 +1165,12 @@ export function InvoiceSection() {
       items: validItems.map((item) => ({
         product_id: item.product_id as number,
         quantity: String(item.quantity),
-        unit_price: String(item.unitPrice),
+        // Backend de vendas trabalha com preco unitario com IVA incluso.
+        unit_price: String(
+          taxIncludedInPrice
+            ? item.unitPrice
+            : (item.unitPrice * taxFactor)
+        ),
       })),
       customer_name: customerName || undefined,
       customer_phone: customerPhone || undefined,
@@ -1398,6 +1408,17 @@ export function InvoiceSection() {
                     </SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Modo de IVA</Label>
+                  <div className="flex items-center gap-3 rounded-lg border border-border px-3 py-2">
+                    <span className="text-sm text-muted-foreground">Nao incluso</span>
+                    <Switch
+                      checked={taxIncludedInPrice}
+                      onCheckedChange={setTaxIncludedInPrice}
+                    />
+                    <span className="text-sm font-medium text-foreground">Incluso no preco</span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1473,7 +1494,9 @@ export function InvoiceSection() {
               <h3 className="mb-3 text-sm font-semibold text-foreground">Resumo</h3>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-border bg-background px-3 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Subtotal</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {taxIncludedInPrice ? "Subtotal (sem IVA)" : "Subtotal"}
+                  </p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{subtotal.toFixed(2)} MZN</p>
                 </div>
                 <div className="rounded-xl border border-border bg-background px-3 py-3">
