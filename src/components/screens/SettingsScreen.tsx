@@ -916,7 +916,7 @@ function InvoiceSection() {
     setClientAddress("");
     setPaymentMethod("cash");
     setInvoiceItems([createEmptyInvoiceItem()]);
-  }, [open, terminal, companyConfigContacts, companyConfigLogo, companyConfigName, companyConfigNuit]);
+  }, [open, terminal, companyConfigContacts, companyConfigLocation, companyConfigLogo, companyConfigName, companyConfigNuit]);
 
   const invoiceItemsWithProducts = invoiceItems.map((item) => {
     const product = products.find((p) => p.id === item.product_id) || null;
@@ -1025,15 +1025,15 @@ function InvoiceSection() {
       company_name: companyName,
       company_nuit: companyNuit,
       company_contacts: companyContacts,
-      company_location: companyConfigLocation,
+      company_location: companyConfigLocation || localInvoiceSettings.invoice_location || "",
       invoice_number: invoiceNumber,
       invoice_date: invoiceDate,
       client_name: customerName,
       client_nuit: clientNuit,
       client_address: clientAddress,
       payment_method_label: paymentMethod,
-      logo_url: logoUrl,
-      stamp_url: companyConfigStamp,
+      logo_url: logoUrl || companyConfigLogo || localInvoiceSettings.invoice_logo || "",
+      stamp_url: companyConfigStamp || localInvoiceSettings.invoice_stamp || "",
       tax_rate: String(taxRate),
     };
 
