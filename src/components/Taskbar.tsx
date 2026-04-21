@@ -32,6 +32,7 @@ const taskbarApps: { screen: Screen; icon: React.FC<React.SVGProps<SVGSVGElement
   { screen: "tables", icon: Table24Regular, title: "Mesas" },
   { screen: "tabs", icon: DocumentText24Regular, title: "Contas" },
   { screen: "sales", icon: Receipt24Regular, title: "Vendas" },
+  { screen: "invoices", icon: DocumentText24Regular, title: "Faturas" },
   { screen: "reports", icon: ChartMultiple24Regular, title: "Relatórios" },
 ];
 

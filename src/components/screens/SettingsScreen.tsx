@@ -852,7 +852,7 @@ function createEmptyInvoiceItem(): InvoiceDraftItem {
 
 const INVOICE_SETTINGS_STORAGE_KEY = "skypdv_invoice_settings_local";
 
-function InvoiceSection() {
+export function InvoiceSection() {
   const queryClient = useQueryClient();
   const { data: invoices, isLoading } = useInvoices();
   const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });

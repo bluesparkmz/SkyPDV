@@ -37,6 +37,7 @@ const pinnedApps: { name: string; icon: React.FC<React.SVGProps<SVGSVGElement>>;
   { name: "Mesas", icon: Table24Regular, screen: "tables" },
   { name: "Contas", icon: DocumentText24Regular, screen: "tabs" },
   { name: "Vendas", icon: Receipt24Regular, screen: "sales" },
+  { name: "Faturas", icon: DocumentText24Regular, screen: "invoices" },
   { name: "Relatórios", icon: ChartMultiple24Regular, screen: "reports" },
   { name: "Finanças", icon: Money24Regular, screen: "finance" },
   { name: "Fastfood", icon: Food24Regular, screen: "fastfood" },
