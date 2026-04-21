@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect, type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import type { DrawerProps } from "@fluentui/react-components";
@@ -48,7 +49,7 @@ import { BuildingShop24Regular } from "@fluentui/react-icons";
 import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
-import { invoicesApi } from "@/services/api";
+import { invoicesApi, terminalApi } from "@/services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -820,41 +821,165 @@ function PrinterSettings() {
   );
 }
 
+type InvoiceDraftItem = {
+  id: string;
+  product_id: number | null;
+  quantity: string;
+  unit_price: string;
+};
+
+function parseInvoiceMeta(notes?: string | null) {
+  if (!notes) return null;
+  try {
+    const parsed = JSON.parse(notes);
+    if (parsed && typeof parsed === "object" && parsed.invoice_meta) {
+      return parsed.invoice_meta as Record<string, string>;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function createEmptyInvoiceItem(): InvoiceDraftItem {
+  return {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    product_id: null,
+    quantity: "1",
+    unit_price: "",
+  };
+}
+
 function InvoiceSection() {
   const { data: invoices, isLoading } = useInvoices();
   const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });
+  const { data: terminal } = useQuery({
+    queryKey: ["terminal"],
+    queryFn: () => terminalApi.get(),
+  });
   const [open, setOpen] = useState(false);
-  const [productId, setProductId] = useState<number | null>(null);
-  const [quantity, setQuantity] = useState<string>("1");
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceDraftItem[]>([createEmptyInvoiceItem()]);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [clientNuit, setClientNuit] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [companyNuit, setCompanyNuit] = useState("");
+  const [companyContacts, setCompanyContacts] = useState("");
+  const [invoiceNumber, setInvoiceNumber] = useState("");
+  const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "mpesa" | "skywallet" | "mixed">("cash");
   const createInvoice = useCreateInvoice();
   const payInvoice = usePayInvoice();
 
   const products = productsData || [];
 
-  const handleCreate = async () => {
-    if (!productId) {
-      toast.error("Selecione um produto");
-      return;
-    }
-    await createInvoice.mutateAsync({
-      items: [
-        {
-          product_id: productId,
-          quantity: quantity || "1",
-        },
-      ],
-      customer_name: customerName || undefined,
-      customer_phone: customerPhone || undefined,
-      payment_method: "cash",
-      sale_type: "local",
-    });
-    setOpen(false);
-    setQuantity("1");
+  useEffect(() => {
+    if (!open) return;
+    const invoiceSettings = (terminal?.settings as Record<string, string> | null) || {};
+    setCompanyName(String(invoiceSettings.invoice_company_name || terminal?.name || ""));
+    setCompanyNuit(String(invoiceSettings.invoice_nuit || ""));
+    setCompanyContacts(String(invoiceSettings.invoice_contacts || terminal?.phone || ""));
+    setLogoUrl(String(invoiceSettings.invoice_logo || terminal?.logo || ""));
+    setInvoiceDate(new Date().toISOString().split("T")[0]);
+    setInvoiceNumber(String(invoiceSettings.invoice_last_number || `FT-${Date.now().toString().slice(-6)}`));
     setCustomerName("");
     setCustomerPhone("");
-    setProductId(null);
+    setClientNuit("");
+    setPaymentMethod("cash");
+    setInvoiceItems([createEmptyInvoiceItem()]);
+  }, [open, terminal]);
+
+  const invoiceItemsWithProducts = invoiceItems.map((item) => {
+    const product = products.find((p) => p.id === item.product_id) || null;
+    const unitPrice = item.unit_price !== "" ? parseFloat(item.unit_price) || 0 : parseFloat(product?.price || "0") || 0;
+    const quantity = parseFloat(item.quantity || "0") || 0;
+    const total = quantity * unitPrice;
+    return { ...item, product, unitPrice, quantity, total };
+  });
+
+  const subtotal = invoiceItemsWithProducts.reduce((sum, item) => sum + item.total, 0);
+  const taxRate = terminal?.tax_rate ? parseFloat(terminal.tax_rate) || 0 : 16;
+  const taxAmount = subtotal * (taxRate / 100);
+  const totalAmount = subtotal + taxAmount;
+
+  const handleItemChange = (id: string, field: keyof InvoiceDraftItem, value: string | number | null) => {
+    setInvoiceItems((current) =>
+      current.map((item) => {
+        if (item.id !== id) return item;
+        const next = { ...item, [field]: value };
+        if (field === "product_id") {
+          const selected = products.find((p) => p.id === Number(value));
+          if (selected && !item.unit_price) {
+            next.unit_price = String(selected.price);
+          }
+        }
+        return next;
+      })
+    );
+  };
+
+  const addInvoiceItem = () => {
+    setInvoiceItems((current) => [...current, createEmptyInvoiceItem()]);
+  };
+
+  const removeInvoiceItem = (id: string) => {
+    setInvoiceItems((current) => (current.length > 1 ? current.filter((item) => item.id !== id) : current));
+  };
+
+  const handleCreate = async () => {
+    if (!companyName.trim()) {
+      toast.error("Informe o nome da empresa");
+      return;
+    }
+    if (!companyNuit.trim()) {
+      toast.error("O NUIT da empresa e obrigatorio");
+      return;
+    }
+
+    const validItems = invoiceItemsWithProducts.filter((item) => item.product_id && item.quantity > 0);
+    if (validItems.length === 0) {
+      toast.error("Adicione pelo menos um produto ou servico");
+      return;
+    }
+
+    const invoiceMeta = {
+      company_name: companyName,
+      company_nuit: companyNuit,
+      company_contacts: companyContacts,
+      invoice_number: invoiceNumber,
+      invoice_date: invoiceDate,
+      client_name: customerName,
+      client_nuit: clientNuit,
+      payment_method_label: paymentMethod,
+      logo_url: logoUrl,
+      tax_rate: String(taxRate),
+    };
+
+    await terminalApi.update({
+      settings: {
+        ...(terminal?.settings || {}),
+        invoice_company_name: companyName,
+        invoice_nuit: companyNuit,
+        invoice_contacts: companyContacts,
+        invoice_logo: logoUrl,
+        invoice_last_number: invoiceNumber,
+      },
+    });
+
+    await createInvoice.mutateAsync({
+      items: validItems.map((item) => ({
+        product_id: item.product_id as number,
+        quantity: String(item.quantity),
+        unit_price: String(item.unitPrice),
+      })),
+      customer_name: customerName || undefined,
+      customer_phone: customerPhone || undefined,
+      payment_method: paymentMethod,
+      sale_type: "local",
+      notes: JSON.stringify({ invoice_meta: invoiceMeta }),
+    });
+    setOpen(false);
   };
 
   const handleDownload = async (id: number) => {
@@ -892,7 +1017,7 @@ function InvoiceSection() {
         <table className="min-w-full text-sm">
           <thead className="bg-secondary/50">
             <tr className="text-left">
-              <th className="px-3 py-2">#</th>
+              <th className="px-3 py-2">Fatura</th>
               <th className="px-3 py-2">Data</th>
               <th className="px-3 py-2">Cliente</th>
               <th className="px-3 py-2">Total</th>
@@ -914,8 +1039,12 @@ function InvoiceSection() {
             )}
             {invoices?.map((inv) => (
               <tr key={inv.id} className="border-t border-border">
-                <td className="px-3 py-2 font-semibold">#{inv.id}</td>
-                <td className="px-3 py-2">{new Date(inv.created_at).toLocaleString()}</td>
+                <td className="px-3 py-2 font-semibold">
+                  {parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
+                </td>
+                <td className="px-3 py-2">
+                  {parseInvoiceMeta(inv.notes)?.invoice_date || new Date(inv.created_at).toLocaleString()}
+                </td>
                 <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
                 <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
                 <td className="px-3 py-2">
@@ -941,43 +1070,164 @@ function InvoiceSection() {
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Criar Fatura</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 gap-2">
-              <Label>Produto</Label>
-              <Select onValueChange={(v) => setProductId(Number(v))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um produto" />
-                </SelectTrigger>
-                <SelectContent>
-                  {products.map((p) => (
-                    <SelectItem key={p.id} value={String(p.id)}>
-                      {p.name} - {Number(p.price).toFixed(2)} MZN
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-5">
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Dados da empresa</h3>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Nome da empresa</Label>
+                  <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>NUIT</Label>
+                  <Input value={companyNuit} onChange={(e) => setCompanyNuit(e.target.value)} placeholder="Muito importante" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contactos</Label>
+                  <Input value={companyContacts} onChange={(e) => setCompanyContacts(e.target.value)} placeholder="Telefone, celular ou email" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Logotipo (URL)</Label>
+                  <Input value={logoUrl} onChange={(e) => setLogoUrl(e.target.value)} placeholder="https://..." />
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              <Label>Quantidade</Label>
-              <Input value={quantity} onChange={(e) => setQuantity(e.target.value)} type="number" min="1" />
+
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Cabecalho da fatura</h3>
+              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div className="space-y-2">
+                  <Label>Numero da fatura</Label>
+                  <Input value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Data</Label>
+                  <Input type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cliente</Label>
+                  <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nome do cliente" />
+                </div>
+                <div className="space-y-2">
+                  <Label>NUIT do cliente</Label>
+                  <Input value={clientNuit} onChange={(e) => setClientNuit(e.target.value)} placeholder="Opcional" />
+                </div>
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Contactos do cliente</Label>
+                  <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
+                </div>
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>Forma de pagamento</Label>
+                  <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="cash">Dinheiro</SelectItem>
+                      <SelectItem value="card">Cartao</SelectItem>
+                      <SelectItem value="mpesa">M-Pesa</SelectItem>
+                      <SelectItem value="skywallet">SkyWallet</SelectItem>
+                      <SelectItem value="mixed">Misto</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              <Label>Cliente</Label>
-              <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nome do cliente (opcional)" />
+
+            <div className="rounded-2xl border border-border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <h3 className="text-sm font-semibold text-foreground">Lista de produtos/servicos</h3>
+                <Button type="button" variant="outline" onClick={addInvoiceItem}>
+                  Adicionar linha
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {invoiceItems.map((item, index) => (
+                  <div key={item.id} className="grid gap-3 rounded-xl border border-border p-3 md:grid-cols-[2fr,110px,140px,120px,auto]">
+                    <div className="space-y-2">
+                      <Label>Produto/servico {index + 1}</Label>
+                      <Select
+                        value={item.product_id ? String(item.product_id) : ""}
+                        onValueChange={(value) => handleItemChange(item.id, "product_id", Number(value))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione um produto" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {products.map((p) => (
+                            <SelectItem key={p.id} value={String(p.id)}>
+                              {p.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Quantidade</Label>
+                      <Input
+                        value={item.quantity}
+                        onChange={(e) => handleItemChange(item.id, "quantity", e.target.value)}
+                        type="number"
+                        min="1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Preco unitario</Label>
+                      <Input
+                        value={item.unit_price}
+                        onChange={(e) => handleItemChange(item.id, "unit_price", e.target.value)}
+                        type="number"
+                        min="0"
+                        step="0.01"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Total</Label>
+                      <div className="flex h-10 items-center rounded-md border border-input bg-muted/40 px-3 text-sm font-medium">
+                        {invoiceItemsWithProducts.find((entry) => entry.id === item.id)?.total.toFixed(2) || "0.00"} MZN
+                      </div>
+                    </div>
+                    <div className="flex items-end">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => removeInvoiceItem(item.id)}
+                        disabled={invoiceItems.length === 1}
+                      >
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="grid grid-cols-1 gap-2">
-              <Label>Telefone</Label>
-              <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
+
+            <div className="rounded-2xl border border-border bg-secondary/20 p-4">
+              <h3 className="mb-3 text-sm font-semibold text-foreground">Resumo</h3>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-border bg-background px-3 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Subtotal</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{subtotal.toFixed(2)} MZN</p>
+                </div>
+                <div className="rounded-xl border border-border bg-background px-3 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">IVA ({taxRate.toFixed(0)}%)</p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">{taxAmount.toFixed(2)} MZN</p>
+                </div>
+                <div className="rounded-xl border border-border bg-background px-3 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
+                  <p className="mt-1 text-lg font-semibold text-primary">{totalAmount.toFixed(2)} MZN</p>
+                </div>
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
             <Button onClick={handleCreate} disabled={createInvoice.isPending}>
-              {createInvoice.isPending ? "Criando..." : "Criar"}
+              {createInvoice.isPending ? "Criando..." : "Criar fatura"}
             </Button>
           </DialogFooter>
         </DialogContent>
