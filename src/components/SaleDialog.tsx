@@ -75,7 +75,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     const printedChange = Math.max(safePaidAmount - total, 0);
     const receiptSettings = (terminal?.settings as Record<string, unknown> | null) || {};
     const companyName =
-      String(receiptSettings.receipt_company_name || terminal?.name || "ESTABELECIMENTO").trim();
+      String(receiptSettings.receipt_company_name || terminal?.name || "SKYPDV - SISTEMA DE VENDAS").trim();
     const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
     const companyContacts = String(receiptSettings.receipt_contacts || terminal?.phone || "").trim();
     const companyAddress = String(receiptSettings.receipt_address || terminal?.address || "").trim();
