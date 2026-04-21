@@ -68,6 +68,12 @@ export function formatAccountReceipt(
     printedAt?: string;
   }
 ): string {
+  const receiptSettings = (opts?.terminal?.settings as Record<string, unknown> | null) || {};
+  const companyName = String(receiptSettings.receipt_company_name || opts?.terminal?.name || "SKYPDV - SISTEMA DE VENDAS").trim();
+  const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
+  const companyContacts = String(receiptSettings.receipt_contacts || opts?.terminal?.phone || "").trim();
+  const companyAddress = String(receiptSettings.receipt_address || opts?.terminal?.address || "").trim();
+  const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
   const total = Number(account.current_balance || 0);
   const subtotal = total / (1 + IVA_RATE);
   const ivaAmount = total - subtotal;
@@ -75,16 +81,18 @@ export function formatAccountReceipt(
     ? opts.amountPaid
     : null;
   const changeAmount = paidAmount !== null ? Math.max(paidAmount - total, 0) : null;
-  const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
   const printedAt = opts?.printedAt
     ? new Date(opts.printedAt).toLocaleString("pt-MZ")
     : new Date().toLocaleString("pt-MZ");
 
   const lines: string[] = [];
   lines.push("=".repeat(42));
-  lines.push(establishmentName.toUpperCase());
+  lines.push(companyName.toUpperCase());
   lines.push("RECIBO DE FECHO DE CONTA");
   lines.push("=".repeat(42));
+  if (companyNuit) lines.push(`NUIT: ${companyNuit}`);
+  if (companyContacts) lines.push(`Contacto: ${companyContacts}`);
+  if (companyAddress) lines.push(`Endereco: ${companyAddress}`);
   lines.push(`Data: ${printedAt}`);
   lines.push(`Conta: ${account.client_name}`);
   lines.push(`Referencia: #${account.id}`);
@@ -120,7 +128,7 @@ export function formatAccountReceipt(
   lines.push("=".repeat(42));
   lines.push(`TOTAL: ${formatMoney(total)}`);
   lines.push("=".repeat(42));
-  lines.push("Venda confirmada no fecho da conta.");
+  lines.push(footerMessage.toUpperCase());
   lines.push("");
   return lines.join("\n");
 }
@@ -163,7 +171,12 @@ export function formatAccountItemsReceipt(
   account: Account,
   opts?: { terminal?: Terminal | null; printedAt?: string }
 ): string {
-  const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
+  const receiptSettings = (opts?.terminal?.settings as Record<string, unknown> | null) || {};
+  const companyName = String(receiptSettings.receipt_company_name || opts?.terminal?.name || "SKYPDV - SISTEMA DE VENDAS").trim();
+  const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
+  const companyContacts = String(receiptSettings.receipt_contacts || opts?.terminal?.phone || "").trim();
+  const companyAddress = String(receiptSettings.receipt_address || opts?.terminal?.address || "").trim();
+  const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
   const printedAt = opts?.printedAt
     ? new Date(opts.printedAt).toLocaleString("pt-MZ")
     : new Date().toLocaleString("pt-MZ");
@@ -173,9 +186,12 @@ export function formatAccountItemsReceipt(
 
   const lines: string[] = [];
   lines.push("=".repeat(42));
-  lines.push(establishmentName.toUpperCase());
+  lines.push(companyName.toUpperCase());
   lines.push("CONTA ABERTA - PRODUTOS");
   lines.push("=".repeat(42));
+  if (companyNuit) lines.push(`NUIT: ${companyNuit}`);
+  if (companyContacts) lines.push(`Contacto: ${companyContacts}`);
+  if (companyAddress) lines.push(`Endereco: ${companyAddress}`);
   lines.push(`Data: ${printedAt}`);
   lines.push(`Conta: ${account.client_name}`);
   lines.push(`Referencia: #${account.id}`);
@@ -193,6 +209,7 @@ export function formatAccountItemsReceipt(
   lines.push("=".repeat(42));
   lines.push(`TOTAL: ${formatMoney(total)}`);
   lines.push("=".repeat(42));
+  lines.push(footerMessage.toUpperCase());
   lines.push("");
   return lines.join("\n");
 }
