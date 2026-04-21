@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Search24Regular,
   CalendarLtr24Regular,
@@ -22,8 +23,8 @@ import {
   useRestoreFocusTarget,
 } from "@fluentui/react-components";
 import { useSales, useVoidSale } from "@/hooks/useSales";
-import { Sale } from "@/services/api";
-import { dashboardApi } from "@/services/api";
+import { dashboardApi, productsApi, Sale } from "@/services/api";
+import { useCategories } from "@/hooks/useCategories";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { CustomerName } from "@/components/CustomerName";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ export function SalesHistoryScreen() {
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [isVoidDialogOpen, setIsVoidDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const todayStr = new Date().toISOString().split("T")[0];
   const [filterStart, setFilterStart] = useState<string>(todayStr);
   const [filterEnd, setFilterEnd] = useState<string>(todayStr);
@@ -92,6 +94,7 @@ export function SalesHistoryScreen() {
   }, [isMobile]);
 
   const { user: authUser } = useAuth();
+  const { data: categories = [] } = useCategories();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
     const map = new Map<number, string>();
@@ -131,6 +134,12 @@ export function SalesHistoryScreen() {
     start_date: startIso,
     end_date: endIso,
     user_id: selectedCashierId === "all" ? undefined : selectedCashierId,
+  });
+  const { data: categorySalesSummary, isLoading: categorySalesLoading } = useQuery({
+    queryKey: ["categorySalesSummaryToday", selectedCategory],
+    queryFn: () => productsApi.getCategorySalesSummaryToday(selectedCategory),
+    enabled: selectedCategory !== "all",
+    refetchInterval: 30000,
   });
 
   const voidSale = useVoidSale();
@@ -342,6 +351,19 @@ export function SalesHistoryScreen() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger className="w-[180px] h-9 md:h-10 text-xs md:text-sm">
+                  <SelectValue placeholder="Categorias" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas categorias</SelectItem>
+                  {categories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <div className="flex gap-1 flex-wrap">
                 <Button size="sm" variant="outline" onClick={() => {
                   const today = new Date().toISOString().split("T")[0];
@@ -370,6 +392,62 @@ export function SalesHistoryScreen() {
               </div>
             </div>
           </div>
+
+          {selectedCategory !== "all" && (
+            <div className="mb-4 rounded-2xl border border-border bg-card p-3 md:p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Resumo de {selectedCategory} hoje</p>
+                  <p className="text-xs text-muted-foreground">Saidas detalhadas por produto da categoria selecionada.</p>
+                </div>
+
+                {!categorySalesLoading && categorySalesSummary && (
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
+                    <div className="rounded-xl bg-secondary/40 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos</p>
+                      <p className="text-sm font-semibold text-foreground">{categorySalesSummary.products_count}</p>
+                    </div>
+                    <div className="rounded-xl bg-secondary/40 px-3 py-2">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Quantidade</p>
+                      <p className="text-sm font-semibold text-foreground">
+                        {parseFloat(categorySalesSummary.total_quantity_sold || "0").toFixed(0)}
+                      </p>
+                    </div>
+                    <div className="rounded-xl bg-secondary/40 px-3 py-2 col-span-2 md:col-span-1">
+                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Valor</p>
+                      <p className="text-sm font-semibold text-primary">
+                        {parseFloat(categorySalesSummary.total_amount || "0").toFixed(2)} MT
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-3">
+                {categorySalesLoading ? (
+                  <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                    Carregando saidas da categoria...
+                  </div>
+                ) : categorySalesSummary && categorySalesSummary.items.length > 0 ? (
+                  <div className="windows-scrollbar flex gap-2 overflow-x-auto pb-1">
+                    {categorySalesSummary.items.map((item) => (
+                      <div key={item.product_id} className="min-w-[210px] rounded-xl border border-border bg-secondary/30 px-3 py-3">
+                        <p className="truncate text-sm font-semibold text-foreground">{item.product_name}</p>
+                        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                          <p>{parseFloat(item.quantity_sold || "0").toFixed(0)} unidades vendidas</p>
+                          <p className="font-semibold text-primary">{parseFloat(item.total_amount || "0").toFixed(2)} MT</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
+                    Nenhuma saida hoje para esta categoria.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Mobile Sales Cards */}
           <div className="md:hidden space-y-2 mb-4">
