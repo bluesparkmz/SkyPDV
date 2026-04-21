@@ -862,6 +862,7 @@ function InvoiceSection() {
   const [companyConfigNuit, setCompanyConfigNuit] = useState("");
   const [companyConfigContacts, setCompanyConfigContacts] = useState("");
   const [companyConfigLogo, setCompanyConfigLogo] = useState("");
+  const [companyConfigStamp, setCompanyConfigStamp] = useState("");
   const [companyConfigLocation, setCompanyConfigLocation] = useState("");
   const [invoiceItems, setInvoiceItems] = useState<InvoiceDraftItem[]>([createEmptyInvoiceItem()]);
   const [customerName, setCustomerName] = useState("");
@@ -886,6 +887,7 @@ function InvoiceSection() {
     setCompanyConfigNuit(String(invoiceSettings.invoice_nuit || ""));
     setCompanyConfigContacts(String(invoiceSettings.invoice_contacts || terminal?.phone || ""));
     setCompanyConfigLogo(String(invoiceSettings.invoice_logo || terminal?.logo || ""));
+    setCompanyConfigStamp(String(invoiceSettings.invoice_stamp || ""));
     setCompanyConfigLocation(String(invoiceSettings.invoice_location || ""));
   }, [terminal]);
 
@@ -961,6 +963,7 @@ function InvoiceSection() {
           invoice_nuit: companyConfigNuit,
           invoice_contacts: companyConfigContacts,
           invoice_logo: companyConfigLogo,
+          invoice_stamp: companyConfigStamp,
           invoice_location: companyConfigLocation,
         },
       });
@@ -968,6 +971,21 @@ function InvoiceSection() {
       toast.success("Configuracao da fatura guardada");
     } catch (error: any) {
       toast.error(error?.message || "Nao foi possivel guardar a configuracao da fatura");
+    }
+  };
+
+  const handleUploadInvoiceAsset = async (file: File, kind: "logo" | "stamp") => {
+    try {
+      const { url } = await invoicesApi.uploadAsset(file);
+      if (kind === "logo") {
+        setCompanyConfigLogo(url);
+        setLogoUrl(url);
+      } else {
+        setCompanyConfigStamp(url);
+      }
+      toast.success(kind === "logo" ? "Logotipo enviado" : "Carimbo enviado");
+    } catch (error: any) {
+      toast.error(error?.message || "Nao foi possivel enviar a imagem");
     }
   };
 
@@ -999,6 +1017,7 @@ function InvoiceSection() {
       client_address: clientAddress,
       payment_method_label: paymentMethod,
       logo_url: logoUrl,
+      stamp_url: companyConfigStamp,
       tax_rate: String(taxRate),
     };
 
@@ -1067,8 +1086,36 @@ function InvoiceSection() {
             <Input value={companyConfigContacts} onChange={(e) => setCompanyConfigContacts(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label>Logotipo (URL)</Label>
-            <Input value={companyConfigLogo} onChange={(e) => setCompanyConfigLogo(e.target.value)} placeholder="https://..." />
+            <Label>Logotipo</Label>
+            <div className="flex items-center gap-2">
+              <Input value={companyConfigLogo} readOnly placeholder="Envie o logotipo do dispositivo" />
+              <Input
+                type="file"
+                accept="image/*"
+                className="max-w-[220px]"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUploadInvoiceAsset(file, "logo");
+                  e.currentTarget.value = "";
+                }}
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Carimbo</Label>
+            <div className="flex items-center gap-2">
+              <Input value={companyConfigStamp} readOnly placeholder="Envie o carimbo do dispositivo" />
+              <Input
+                type="file"
+                accept="image/*"
+                className="max-w-[220px]"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUploadInvoiceAsset(file, "stamp");
+                  e.currentTarget.value = "";
+                }}
+              />
+            </div>
           </div>
           <div className="space-y-2 md:col-span-2">
             <Label>Morada curta da empresa</Label>

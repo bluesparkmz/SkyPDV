@@ -72,6 +72,34 @@ async function request<T>(endpoint: string, init: RequestInit): Promise<T> {
   return undefined as T;
 }
 
+export async function apiUploadFile(endpoint: string, file: File): Promise<{ url: string }> {
+  const token = getToken();
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers = new Headers();
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(`${BASE_URL}${endpoint}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const data = await parseErrorBody(response);
+    const message =
+      typeof data === "object" && data && "detail" in (data as any)
+        ? String((data as any).detail)
+        : `API Error: ${response.status} ${response.statusText}`;
+    throw new ApiError(message, response.status, response.statusText, data);
+  }
+
+  return response.json();
+}
+
 function parseFilenameFromContentDisposition(contentDisposition: string | null): string | undefined {
   if (!contentDisposition) return undefined;
   const match = /filename\*?=(?:UTF-8''|\")?([^;\"\n]+)/i.exec(contentDisposition);
@@ -257,7 +285,8 @@ export const invoicesApi = {
   downloadPdf: (id: number, phone?: string) => {
     const qs = phone ? `?phone=${encodeURIComponent(phone)}` : "";
     return apiGetBlob(`/skypdv/invoices/${id}/pdf${qs}`);
-  }
+  },
+  uploadAsset: (file: File) => apiUploadFile("/skypdv/invoice-assets/upload", file),
 };
 
 // Perfil
