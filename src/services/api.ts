@@ -176,6 +176,19 @@ export const productsApi = {
     apiGet<StockMovement[]>(`/skypdv/products/${id}/movements?skip=${skip}&limit=${limit}`),
   getCategorySalesSummaryToday: (category: string) =>
     apiGet<CategorySalesSummary>(`/skypdv/products/category-summary/today?category=${encodeURIComponent(category)}`),
+  getCategorySalesReport: (params: {
+    category: string;
+    start_date?: string;
+    end_date?: string;
+    user_id?: number;
+  }) => {
+    const query = new URLSearchParams();
+    query.append("category", params.category);
+    if (params.start_date) query.append("start_date", params.start_date);
+    if (params.end_date) query.append("end_date", params.end_date);
+    if (typeof params.user_id === "number") query.append("user_id", String(params.user_id));
+    return apiGet<CategorySalesReport>(`/skypdv/products/category-report?${query.toString()}`);
+  },
 };
 
 // Categorias
@@ -582,6 +595,25 @@ export interface CategorySalesSummary {
   total_quantity_sold: string;
   total_amount: string;
   items: CategorySalesSummaryItem[];
+}
+
+export interface CategorySalesReportItem {
+  product_id: number;
+  product_name: string;
+  quantity_sold: string;
+  quantity_in: string;
+  total_amount: string;
+}
+
+export interface CategorySalesReport {
+  category: string;
+  start_date: string;
+  end_date: string;
+  products_count: number;
+  total_quantity_sold: string;
+  total_quantity_in: string;
+  total_amount: string;
+  items: CategorySalesReportItem[];
 }
 
 export interface StockMovement {

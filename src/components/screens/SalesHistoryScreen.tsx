@@ -23,7 +23,7 @@ import {
   useRestoreFocusTarget,
 } from "@fluentui/react-components";
 import { useSales, useVoidSale } from "@/hooks/useSales";
-import { dashboardApi, productsApi, Sale } from "@/services/api";
+import { CategorySalesReportItem, dashboardApi, productsApi, Sale } from "@/services/api";
 import { useCategories } from "@/hooks/useCategories";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { CustomerName } from "@/components/CustomerName";
@@ -69,7 +69,7 @@ const useStyles = makeStyles({
   },
 });
 
-type SalesView = "all" | "completed" | "cancelled";
+type SalesView = "all" | "completed" | "cancelled" | "category";
 
 export function SalesHistoryScreen() {
   const styles = useStyles();
@@ -130,15 +130,21 @@ export function SalesHistoryScreen() {
 
   const { data: sales = [], isLoading } = useSales({
     limit: 100,
-    status: activeView === "all" ? "all" : activeView,
+    status: activeView === "all" || activeView === "category" ? "all" : activeView,
     start_date: startIso,
     end_date: endIso,
     user_id: selectedCashierId === "all" ? undefined : selectedCashierId,
   });
-  const { data: categorySalesSummary, isLoading: categorySalesLoading } = useQuery({
-    queryKey: ["categorySalesSummaryToday", selectedCategory],
-    queryFn: () => productsApi.getCategorySalesSummaryToday(selectedCategory),
-    enabled: selectedCategory !== "all",
+  const { data: categorySalesReport, isLoading: categorySalesLoading } = useQuery({
+    queryKey: ["categorySalesReport", selectedCategory, startIso, endIso, selectedCashierId],
+    queryFn: () =>
+      productsApi.getCategorySalesReport({
+        category: selectedCategory,
+        start_date: startIso,
+        end_date: endIso,
+        user_id: selectedCashierId === "all" ? undefined : selectedCashierId,
+      }),
+    enabled: activeView === "category" && selectedCategory !== "all",
     refetchInterval: 30000,
   });
 
@@ -153,6 +159,31 @@ export function SalesHistoryScreen() {
 
     return matchesSearch;
   });
+
+  const filteredCategoryItems = useMemo(() => {
+    const items = categorySalesReport?.items || [];
+    if (!searchQuery) return items;
+    const query = searchQuery.toLowerCase();
+    return items.filter((item) => item.product_name.toLowerCase().includes(query));
+  }, [categorySalesReport?.items, searchQuery]);
+
+  const formatDecimalValue = (value: string | number) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (Number.isNaN(num)) return "0";
+    return Number.isInteger(num) ? num.toFixed(0) : num.toFixed(2);
+  };
+
+  const categoryTotals = useMemo(() => {
+    return filteredCategoryItems.reduce(
+      (acc, item) => {
+        acc.quantitySold += parseFloat(item.quantity_sold || "0") || 0;
+        acc.quantityIn += parseFloat(item.quantity_in || "0") || 0;
+        acc.totalAmount += parseFloat(item.total_amount || "0") || 0;
+        return acc;
+      },
+      { quantitySold: 0, quantityIn: 0, totalAmount: 0 }
+    );
+  }, [filteredCategoryItems]);
 
   const handleViewDetails = (sale: Sale) => {
     setSelectedSale(sale);
@@ -257,6 +288,10 @@ export function SalesHistoryScreen() {
           <NavItem value="cancelled" icon={<DismissCircle24Regular />}>
             Canceladas
           </NavItem>
+          <NavSectionHeader>Analise</NavSectionHeader>
+          <NavItem value="category" icon={<Document24Regular />}>
+            Por categoria
+          </NavItem>
         </NavDrawerBody>
       </NavDrawer>
 
@@ -309,12 +344,12 @@ export function SalesHistoryScreen() {
           <div className="flex flex-col sm:flex-row gap-2 md:gap-3 mb-4 md:mb-6">
             <div className="relative flex-1">
               <Search24Regular className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-muted-foreground" />
-              <Input
-                placeholder="Buscar recibo, cliente..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
-              />
+                <Input
+                  placeholder={activeView === "category" ? "Buscar produto..." : "Buscar recibo, cliente..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 md:pl-10 h-9 md:h-10 text-xs md:text-sm"
+                />
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               <div className="relative">
@@ -351,9 +386,17 @@ export function SalesHistoryScreen() {
                   ))}
                 </SelectContent>
               </Select>
-              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <Select
+                value={selectedCategory}
+                onValueChange={(value) => {
+                  setSelectedCategory(value);
+                  if (value !== "all") {
+                    setActiveView("category");
+                  }
+                }}
+              >
                 <SelectTrigger className="w-[180px] h-9 md:h-10 text-xs md:text-sm">
-                  <SelectValue placeholder="Categorias" />
+                  <SelectValue placeholder="Categoria" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas categorias</SelectItem>
@@ -393,65 +436,65 @@ export function SalesHistoryScreen() {
             </div>
           </div>
 
-          {selectedCategory !== "all" && (
-            <div className="mb-4 rounded-2xl border border-border bg-card p-3 md:p-4">
-              <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Resumo de {selectedCategory} hoje</p>
-                  <p className="text-xs text-muted-foreground">Saidas detalhadas por produto da categoria selecionada.</p>
-                </div>
-
-                {!categorySalesLoading && categorySalesSummary && (
-                  <div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-                    <div className="rounded-xl bg-secondary/40 px-3 py-2">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Produtos</p>
-                      <p className="text-sm font-semibold text-foreground">{categorySalesSummary.products_count}</p>
-                    </div>
-                    <div className="rounded-xl bg-secondary/40 px-3 py-2">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Quantidade</p>
-                      <p className="text-sm font-semibold text-foreground">
-                        {parseFloat(categorySalesSummary.total_quantity_sold || "0").toFixed(0)}
-                      </p>
-                    </div>
-                    <div className="rounded-xl bg-secondary/40 px-3 py-2 col-span-2 md:col-span-1">
-                      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Valor</p>
-                      <p className="text-sm font-semibold text-primary">
-                        {parseFloat(categorySalesSummary.total_amount || "0").toFixed(2)} MT
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3">
-                {categorySalesLoading ? (
-                  <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
-                    Carregando saidas da categoria...
-                  </div>
-                ) : categorySalesSummary && categorySalesSummary.items.length > 0 ? (
-                  <div className="windows-scrollbar flex gap-2 overflow-x-auto pb-1">
-                    {categorySalesSummary.items.map((item) => (
-                      <div key={item.product_id} className="min-w-[210px] rounded-xl border border-border bg-secondary/30 px-3 py-3">
-                        <p className="truncate text-sm font-semibold text-foreground">{item.product_name}</p>
-                        <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                          <p>{parseFloat(item.quantity_sold || "0").toFixed(0)} unidades vendidas</p>
-                          <p className="font-semibold text-primary">{parseFloat(item.total_amount || "0").toFixed(2)} MT</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-border px-3 py-4 text-center text-sm text-muted-foreground">
-                    Nenhuma saida hoje para esta categoria.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Mobile Sales Cards */}
           <div className="md:hidden space-y-2 mb-4">
-            {filteredSales.length === 0 ? (
+            {activeView === "category" ? (
+              selectedCategory === "all" ? (
+                <div className="fluent-card p-8 text-center text-muted-foreground">
+                  Selecione uma categoria para listar os produtos.
+                </div>
+              ) : categorySalesLoading ? (
+                <div className="fluent-card p-8 text-center text-muted-foreground">
+                  Carregando produtos da categoria...
+                </div>
+              ) : filteredCategoryItems.length === 0 ? (
+                <div className="fluent-card p-8 text-center text-muted-foreground">
+                  Nenhum movimento encontrado para esta categoria no periodo.
+                </div>
+              ) : (
+                <>
+                  <div className="fluent-card p-3">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Vendida</p>
+                        <p className="text-sm font-semibold text-foreground">{formatDecimalValue(categoryTotals.quantitySold)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Entrada</p>
+                        <p className="text-sm font-semibold text-foreground">{formatDecimalValue(categoryTotals.quantityIn)}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Valor</p>
+                        <p className="text-sm font-semibold text-primary">{categoryTotals.totalAmount.toFixed(2)} MT</p>
+                      </div>
+                    </div>
+                  </div>
+                  {filteredCategoryItems.map((item: CategorySalesReportItem) => (
+                    <div key={item.product_id} className="fluent-card p-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-foreground truncate">{item.product_name}</p>
+                          <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+                            <div>
+                              <p className="uppercase tracking-wide">Vendida</p>
+                              <p className="text-sm font-medium text-foreground">{formatDecimalValue(item.quantity_sold)}</p>
+                            </div>
+                            <div>
+                              <p className="uppercase tracking-wide">Entrada</p>
+                              <p className="text-sm font-medium text-foreground">{formatDecimalValue(item.quantity_in)}</p>
+                            </div>
+                            <div>
+                              <p className="uppercase tracking-wide">Valor</p>
+                              <p className="text-sm font-semibold text-primary">{formatCurrency(item.total_amount)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )
+            ) : filteredSales.length === 0 ? (
               <div className="fluent-card p-8 text-center text-muted-foreground">
                 Nenhuma venda encontrada
               </div>
@@ -499,7 +542,77 @@ export function SalesHistoryScreen() {
             )}
           </div>
 
+          {activeView === "category" && (
+            <div className="hidden md:block fluent-card overflow-hidden">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="py-3 px-4 text-xs font-semibold">Produto</TableHead>
+                      <TableHead className="py-3 px-4 text-xs font-semibold">Quantidade vendida</TableHead>
+                      <TableHead className="py-3 px-4 text-xs font-semibold">Quantidade de entrada</TableHead>
+                      <TableHead className="py-3 px-4 text-xs font-semibold text-right">Total do valor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedCategory === "all" ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
+                          Selecione uma categoria para listar os produtos.
+                        </TableCell>
+                      </TableRow>
+                    ) : categorySalesLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
+                          Carregando movimentos da categoria...
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredCategoryItems.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-sm">
+                          Nenhum movimento encontrado para esta categoria no periodo.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      <>
+                        {filteredCategoryItems.map((item: CategorySalesReportItem) => (
+                          <TableRow key={item.product_id} className="hover:bg-secondary/30 transition-colors border-b border-border">
+                            <TableCell className="font-medium h-12 py-2 px-4 text-sm">
+                              {item.product_name}
+                            </TableCell>
+                            <TableCell className="h-12 py-2 px-4 text-sm">
+                              {formatDecimalValue(item.quantity_sold)}
+                            </TableCell>
+                            <TableCell className="h-12 py-2 px-4 text-sm">
+                              {formatDecimalValue(item.quantity_in)}
+                            </TableCell>
+                            <TableCell className="font-semibold text-primary h-12 py-2 px-4 text-sm text-right">
+                              {formatCurrency(item.total_amount)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="bg-secondary/30">
+                          <TableCell className="font-semibold h-12 py-2 px-4 text-sm">Total</TableCell>
+                          <TableCell className="font-semibold h-12 py-2 px-4 text-sm">
+                            {formatDecimalValue(categoryTotals.quantitySold)}
+                          </TableCell>
+                          <TableCell className="font-semibold h-12 py-2 px-4 text-sm">
+                            {formatDecimalValue(categoryTotals.quantityIn)}
+                          </TableCell>
+                          <TableCell className="font-semibold text-primary h-12 py-2 px-4 text-sm text-right">
+                            {categoryTotals.totalAmount.toFixed(2)} MT
+                          </TableCell>
+                        </TableRow>
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
+
           {/* Sales Table - Desktop */}
+          {activeView !== "category" && (
           <div className="hidden md:block fluent-card overflow-hidden">
             <div className="overflow-x-auto">
               <Table>
@@ -578,6 +691,7 @@ export function SalesHistoryScreen() {
               </Table>
             </div>
           </div>
+          )}
 
 
           {/* Sale Details Dialog */}
