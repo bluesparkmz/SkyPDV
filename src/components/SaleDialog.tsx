@@ -20,9 +20,10 @@ import {
 } from "@/components/ui/select";
 import { useCreateSale } from "@/hooks/useSales";
 import { CartItem } from "@/types/product";
-import { CreateSale, PaymentMethodValue } from "@/services/api";
+import { CreateSale, PaymentMethodValue, terminalApi } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
+import { useQuery } from "@tanstack/react-query";
 
 interface SaleDialogProps {
   open: boolean;
@@ -34,6 +35,10 @@ interface SaleDialogProps {
 
 export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: SaleDialogProps) {
   const createSale = useCreateSale();
+  const { data: terminal } = useQuery({
+    queryKey: ["terminal"],
+    queryFn: terminalApi.get,
+  });
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
@@ -68,11 +73,22 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     const paidAmount = parseFloat(amountPaid || "0");
     const safePaidAmount = Number.isFinite(paidAmount) ? paidAmount : total;
     const printedChange = Math.max(safePaidAmount - total, 0);
+    const receiptSettings = (terminal?.settings as Record<string, unknown> | null) || {};
+    const companyName =
+      String(receiptSettings.receipt_company_name || terminal?.name || "ESTABELECIMENTO").trim();
+    const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
+    const companyContacts = String(receiptSettings.receipt_contacts || terminal?.phone || "").trim();
+    const companyAddress = String(receiptSettings.receipt_address || terminal?.address || "").trim();
+    const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
+
     const lines: string[] = [];
     
     lines.push('='.repeat(42));
-    lines.push('        SKYPDV - SISTEMA DE VENDAS');
+    lines.push(`        ${companyName.toUpperCase()}`);
     lines.push('='.repeat(42));
+    if (companyNuit) lines.push(`NUIT: ${companyNuit}`);
+    if (companyContacts) lines.push(`Contacto: ${companyContacts}`);
+    if (companyAddress) lines.push(`Endereco: ${companyAddress}`);
     lines.push(`Data: ${date}`);
     if (receiptNumber) {
       lines.push(`Recibo: #${receiptNumber}`);
@@ -99,7 +115,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     lines.push(`Valor Pago: ${safePaidAmount.toFixed(2)} MT`);
     lines.push(`Troco: ${printedChange.toFixed(2)} MT`);
     lines.push('='.repeat(42));
-    lines.push('        OBRIGADO PELA PREFERENCIA!');
+    lines.push(`        ${footerMessage.toUpperCase()}`);
     lines.push('='.repeat(42));
     lines.push('');
     lines.push('');

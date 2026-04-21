@@ -555,13 +555,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                 </SettingsPanel>
               )}
 
-              {activeTab === "receipt" && (
-                <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
-                  <Info24Regular className="w-10 h-10 mb-2 opacity-30" />
-                  <p className="text-sm">Configuracoes de Recibos</p>
-                  <p className="text-xs">Em desenvolvimento</p>
-                </div>
-              )}
+              {activeTab === "receipt" && <ReceiptSettings />}
 
               {activeTab === "invoice" && <InvoiceSection />}
 
@@ -851,6 +845,102 @@ function createEmptyInvoiceItem(): InvoiceDraftItem {
 }
 
 const INVOICE_SETTINGS_STORAGE_KEY = "skypdv_invoice_settings_local";
+const RECEIPT_SETTINGS_STORAGE_KEY = "skypdv_receipt_settings_local";
+
+function ReceiptSettings() {
+  const queryClient = useQueryClient();
+  const { data: terminal } = useQuery({
+    queryKey: ["terminal"],
+    queryFn: () => terminalApi.get(),
+  });
+
+  const localReceiptSettings = (() => {
+    try {
+      const raw = localStorage.getItem(RECEIPT_SETTINGS_STORAGE_KEY);
+      return raw ? (JSON.parse(raw) as Record<string, string>) : {};
+    } catch {
+      return {};
+    }
+  })();
+
+  const [companyName, setCompanyName] = useState("");
+  const [companyNuit, setCompanyNuit] = useState("");
+  const [companyContacts, setCompanyContacts] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [footerMessage, setFooterMessage] = useState("");
+
+  useEffect(() => {
+    const terminalSettings = (terminal?.settings as Record<string, string> | null) || {};
+    setCompanyName(String(terminalSettings.receipt_company_name || localReceiptSettings.receipt_company_name || terminal?.name || ""));
+    setCompanyNuit(String(terminalSettings.receipt_nuit || localReceiptSettings.receipt_nuit || ""));
+    setCompanyContacts(String(terminalSettings.receipt_contacts || localReceiptSettings.receipt_contacts || terminal?.phone || ""));
+    setCompanyAddress(String(terminalSettings.receipt_address || localReceiptSettings.receipt_address || terminal?.address || ""));
+    setFooterMessage(String(terminalSettings.receipt_footer || localReceiptSettings.receipt_footer || "Obrigado pela preferencia!"));
+  }, [terminal]);
+
+  const handleSave = async () => {
+    if (!companyName.trim()) {
+      toast.error("Informe o nome da empresa para o recibo");
+      return;
+    }
+
+    const payload = {
+      receipt_company_name: companyName,
+      receipt_nuit: companyNuit,
+      receipt_contacts: companyContacts,
+      receipt_address: companyAddress,
+      receipt_footer: footerMessage,
+    };
+
+    localStorage.setItem(RECEIPT_SETTINGS_STORAGE_KEY, JSON.stringify(payload));
+
+    try {
+      await terminalApi.update({
+        settings: {
+          ...(terminal?.settings || {}),
+          ...payload,
+        },
+      });
+      queryClient.invalidateQueries({ queryKey: ["terminal"] });
+      toast.success("Configuracao de recibo guardada");
+    } catch (error: any) {
+      toast.error(error?.message || "Nao foi possivel guardar no servidor. Configuracao guardada neste dispositivo.");
+    }
+  };
+
+  return (
+    <SettingsPanel
+      title="Configuracao de recibo de venda"
+      description="Esses dados sao usados na impressao do recibo da venda e sao guardados no terminal."
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-2">
+          <Label>Nome da empresa</Label>
+          <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>NUIT</Label>
+          <Input value={companyNuit} onChange={(e) => setCompanyNuit(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Contacto</Label>
+          <Input value={companyContacts} onChange={(e) => setCompanyContacts(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>Endereco</Label>
+          <Input value={companyAddress} onChange={(e) => setCompanyAddress(e.target.value)} />
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Mensagem final</Label>
+          <Input value={footerMessage} onChange={(e) => setFooterMessage(e.target.value)} />
+        </div>
+      </div>
+      <div className="mt-4 flex justify-end">
+        <Button onClick={handleSave}>Guardar configuracao</Button>
+      </div>
+    </SettingsPanel>
+  );
+}
 
 export function InvoiceSection() {
   const queryClient = useQueryClient();
