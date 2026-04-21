@@ -63,8 +63,11 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     }
   }, [changeAmount, changeStatus]);
 
-  const formatReceipt = (saleData: CreateSale, receiptNumber?: string): string => {
+  const formatReceipt = (_saleData: CreateSale, receiptNumber?: string): string => {
     const date = new Date().toLocaleString('pt-MZ');
+    const paidAmount = parseFloat(amountPaid || "0");
+    const safePaidAmount = Number.isFinite(paidAmount) ? paidAmount : total;
+    const printedChange = Math.max(safePaidAmount - total, 0);
     const lines: string[] = [];
     
     lines.push('='.repeat(42));
@@ -93,10 +96,8 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     lines.push(`TOTAL: ${total.toFixed(2)} MT`);
     lines.push('='.repeat(42));
     lines.push(`Pagamento: ${getPaymentMethodLabel(paymentMethod)}`);
-    lines.push(`Valor Pago: ${parseFloat(amountPaid || "0").toFixed(2)} MT`);
-    if (changeAmount > 0) {
-      lines.push(`Troco: ${changeAmount.toFixed(2)} MT`);
-    }
+    lines.push(`Valor Pago: ${safePaidAmount.toFixed(2)} MT`);
+    lines.push(`Troco: ${printedChange.toFixed(2)} MT`);
     lines.push('='.repeat(42));
     lines.push('        OBRIGADO PELA PREFERENCIA!');
     lines.push('='.repeat(42));

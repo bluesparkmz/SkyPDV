@@ -71,6 +71,10 @@ export function formatAccountReceipt(
   const total = Number(account.current_balance || 0);
   const subtotal = total / (1 + IVA_RATE);
   const ivaAmount = total - subtotal;
+  const paidAmount = typeof opts?.amountPaid === "number" && Number.isFinite(opts.amountPaid)
+    ? opts.amountPaid
+    : null;
+  const changeAmount = paidAmount !== null ? Math.max(paidAmount - total, 0) : null;
   const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
   const printedAt = opts?.printedAt
     ? new Date(opts.printedAt).toLocaleString("pt-MZ")
@@ -96,12 +100,9 @@ export function formatAccountReceipt(
   if (opts?.paymentMethod) {
     lines.push(`Pagamento: ${getPaymentMethodLabel(opts.paymentMethod)}`);
   }
-  if (typeof opts?.amountPaid === "number") {
-    lines.push(`Valor Pago: ${formatMoney(opts.amountPaid)}`);
-    const change = opts.amountPaid - total;
-    if (change > 0) {
-      lines.push(`Troco: ${formatMoney(change)}`);
-    }
+  if (paidAmount !== null) {
+    lines.push(`Valor Pago: ${formatMoney(paidAmount)}`);
+    lines.push(`Troco: ${formatMoney(changeAmount ?? 0)}`);
   }
   if (account.change_status) {
     lines.push(`Troco: ${account.change_status === "given" ? "Entregue" : "Nao entregue"}`);
