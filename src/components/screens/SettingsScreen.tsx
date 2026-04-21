@@ -1039,6 +1039,9 @@ function InvoiceSection() {
       tax_rate: String(taxRate),
     };
 
+    console.info("[invoice-create] terminal settings", terminal?.settings || {});
+    console.info("[invoice-create] invoice meta payload", invoiceMeta);
+
     const nextInvoiceDefaults = {
       invoice_company_name: companyName,
       invoice_nuit: companyNuit,
