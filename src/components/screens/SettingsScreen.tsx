@@ -956,16 +956,21 @@ function InvoiceSection() {
       tax_rate: String(taxRate),
     };
 
-    await terminalApi.update({
-      settings: {
-        ...(terminal?.settings || {}),
-        invoice_company_name: companyName,
-        invoice_nuit: companyNuit,
-        invoice_contacts: companyContacts,
-        invoice_logo: logoUrl,
-        invoice_last_number: invoiceNumber,
-      },
-    });
+    try {
+      await terminalApi.update({
+        settings: {
+          ...(terminal?.settings || {}),
+          invoice_company_name: companyName,
+          invoice_nuit: companyNuit,
+          invoice_contacts: companyContacts,
+          invoice_logo: logoUrl,
+          invoice_last_number: invoiceNumber,
+        },
+      });
+    } catch {
+      // Se o utilizador nao puder alterar as configuracoes do terminal,
+      // a fatura ainda deve ser criada com os dados manuais preenchidos.
+    }
 
     await createInvoice.mutateAsync({
       items: validItems.map((item) => ({
