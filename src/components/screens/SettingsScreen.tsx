@@ -850,7 +850,10 @@ function createEmptyInvoiceItem(): InvoiceDraftItem {
   };
 }
 
+const INVOICE_SETTINGS_STORAGE_KEY = "skypdv_invoice_settings_local";
+
 function InvoiceSection() {
+  const { user } = useAuth();
   const { data: invoices, isLoading } = useInvoices();
   const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });
   const { data: terminal } = useQuery({
@@ -880,15 +883,24 @@ function InvoiceSection() {
   const payInvoice = usePayInvoice();
 
   const products = productsData || [];
+  const canPersistInvoiceSettingsToTerminal = terminal?.user_id === user?.user?.id;
+  const localInvoiceSettings = (() => {
+    try {
+      const raw = localStorage.getItem(INVOICE_SETTINGS_STORAGE_KEY);
+      return raw ? JSON.parse(raw) as Record<string, string> : {};
+    } catch {
+      return {};
+    }
+  })();
 
   useEffect(() => {
     const invoiceSettings = (terminal?.settings as Record<string, string> | null) || {};
-    setCompanyConfigName(String(invoiceSettings.invoice_company_name || terminal?.name || ""));
-    setCompanyConfigNuit(String(invoiceSettings.invoice_nuit || ""));
-    setCompanyConfigContacts(String(invoiceSettings.invoice_contacts || terminal?.phone || ""));
-    setCompanyConfigLogo(String(invoiceSettings.invoice_logo || terminal?.logo || ""));
-    setCompanyConfigStamp(String(invoiceSettings.invoice_stamp || ""));
-    setCompanyConfigLocation(String(invoiceSettings.invoice_location || ""));
+    setCompanyConfigName(String(invoiceSettings.invoice_company_name || localInvoiceSettings.invoice_company_name || terminal?.name || ""));
+    setCompanyConfigNuit(String(invoiceSettings.invoice_nuit || localInvoiceSettings.invoice_nuit || ""));
+    setCompanyConfigContacts(String(invoiceSettings.invoice_contacts || localInvoiceSettings.invoice_contacts || terminal?.phone || ""));
+    setCompanyConfigLogo(String(invoiceSettings.invoice_logo || localInvoiceSettings.invoice_logo || terminal?.logo || ""));
+    setCompanyConfigStamp(String(invoiceSettings.invoice_stamp || localInvoiceSettings.invoice_stamp || ""));
+    setCompanyConfigLocation(String(invoiceSettings.invoice_location || localInvoiceSettings.invoice_location || ""));
   }, [terminal]);
 
   useEffect(() => {
@@ -955,16 +967,27 @@ function InvoiceSection() {
       return;
     }
 
+    const invoiceSettingsPayload = {
+      invoice_company_name: companyConfigName,
+      invoice_nuit: companyConfigNuit,
+      invoice_contacts: companyConfigContacts,
+      invoice_logo: companyConfigLogo,
+      invoice_stamp: companyConfigStamp,
+      invoice_location: companyConfigLocation,
+    };
+
+    localStorage.setItem(INVOICE_SETTINGS_STORAGE_KEY, JSON.stringify(invoiceSettingsPayload));
+
+    if (!canPersistInvoiceSettingsToTerminal) {
+      toast.success("Configuracao da fatura guardada neste dispositivo");
+      return;
+    }
+
     try {
       await terminalApi.update({
         settings: {
           ...(terminal?.settings || {}),
-          invoice_company_name: companyConfigName,
-          invoice_nuit: companyConfigNuit,
-          invoice_contacts: companyConfigContacts,
-          invoice_logo: companyConfigLogo,
-          invoice_stamp: companyConfigStamp,
-          invoice_location: companyConfigLocation,
+          ...invoiceSettingsPayload,
         },
       });
 
@@ -1021,20 +1044,29 @@ function InvoiceSection() {
       tax_rate: String(taxRate),
     };
 
-    try {
-      await terminalApi.update({
-        settings: {
-          ...(terminal?.settings || {}),
-          invoice_company_name: companyName,
-          invoice_nuit: companyNuit,
-          invoice_contacts: companyContacts,
-          invoice_logo: logoUrl,
-          invoice_last_number: invoiceNumber,
-        },
-      });
-    } catch {
-      // Se o utilizador nao puder alterar as configuracoes do terminal,
-      // a fatura ainda deve ser criada com os dados manuais preenchidos.
+    const nextInvoiceDefaults = {
+      invoice_company_name: companyName,
+      invoice_nuit: companyNuit,
+      invoice_contacts: companyContacts,
+      invoice_logo: logoUrl,
+      invoice_stamp: companyConfigStamp,
+      invoice_location: companyConfigLocation,
+      invoice_last_number: invoiceNumber,
+    };
+    localStorage.setItem(INVOICE_SETTINGS_STORAGE_KEY, JSON.stringify(nextInvoiceDefaults));
+
+    if (canPersistInvoiceSettingsToTerminal) {
+      try {
+        await terminalApi.update({
+          settings: {
+            ...(terminal?.settings || {}),
+            ...nextInvoiceDefaults,
+          },
+        });
+      } catch {
+        // Se o utilizador nao puder alterar as configuracoes do terminal,
+        // a fatura ainda deve ser criada com os dados manuais preenchidos.
+      }
     }
 
     await createInvoice.mutateAsync({
