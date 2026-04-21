@@ -1,5 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
   ArrowDownload24Regular,
   ArrowSync24Regular,
@@ -35,6 +36,14 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 type OperationMode = "in" | "out" | "adjustment" | "transfer" | "count";
 
@@ -129,6 +138,8 @@ export function StockScreen() {
     location: "balcao",
   });
   const [settingsRowId, setSettingsRowId] = useState<number | null>(null);
+  const [showPrintOptionsDialog, setShowPrintOptionsDialog] = useState(false);
+  const [printProductScope, setPrintProductScope] = useState<"all" | "beverages" | "important">("all");
 
   const { data: products = [], isLoading: productsLoading } = useProducts({ limit: 1000 });
   const { data: inventoryReport, isLoading: reportLoading } = useQuery({
@@ -271,6 +282,23 @@ export function StockScreen() {
     queryClient.invalidateQueries({ queryKey: ["products"] });
   };
 
+  const printDailyStock = async (productScope: "all" | "beverages" | "important" = "all") => {
+    try {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const { blob, filename } = await inventoryApi.downloadDailyStockPdf(today, productScope);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `stock-dia-${today}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Erro ao imprimir stock do dia", error);
+    }
+  };
+
   return (
     <div className={styles.root}>
       <NavDrawer
@@ -343,6 +371,10 @@ export function StockScreen() {
             <Button className="gap-2" onClick={() => openDialog("transfer")} disabled={!permissions.can_manage_stock}>
               <ArrowSync24Regular className="h-4 w-4" />
               Transferencia
+            </Button>
+            <Button variant="outline" className="gap-2" onClick={() => setShowPrintOptionsDialog(true)}>
+              <Print24Regular className="h-4 w-4" />
+              Imprimir stock do dia
             </Button>
             <Button variant="outline" className="gap-2" onClick={exportCsv}>
               <Print24Regular className="h-4 w-4" />
@@ -716,9 +748,67 @@ export function StockScreen() {
         row={selectedSettingsRow}
         onSuccess={handleDialogSuccess}
       />
+      <Dialog open={showPrintOptionsDialog} onOpenChange={setShowPrintOptionsDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Opções de impressão do stock</DialogTitle>
+            <DialogDescription>
+              Escolha se quer imprimir todos os produtos ou apenas bebidas no relatório diário de stock.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <button
+              type="button"
+              onClick={() => setPrintProductScope("all")}
+              className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                printProductScope === "all" ? "border-primary bg-primary/5" : "border-border"
+              }`}
+            >
+              <p className="font-medium">Imprimir tudo</p>
+              <p className="text-sm text-muted-foreground">Inclui todos os produtos no stock do dia.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrintProductScope("beverages")}
+              className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                printProductScope === "beverages" ? "border-primary bg-primary/5" : "border-border"
+              }`}
+            >
+              <p className="font-medium">Imprimir apenas bebidas</p>
+              <p className="text-sm text-muted-foreground">Mostra apenas bebidas no stock do dia.</p>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPrintProductScope("important")}
+              className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                printProductScope === "important" ? "border-primary bg-primary/5" : "border-border"
+              }`}
+            >
+              <p className="font-medium">Imprimir apenas produtos com estoque controlado</p>
+              <p className="text-sm text-muted-foreground">
+                Mostra apenas produtos com controlo de stock (ignora produtos que nao precisam de estoque).
+              </p>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPrintOptionsDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              className="gap-2"
+              onClick={() => {
+                setShowPrintOptionsDialog(false);
+                printDailyStock(printProductScope);
+              }}
+            >
+              <Print24Regular className="h-4 w-4" />
+              Continuar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
         </div>
       </div>
     </div>
   );
 }
-

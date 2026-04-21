@@ -3,6 +3,7 @@ import {
   Add24Regular,
   Box24Regular,
   BrainCircuit24Regular,
+  CheckmarkSquare24Regular,
   Delete24Regular,
   Edit24Regular,
   Filter24Regular,
@@ -75,6 +76,10 @@ export function ProductsScreen() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAdoptDialogOpen, setIsAdoptDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
+  const [bulkAction, setBulkAction] = useState<"delete" | "disable-stock" | "enable-stock" | "move" | "">("");
+  const [bulkCategory, setBulkCategory] = useState("all");
+  const [isRunningBulkAction, setIsRunningBulkAction] = useState(false);
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -104,6 +109,10 @@ export function ProductsScreen() {
       return matchesSearch && matchesCategory && matchesView && product.is_active;
     });
   }, [products, searchQuery, selectedCategory, activeView]);
+
+  useEffect(() => {
+    setSelectedProductIds((prev) => prev.filter((id) => filteredProducts.some((product) => product.id === id)));
+  }, [filteredProducts]);
 
   const handleSaveProduct = async (productData: {
     id?: string | number;
@@ -177,6 +186,75 @@ export function ProductsScreen() {
   const openCreateDialog = () => {
     setSelectedProduct(null);
     setIsDialogOpen(true);
+  };
+
+  const toggleProductSelection = (productId: number) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (filteredProducts.length === 0) return;
+    const visibleIds = filteredProducts.map((product) => product.id);
+    const allVisibleSelected = visibleIds.every((id) => selectedProductIds.includes(id));
+    setSelectedProductIds(allVisibleSelected ? [] : visibleIds);
+  };
+
+  const selectedProducts = filteredProducts.filter((product) => selectedProductIds.includes(product.id));
+
+  const handleBulkAction = async () => {
+    if (selectedProducts.length === 0 || !bulkAction) return;
+
+    if (bulkAction === "move" && bulkCategory === "all") {
+      toast.error("Selecione a categoria de destino para mover.");
+      return;
+    }
+
+    setIsRunningBulkAction(true);
+    try {
+      for (const product of selectedProducts) {
+        if (bulkAction === "delete") {
+          await deleteProduct.mutateAsync(product.id);
+          continue;
+        }
+
+        await updateProduct.mutateAsync({
+          id: product.id,
+          data: {
+            name: product.name,
+            price: product.price,
+                  category: bulkAction === "move" ? bulkCategory : product.category,
+                  emoji: product.emoji,
+                  image: product.image,
+                  is_fastfood: product.is_fastfood,
+                  track_stock:
+                    bulkAction === "disable-stock"
+                      ? false
+                      : bulkAction === "enable-stock"
+                        ? true
+                        : product.track_stock,
+                },
+              });
+      }
+
+      setSelectedProductIds([]);
+      setBulkAction("");
+      setBulkCategory("all");
+      toast.success(
+        bulkAction === "delete"
+          ? "Produtos removidos com sucesso!"
+          : bulkAction === "disable-stock"
+            ? "Controle de estoque desativado nos produtos selecionados."
+            : bulkAction === "enable-stock"
+              ? "Controle de estoque ativado nos produtos selecionados."
+            : "Produtos movidos com sucesso!"
+      );
+    } catch (error: any) {
+      toast.error(error?.message || "Falha ao executar a ação em lote.");
+    } finally {
+      setIsRunningBulkAction(false);
+    }
   };
 
   const handlePrintProducts = async () => {
@@ -327,6 +405,56 @@ export function ProductsScreen() {
               </div>
             </div>
 
+            <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-border bg-card p-3 md:mb-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-wrap items-center gap-2">
+                <button onClick={toggleSelectAll} className="fluent-button gap-2 text-xs md:text-sm">
+                  <CheckmarkSquare24Regular className="h-4 w-4" />
+                  {filteredProducts.length > 0 && filteredProducts.every((product) => selectedProductIds.includes(product.id))
+                    ? "Limpar seleção"
+                    : "Selecionar todos"}
+                </button>
+                <span className="text-xs text-muted-foreground md:text-sm">
+                  {selectedProductIds.length} selecionado{selectedProductIds.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <select
+                  value={bulkAction}
+                  onChange={(event) => setBulkAction(event.target.value as "delete" | "disable-stock" | "enable-stock" | "move" | "")}
+                  className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 md:text-sm"
+                >
+                  <option value="">Ação em lote</option>
+                  <option value="delete">Apagar selecionados</option>
+                  <option value="disable-stock">Tornar estoque off</option>
+                  <option value="enable-stock">Tornar estoque on</option>
+                  <option value="move">Mover categoria</option>
+                </select>
+
+                {bulkAction === "move" && (
+                  <select
+                    value={bulkCategory}
+                    onChange={(event) => setBulkCategory(event.target.value)}
+                    className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 md:text-sm"
+                  >
+                    <option value="all">Categoria destino</option>
+                    {categoriesList.map((category) => (
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                <button
+                  onClick={handleBulkAction}
+                  disabled={!bulkAction || selectedProducts.length === 0 || isRunningBulkAction}
+                  className="fluent-button fluent-button-primary px-3 disabled:opacity-50"
+                >
+                  {isRunningBulkAction ? "Processando..." : "Aplicar"}
+                </button>
+              </div>
+            </div>
+
             {productsLoading && (
               <div className="flex h-48 items-center justify-center text-muted-foreground">
                 <p className="text-sm">Carregando produtos...</p>
@@ -342,6 +470,12 @@ export function ProductsScreen() {
                     <div key={product.id} className="fluent-card p-3">
                       <div className="flex items-center justify-between gap-3">
                         <div className="flex min-w-0 flex-1 items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={selectedProductIds.includes(product.id)}
+                            onChange={() => toggleProductSelection(product.id)}
+                            className="h-4 w-4 rounded border-border"
+                          />
                           <ProductImage
                             emoji={product.emoji}
                             image={product.image}
@@ -384,6 +518,14 @@ export function ProductsScreen() {
                   <table className="w-full">
                     <thead className="bg-secondary/50">
                       <tr>
+                        <th className="p-4 text-left text-sm font-semibold text-foreground">
+                          <input
+                            type="checkbox"
+                            checked={filteredProducts.length > 0 && filteredProducts.every((product) => selectedProductIds.includes(product.id))}
+                            onChange={toggleSelectAll}
+                            className="h-4 w-4 rounded border-border"
+                          />
+                        </th>
                         <th className="p-4 text-left text-sm font-semibold text-foreground">Produto</th>
                         <th className="p-4 text-left text-sm font-semibold text-foreground">Categoria</th>
                         <th className="p-4 text-left text-sm font-semibold text-foreground">Preco</th>
@@ -395,7 +537,7 @@ export function ProductsScreen() {
                     <tbody>
                       {filteredProducts.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                          <td colSpan={7} className="p-8 text-center text-muted-foreground">
                             Nenhum produto encontrado
                           </td>
                         </tr>
@@ -406,6 +548,14 @@ export function ProductsScreen() {
 
                           return (
                             <tr key={product.id} className="border-t border-border transition-colors hover:bg-secondary/30">
+                              <td className="p-4">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedProductIds.includes(product.id)}
+                                  onChange={() => toggleProductSelection(product.id)}
+                                  className="h-4 w-4 rounded border-border"
+                                />
+                              </td>
                               <td className="p-4">
                                 <div className="flex items-center gap-3">
                                   <ProductImage

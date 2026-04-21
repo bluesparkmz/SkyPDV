@@ -46,14 +46,6 @@ import { productsApi } from "@/services/api";
 
 import { Screen } from "@/types/screen";
 
-type ParkedSale = {
-  id: string;
-  label: string;
-  createdAt: string;
-  items: CartItem[];
-  customerName?: string;
-};
-
 type StockAlertNotice = {
   id: string;
   title: string;
@@ -71,8 +63,6 @@ export function SkyPDV() {
   const [quantityDialogOpen, setQuantityDialogOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cashRegisterDialogOpen, setCashRegisterDialogOpen] = useState(false);
-  const [currentCustomerName, setCurrentCustomerName] = useState<string>("");
-  const [parkedSales, setParkedSales] = useState<ParkedSale[]>([]);
   const [showSetup, setShowSetup] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallCard, setShowInstallCard] = useState(false);
@@ -263,47 +253,6 @@ export function SkyPDV() {
 
   const clearCart = () => {
     setCart([]);
-    // NÃ£o limpar vendas em espera, mas podemos limpar o nome atual
-    setCurrentCustomerName("");
-  };
-
-  // Colocar venda atual em espera (PDV local, nÃ£o FastFood)
-  const parkCurrentSale = () => {
-    if (cart.length === 0) {
-      toast.error("Carrinho vazio. Nada para colocar em espera.");
-      return;
-    }
-
-    const newSale: ParkedSale = {
-      id: Date.now().toString(),
-      label: currentCustomerName || `Venda ${parkedSales.length + 1}`,
-      createdAt: new Date().toISOString(),
-      items: cart,
-      customerName: currentCustomerName || undefined,
-    };
-
-    setParkedSales((prev) => [...prev, newSale]);
-
-    setCurrentCustomerName("");
-    toast.success("Venda colocada em espera.");
-  };
-
-  const loadParkedSale = (id: string) => {
-    setParkedSales((prev) => {
-      const sale = prev.find((s) => s.id === id);
-      if (!sale) {
-        toast.error("Venda em espera nÃ£o encontrada.");
-        return prev;
-      }
-      // Se o carrinho atual tiver itens, avisar o usuÃ¡rio
-      if (cart.length > 0) {
-        toast.error("Limpe ou finalize a venda atual antes de recuperar uma venda em espera.");
-        return prev;
-      }
-      setCart(sale.items);
-      setCurrentCustomerName(sale.customerName || "");
-      return prev.filter((s) => s.id !== id);
-    });
   };
 
   const handleSaleComplete = () => {
@@ -750,17 +699,6 @@ export function SkyPDV() {
               onSaleComplete={handleSaleComplete}
               isCashRegisterOpen={currentRegister?.status === "open"}
               canSell={perms.can_sell}
-              parkedSales={parkedSales.map(({ id, label, createdAt, customerName, items }) => ({
-                id,
-                label,
-                createdAt,
-                customerName,
-                items,
-              }))}
-              customerName={currentCustomerName}
-              onCustomerNameChange={setCurrentCustomerName}
-              onParkSale={parkCurrentSale}
-              onLoadParkedSale={loadParkedSale}
             />
           </>
         );
@@ -806,7 +744,6 @@ export function SkyPDV() {
     </div>
   );
 }
-
 
 
 

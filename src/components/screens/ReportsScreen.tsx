@@ -53,7 +53,6 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { useSales } from "@/hooks/useSales";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
@@ -119,6 +118,7 @@ export function ReportsScreen() {
   const { prefs: whatsappPrefs, setPrefs: setWhatsappPrefs, isReady: whatsappReady, saveToBackend } = useWhatsappPrefs();
   const [showWhatsappDialog, setShowWhatsappDialog] = useState(false);
   const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
+  const [pendingProductScope, setPendingProductScope] = useState<"all" | "beverages">("all");
   const [tempPhone, setTempPhone] = useState("");
 
   useEffect(() => {
@@ -145,7 +145,10 @@ export function ReportsScreen() {
   }, [terminalUsers]);
 
   // Filtrar apenas caixas (cashier) para o seletor
-  const cashiers = terminalUsers.filter(u => u.role === "cashier" && u.is_active);
+  // Protege contra payloads incompletos (user_id nulo/indefinido) que quebram no toString().
+  const cashiers = terminalUsers.filter(
+    (u) => u.role === "cashier" && u.is_active && typeof u.user_id === "number" && Number.isFinite(u.user_id)
+  );
 
   // Buscar relatórios diários
   const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(startDate, endDate, selectedCashierId);
@@ -212,6 +215,12 @@ export function ReportsScreen() {
     }).format(num) + " MT";
   };
 
+  const formatQuantity = (value: string | number) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (Number.isNaN(num)) return String(value);
+    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
+  };
+
   const formatDate = (dateString: string) => {
     return format(parseISO(dateString), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
@@ -262,10 +271,12 @@ export function ReportsScreen() {
 
   const getPaymentMethodLabel = (method: string) => {
     const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      card: "Cartão",
-      skywallet: "SkyWallet",
-      mpesa: "M-Pesa",
+      cash: "Cash",
+      bci_pos: "BCI POS",
+      card: "BCI POS",
+      emola: "E-Mola",
+      skywallet: "E-Mola",
+      mpesa: "M-pesa",
       mixed: "Misto",
     };
     return labels[method] || method;
@@ -300,7 +311,7 @@ export function ReportsScreen() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      toast.error(err?.message || `Erro ao baixar ${type === "pdf" ? "PDF" : "Excel"}`);
+      console.error(err?.message || `Erro ao baixar ${type === "pdf" ? "PDF" : "Excel"}`);
     }
   };
 
@@ -314,10 +325,15 @@ export function ReportsScreen() {
     setIsSaleDetailOpen(true);
   };
 
-  const handleExport = async (type: "pdf" | "excel") => {
+  const handleExport = async (
+    type: "pdf" | "excel",
+    opts?: { skipPhoneCheck?: boolean; productScope?: "all" | "beverages" }
+  ) => {
     try {
-      if (!whatsappPrefs.phone) {
+      const hasPhone = !!whatsappPrefs.phone?.trim();
+      if (!hasPhone && !opts?.skipPhoneCheck) {
         setPendingExportType(type);
+        setPendingProductScope(opts?.productScope || "all");
         setShowWhatsappDialog(true);
         return;
       }
@@ -326,10 +342,16 @@ export function ReportsScreen() {
       const exportStart = isDailyView ? selectedDate : startDate;
       const exportEnd = isDailyView ? selectedDate : endDate;
 
-      const phoneParam = whatsappPrefs.enabled ? whatsappPrefs.phone : undefined;
+      const phoneParam = whatsappPrefs.enabled && hasPhone ? whatsappPrefs.phone : undefined;
       const { blob, filename: apiFilename } =
         type === "pdf"
-          ? await dashboardApi.downloadSalesSummaryPdf(exportStart!, exportEnd!, selectedCashierId, phoneParam)
+          ? await dashboardApi.downloadSalesSummaryPdf(
+              exportStart!,
+              exportEnd!,
+              selectedCashierId,
+              phoneParam,
+              opts?.productScope
+            )
           : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId, phoneParam);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
@@ -351,15 +373,14 @@ export function ReportsScreen() {
       window.URL.revokeObjectURL(url);
 
       // placeholder para envio ao WhatsApp
-      if (whatsappPrefs.enabled && whatsappPrefs.phone) {
-        toast.success(`Enviaremos o relatório para o WhatsApp ${whatsappPrefs.phone}. (placeholder)`);
-      }
     } catch (e: any) {
-      toast.error(e?.message || `Falha ao gerar o ${type === "pdf" ? "PDF" : "Excel"}`);
+      console.error(e?.message || `Falha ao gerar o ${type === "pdf" ? "PDF" : "Excel"}`);
     }
   };
 
-  const handleExportPDF = () => handleExport("pdf");
+  const handleExportPDF = () => {
+    handleExport("pdf", { productScope: "all" });
+  };
 
   const handleQuickFilter = (period: 'today' | 'yesterday' | 'week' | 'month') => {
     const end = new Date();
@@ -476,7 +497,12 @@ export function ReportsScreen() {
                 <Select
                   value={selectedCashierId?.toString() || "all"}
                   onValueChange={(value) => {
-                    setSelectedCashierId(value === "all" ? undefined : parseInt(value));
+                    if (value === "all") {
+                      setSelectedCashierId(undefined);
+                      return;
+                    }
+                    const parsed = Number(value);
+                    setSelectedCashierId(Number.isFinite(parsed) ? parsed : undefined);
                   }}
                 >
                   <SelectTrigger className="w-full">
@@ -485,7 +511,7 @@ export function ReportsScreen() {
                   <SelectContent>
                     <SelectItem value="all">Todos os caixas</SelectItem>
                     {cashiers.map((cashier) => (
-                      <SelectItem key={cashier.id} value={cashier.user_id.toString()}>
+                      <SelectItem key={cashier.id} value={String(cashier.user_id)}>
                         {cashier.user_name || cashier.user_email || `Caixa ${cashier.user_id}`}
                       </SelectItem>
                     ))}
@@ -567,7 +593,7 @@ export function ReportsScreen() {
           <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
           {(selectedDate || activeView === "all-sales") && (
             <>
-              <Button onClick={() => handleExport("pdf")} className="gap-2" variant="outline">
+              <Button onClick={handleExportPDF} className="gap-2" variant="outline">
                 <Print24Regular className="w-4 h-4" />
                 PDF
               </Button>
@@ -694,7 +720,7 @@ export function ReportsScreen() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product_name || `Produto #${item.product_id}`}</p>
                             <p className="text-sm text-muted-foreground">
-                              {item.quantity} x {formatCurrency(item.unit_price || 0)}
+                              {formatQuantity(item.quantity)} x {formatCurrency(item.unit_price || 0)}
                             </p>
                           </div>
                           <div className="text-right">
@@ -782,7 +808,12 @@ export function ReportsScreen() {
                 variant="ghost"
                 onClick={() => {
                   setShowWhatsappDialog(false);
-                  if (pendingExportType) handleExport(pendingExportType);
+                  if (pendingExportType) {
+                    handleExport(pendingExportType, {
+                      skipPhoneCheck: true,
+                      productScope: pendingProductScope,
+                    });
+                  }
                 }}
               >
                 Imprimir sem WhatsApp
@@ -792,7 +823,12 @@ export function ReportsScreen() {
                   setWhatsappPrefs({ phone: tempPhone, enabled: true });
                   saveToBackend(tempPhone);
                   setShowWhatsappDialog(false);
-                  if (pendingExportType) handleExport(pendingExportType);
+                  if (pendingExportType) {
+                    handleExport(pendingExportType, {
+                      skipPhoneCheck: true,
+                      productScope: pendingProductScope,
+                    });
+                  }
                 }}
                 disabled={!tempPhone.trim()}
               >
@@ -801,6 +837,7 @@ export function ReportsScreen() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
       </div>
     </div>
   );
@@ -888,25 +925,25 @@ function DashboardView({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {summary.cash_sales && parseFloat(summary.cash_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Dinheiro</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">Cash</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.cash_sales)}</p>
               </div>
             )}
             {summary.card_sales && parseFloat(summary.card_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Cartão</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">BCI POS</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.card_sales)}</p>
               </div>
             )}
             {summary.skywallet_sales && parseFloat(summary.skywallet_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">SkyWallet</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">E-Mola</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.skywallet_sales)}</p>
               </div>
             )}
             {summary.mpesa_sales && parseFloat(summary.mpesa_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">M-Pesa</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">M-pesa</p>
                 <p className="text-lg font-bold">{formatCurrency(summary.mpesa_sales)}</p>
               </div>
             )}

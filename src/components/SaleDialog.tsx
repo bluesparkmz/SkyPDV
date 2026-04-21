@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateSale } from "@/hooks/useSales";
 import { CartItem } from "@/types/product";
-import { CreateSale } from "@/services/api";
+import { CreateSale, PaymentMethod } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
 
@@ -34,11 +34,9 @@ interface SaleDialogProps {
 
 export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: SaleDialogProps) {
   const createSale = useCreateSale();
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "skywallet" | "mpesa" | "mixed">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [amountPaid, setAmountPaid] = useState("");
-  const [customerName, setCustomerName] = useState("");
-  const [customerPhone, setCustomerPhone] = useState("");
-  const [notes, setNotes] = useState("");
+  const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const { isConnected: hardwareConnected, isConnecting: isConnectingHardware, printReceipt, openCashDrawer } =
     useHardwarePlugin();
 
@@ -50,6 +48,20 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   // IVA = diferença entre total e subtotal
   const taxAmount = total - calculatedSubtotal;
   const changeAmount = parseFloat(amountPaid || "0") - total;
+  const isCash = paymentMethod === "cash";
+
+  useEffect(() => {
+    if (open) {
+      setPaymentMethod("cash");
+      setAmountPaid(total.toFixed(2));
+    }
+  }, [open, total]);
+
+  useEffect(() => {
+    if (changeAmount <= 0 && changeStatus !== "given") {
+      setChangeStatus("given");
+    }
+  }, [changeAmount, changeStatus]);
 
   const formatReceipt = (saleData: CreateSale, receiptNumber?: string): string => {
     const date = new Date().toLocaleString('pt-MZ');
@@ -64,12 +76,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     }
     lines.push('-'.repeat(42));
     
-    if (customerName) {
-      lines.push(`Cliente: ${customerName}`);
-    }
-    if (customerPhone) {
-      lines.push(`Telefone: ${customerPhone}`);
-    }
     lines.push('-'.repeat(42));
     lines.push('PRODUTOS:');
     lines.push('-'.repeat(42));
@@ -103,9 +109,9 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   const getPaymentMethodLabel = (method: string): string => {
     const labels: Record<string, string> = {
       cash: "Dinheiro",
-      card: "Cartão",
-      skywallet: "SkyWallet",
+      card: "Cartão/TPA",
       mpesa: "M-Pesa",
+      skywallet: "E-Mola",
       mixed: "Misto",
     };
     return labels[method] || method;
@@ -124,9 +130,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       })),
       payment_method: paymentMethod,
       amount_paid: amountPaid,
-      customer_name: customerName || undefined,
-      customer_phone: customerPhone || undefined,
-      notes: notes || undefined,
+      change_status: changeStatus,
       sale_type: "local",
     };
 
@@ -148,10 +152,8 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       onOpenChange(false);
       // Reset form
       setAmountPaid("");
-      setCustomerName("");
-      setCustomerPhone("");
-      setNotes("");
       setPaymentMethod("cash");
+      setChangeStatus("given");
     } catch (error) {
       // Error handled by mutation
     }
@@ -216,9 +218,9 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="cash">Dinheiro</SelectItem>
-                <SelectItem value="card">Cartão</SelectItem>
-                <SelectItem value="skywallet">SkyWallet</SelectItem>
                 <SelectItem value="mpesa">M-Pesa</SelectItem>
+                <SelectItem value="card">Cartão/TPA</SelectItem>
+                <SelectItem value="skywallet">E-Mola</SelectItem>
                 <SelectItem value="mixed">Misto</SelectItem>
               </SelectContent>
             </Select>
@@ -242,39 +244,25 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
             )}
           </div>
 
-          {/* Customer Info */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="customerName">Nome do Cliente (opcional)</Label>
-              <Input
-                id="customerName"
-                value={customerName}
-                onChange={(e) => setCustomerName(e.target.value)}
-                placeholder="Nome"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="customerPhone">Telefone (opcional)</Label>
-              <Input
-                id="customerPhone"
-                value={customerPhone}
-                onChange={(e) => setCustomerPhone(e.target.value)}
-                placeholder="841234567"
-              />
-            </div>
-          </div>
 
-          {/* Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="notes">Observações</Label>
-            <Textarea
-              id="notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Notas adicionais..."
-              rows={2}
-            />
-          </div>
+          {isCash && changeAmount > 0 && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                <div>
+                  <Label htmlFor="change_status">Troco nao entregue</Label>
+                  <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+                </div>
+                <Switch
+                  id="change_status"
+                  checked={changeStatus === "not_given"}
+                  onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
+                />
+              </div>
+              {changeStatus === "given" && (
+                <p className="text-xs text-muted-foreground">Troco entregue.</p>
+              )}
+            </div>
+          )}
         </div>
         
         <DialogFooter>
@@ -292,4 +280,3 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     </Dialog>
   );
 }
-

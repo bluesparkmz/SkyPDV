@@ -37,12 +37,12 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 export function TerminalUsersSettings() {
-  const { data: users, isLoading, refetch } = useTerminalUsers();
+  const { data: users, isLoading, error } = useTerminalUsers();
   const { user: profileData } = useAuth();
   const currentUserId = profileData?.user?.id;
 
   const isCurrentAdmin = (() => {
-    if (!users) return true; // fallback: assume dono/admin
+    if (!users) return false;
     const me = users.find((u) => u.user_id === currentUserId);
     if (!me) return true; // se nÃ£o retornou nos membros, assume admin/dono
     return (
@@ -105,6 +105,16 @@ export function TerminalUsersSettings() {
     return (
       <div className="flex items-center justify-center h-48">
         <ArrowSync24Regular className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-48 text-muted-foreground">
+        <Info24Regular className="w-10 h-10 mb-2 opacity-30" />
+        <p className="text-sm">Nao foi possivel carregar os usuarios do terminal</p>
+        <p className="text-xs">Esta area pode estar disponivel apenas para administradores</p>
       </div>
     );
   }

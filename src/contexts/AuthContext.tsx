@@ -1,4 +1,4 @@
-import React, { createContext, useContext, ReactNode, useEffect, useState } from "react";
+import React, { createContext, useCallback, useContext, ReactNode, useEffect, useState } from "react";
 import { ACCOUNTS_URL, API_URL, PRODUCT_CODE } from "@/config";
 
 const BASE_URL = API_URL;
@@ -90,7 +90,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         return;
       }
 
-      if (response.status === 401 || response.status === 403) {
+      if (response.status === 401) {
         setToken(null);
         setUser(null);
         localStorage.removeItem(TOKEN_STORAGE_KEY);
@@ -167,11 +167,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     window.location.href = loginUrl;
   };
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setToken(null);
     setUser(null);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
-  };
+  }, []);
+
+  useEffect(() => {
+    const handleLogout = () => {
+      logout();
+    };
+    window.addEventListener("skypdv:logout", handleLogout);
+    return () => {
+      window.removeEventListener("skypdv:logout", handleLogout);
+    };
+  }, [logout]);
 
   const getAuthHeaders = (): HeadersInit => {
     if (!token) {

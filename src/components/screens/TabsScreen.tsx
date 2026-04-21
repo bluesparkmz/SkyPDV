@@ -1,16 +1,18 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   PeopleTeam24Regular,
   Add24Regular,
   Checkmark24Regular,
-  Dismiss24Regular,
   Edit24Regular,
-  DocumentText24Regular,
+  Delete24Regular,
+  Subtract24Regular,
   Money24Regular,
-  Clock24Regular,
-  Receipt24Regular,
   Phone24Regular,
   Calendar24Regular,
+  Person24Regular,
+  Eye24Regular,
+  Print24Regular,
 } from "@fluentui/react-icons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,83 +32,100 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useRestaurants, useTabs, useCreateTab } from "@/hooks/useFastFood";
-import { Tab, TabCreate } from "@/services/fastfoodApi";
-import { fastfoodApi } from "@/services/fastfoodApi";
-import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import {
+  useAccount,
+  useAccounts,
+  useUpdateAccountItem,
+  useRemoveAccountItem,
+  useCloseAccount,
+  useCreateAccount,
+  useDeleteAccount,
+  useUpdateAccount,
+} from "@/hooks/useAccounts";
+import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
+import { formatAccountReceipt, formatAccountItemsReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
+import { Account, CreateAccount, PaymentMethod, terminalApi } from "@/services/api";
+import { toast } from "sonner";
 
 export function TabsScreen() {
-  const { data: restaurants = [] } = useRestaurants();
-  const restaurantId = restaurants[0]?.id || 0;
+  const getLocalDateValue = (value: Date) => {
+    const year = value.getFullYear();
+    const month = String(value.getMonth() + 1).padStart(2, "0");
+    const day = String(value.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   const [statusFilter, setStatusFilter] = useState<"all" | "open" | "closed">("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [dateFilter, setDateFilter] = useState(getLocalDateValue(new Date()));
+  const [selectedAccountId, setSelectedAccountId] = useState<number | undefined>(undefined);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
-  const [selectedTab, setSelectedTab] = useState<Tab | null>(null);
-  const [newTab, setNewTab] = useState<TabCreate>({
-    client_name: "",
-    client_phone: "",
+  const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [amountPaid, setAmountPaid] = useState("");
+  const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
+  const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);
+  const [kitchenSentByAccount, setKitchenSentByAccount] = useState<Record<number, number[]>>({});
+  const [kitchenTicketCountByAccount, setKitchenTicketCountByAccount] = useState<Record<number, number>>({});
+
+  const { data: accounts = [], isLoading, refetch } = useAccounts(statusFilter);
+  const { data: selectedAccount } = useAccount(selectedAccountId);
+  const { data: terminal } = useQuery({
+    queryKey: ["terminal"],
+    queryFn: terminalApi.get,
   });
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const { printReceipt } = useHardwarePlugin();
+  const createAccount = useCreateAccount();
+  const updateAccount = useUpdateAccount();
+  const closeAccount = useCloseAccount();
+  const updateAccountItem = useUpdateAccountItem();
+  const removeAccountItem = useRemoveAccountItem();
+  const deleteAccount = useDeleteAccount();
 
-  // Buscar todas as contas (sem filtro de status) para que o usuário possa filtrar no frontend
-  const { data: tabs = [], isLoading, refetch } = useTabs(restaurantId, undefined);
-  const createTab = useCreateTab();
-
-  const openTabsCount = tabs.filter(t => t.status === "open").length;
-  const totalOpenBalance = tabs.filter(t => t.status === "open").reduce((acc, t) => acc + t.current_balance, 0);
-  const totalTabs = tabs.length;
-
-  // Filtrar contas por status
-  const filteredTabs = tabs.filter((tab) => {
-    if (statusFilter === "all") return true;
-    return tab.status === statusFilter;
-  });
-
-  const handleCreateTab = async () => {
-    if (!restaurantId || !newTab.client_name.trim()) {
-      toast.error("Nome do cliente é obrigatório");
-      return;
-    }
-
-    try {
-      await createTab.mutateAsync({
-        restaurantId,
-        data: newTab,
-      });
-      setIsCreateModalOpen(false);
-      setNewTab({ client_name: "", client_phone: "" });
-      refetch();
-    } catch (error) {
-      // Error handled by hook
-    }
+  const matchesDate = (account: Account) => {
+    if (!dateFilter) return true;
+    const sourceDate =
+      account.created_at || account.closed_at || account.updated_at;
+    if (!sourceDate) return false;
+    return getLocalDateValue(new Date(sourceDate)) === dateFilter;
   };
 
-  const handleCloseTab = async () => {
-    if (!restaurantId || !selectedTab) return;
+  const dateFilteredAccounts = accounts.filter(matchesDate);
+  const openAccounts = dateFilteredAccounts.filter((account) => account.status === "open");
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredAccounts = dateFilteredAccounts.filter((account) => {
+    if (!normalizedSearch) return true;
+    const parts = [
+      account.client_name,
+      account.client_phone || "",
+      account.opened_by_name || "",
+    ].join(" ").toLowerCase();
+    return parts.includes(normalizedSearch);
+  });
+  const openBalance = openAccounts.reduce((sum, account) => sum + Number(account.current_balance), 0);
+  const closeChangeAmount = Math.max(
+    0,
+    Number(amountPaid || 0) - Number(selectedAccount?.current_balance || 0)
+  );
+  const isCloseCash = paymentMethod === "cash";
 
-    try {
-      // O backend espera TabUpdate com status e payment_method como query param
-      await fastfoodApi.updateTab(
-        restaurantId,
-        selectedTab.id,
-        { status: "closed" },
-        paymentMethod
-      );
-      toast.success("Conta fechada com sucesso!");
-      setIsCloseModalOpen(false);
-      setSelectedTab(null);
-      setPaymentMethod("cash");
-      refetch();
-    } catch (error: any) {
-      toast.error(`Erro ao fechar conta: ${error.message}`);
+  useEffect(() => {
+    if (closeChangeAmount <= 0 && changeStatus !== "given") {
+      setChangeStatus("given");
     }
-  };
+  }, [closeChangeAmount, changeStatus]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString("pt-BR", {
+  const formatCurrency = (value: string | number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "MZN" }).format(Number(value || 0));
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return "-";
+    return new Date(value).toLocaleString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
@@ -115,30 +134,184 @@ export function TabsScreen() {
     });
   };
 
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
-      style: "currency",
-      currency: "MZN",
-    }).format(value);
+  const formatQuantity = (value: string | number) => {
+    const num = typeof value === "string" ? parseFloat(value) : value;
+    if (Number.isNaN(num)) return String(value);
+    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
   };
 
-  if (!restaurantId) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="text-center">
-          <PeopleTeam24Regular className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-          <h3 className="text-lg font-semibold mb-2">Nenhum restaurante encontrado</h3>
-          <p className="text-muted-foreground">
-            Conecte um restaurante FastFood para gerenciar contas.
-          </p>
-        </div>
-      </div>
+  const resetForm = () => setAccountForm({ client_name: "", client_phone: "" });
+
+  const handleCreate = async () => {
+    if (!accountForm.client_name?.trim()) {
+      toast.error("Nome do cliente e obrigatorio");
+      return;
+    }
+    await createAccount.mutateAsync(accountForm);
+    setIsCreateModalOpen(false);
+    resetForm();
+    refetch();
+  };
+
+  const handleEdit = async () => {
+    if (!selectedAccountId || !accountForm.client_name?.trim()) return;
+    await updateAccount.mutateAsync({
+      id: selectedAccountId,
+      data: {
+        client_name: accountForm.client_name,
+        client_phone: accountForm.client_phone,
+        notes: accountForm.notes,
+      },
+    });
+    setIsEditModalOpen(false);
+    resetForm();
+    refetch();
+  };
+
+  const handleDelete = async (accountId: number) => {
+    await deleteAccount.mutateAsync(accountId);
+    if (selectedAccountId === accountId) {
+      setSelectedAccountId(undefined);
+      setIsDetailModalOpen(false);
+    }
+    refetch();
+  };
+
+  const handleClose = async () => {
+    if (!selectedAccountId) return;
+    const total = selectedAccount?.current_balance ? Number(selectedAccount.current_balance) : 0;
+    const paid = Number(amountPaid || 0);
+    if (!paid || paid < total) {
+      toast.error("Valor entregue deve ser igual ou maior que o total.");
+      return;
+    }
+    const closedAccount = await closeAccount.mutateAsync({ id: selectedAccountId, payment_method: paymentMethod, amount_paid: amountPaid, change_status: changeStatus });
+    try {
+      const receiptContent = formatAccountReceipt(closedAccount, {
+        terminal,
+        paymentMethod,
+        amountPaid: paid,
+      });
+      await printReceipt(receiptContent);
+    } catch (error) {
+      console.error("Erro ao imprimir recibo da conta:", error);
+    }
+    setIsCloseModalOpen(false);
+    setPaymentMethod("cash");
+    setAmountPaid("");
+    setChangeStatus("given");
+    refetch();
+  };
+
+  const handlePrintAccount = async (account: Account) => {
+    try {
+      const receiptContent =
+        account.status === "open"
+          ? formatAccountItemsReceipt(account, { terminal })
+          : formatAccountReceipt(account, { terminal, paymentMethod });
+      await printReceipt(receiptContent);
+    } catch (error) {
+      console.error("Erro ao imprimir conta:", error);
+    }
+  };
+
+  const handlePrintKitchen = async () => {
+    if (!selectedAccount) return;
+    const alreadySent = kitchenSentByAccount[selectedAccount.id] || [];
+    const selectedItems = selectedAccount.items.filter(
+      (item) => selectedKitchenItems.includes(item.id) && !alreadySent.includes(item.id)
     );
-  }
+    if (selectedItems.length === 0) {
+      toast.error("Selecione os itens para enviar a cozinha.");
+      return;
+    }
+    try {
+      const nextTicketNumber = (kitchenTicketCountByAccount[selectedAccount.id] || 0) + 1;
+      const receiptContent = formatKitchenTicket(selectedAccount, selectedItems, { terminal, ticketNumber: nextTicketNumber });
+      await printReceipt(receiptContent);
+      setKitchenSentByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: Array.from(new Set([...(prev[selectedAccount.id] || []), ...selectedItems.map((i) => i.id)])),
+      }));
+      setKitchenTicketCountByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: nextTicketNumber,
+      }));
+      setSelectedKitchenItems([]);
+    } catch (error) {
+      console.error("Erro ao imprimir cozinha:", error);
+    }
+  };
+
+  const handlePrintSingleKitchen = async (itemId: number) => {
+    if (!selectedAccount) return;
+    const alreadySent = kitchenSentByAccount[selectedAccount.id] || [];
+    if (alreadySent.includes(itemId)) return;
+    const item = selectedAccount.items.find((i) => i.id === itemId);
+    if (!item) return;
+    try {
+      const nextTicketNumber = (kitchenTicketCountByAccount[selectedAccount.id] || 0) + 1;
+      const receiptContent = formatKitchenTicket(selectedAccount, [item], { terminal, ticketNumber: nextTicketNumber });
+      await printReceipt(receiptContent);
+      setKitchenSentByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: Array.from(new Set([...(prev[selectedAccount.id] || []), itemId])),
+      }));
+      setKitchenTicketCountByAccount((prev) => ({
+        ...prev,
+        [selectedAccount.id]: nextTicketNumber,
+      }));
+    } catch (error) {
+      console.error("Erro ao imprimir cozinha:", error);
+    }
+  };
+
+  const handleDecreaseItem = async (itemId: number, currentQuantity: string) => {
+    if (!selectedAccount) return;
+    if (selectedAccount.status !== "open") return;
+    const qty = Number(currentQuantity || 0);
+    if (!Number.isFinite(qty) || qty <= 0) return;
+
+    if (qty <= 1) {
+      await removeAccountItem.mutateAsync({ accountId: selectedAccount.id, itemId });
+      setSelectedKitchenItems((prev) => prev.filter((id) => id !== itemId));
+    } else {
+      const nextQty = qty - 1;
+      await updateAccountItem.mutateAsync({
+        accountId: selectedAccount.id,
+        itemId,
+        data: { quantity: String(nextQty) },
+      });
+    }
+    refetch();
+  };
+
+  const handleRemoveItem = async (itemId: number) => {
+    if (!selectedAccount) return;
+    if (selectedAccount.status !== "open") return;
+    await removeAccountItem.mutateAsync({ accountId: selectedAccount.id, itemId });
+    setSelectedKitchenItems((prev) => prev.filter((id) => id !== itemId));
+    refetch();
+  };
+
+  const openDetail = (account: Account) => {
+    setSelectedAccountId(account.id);
+    setSelectedKitchenItems([]);
+    setIsDetailModalOpen(true);
+  };
+
+  const openEdit = (account: Account) => {
+    setSelectedAccountId(account.id);
+    setAccountForm({
+      client_name: account.client_name,
+      client_phone: account.client_phone || "",
+      notes: account.notes || "",
+    });
+    setIsEditModalOpen(true);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-      {/* Fixed Header */}
       <div className="p-3 md:p-6 border-b border-border bg-background/80 backdrop-blur-md z-10">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -147,56 +320,37 @@ export function TabsScreen() {
             </div>
             <div>
               <h1 className="text-lg md:text-2xl font-bold text-foreground">Contas</h1>
-              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Gerencie comandas e saldos</p>
+              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
+                Contas abertas e fechadas persistidas no backend do SkyPDV
+              </p>
             </div>
           </div>
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="gap-2 px-3 h-9 md:h-10"
-          >
+          <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2 px-3 h-9 md:h-10">
             <Add24Regular className="w-5 h-5" />
             <span className="hidden sm:inline">Nova Conta</span>
           </Button>
         </div>
       </div>
 
-      {/* Scrollable Content Area */}
       <div className="flex-1 p-3 md:p-6 overflow-auto windows-scrollbar">
-        {/* Stats Grid */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
           <div className="fluent-card p-3 md:p-4 bg-primary/5 border-l-4 border-l-primary">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Saldo em Aberto</p>
-                <p className="text-sm md:text-xl font-bold text-primary">{totalOpenBalance.toFixed(2)} MT</p>
-              </div>
-              <Money24Regular className="w-4 h-4 md:w-5 md:h-5 text-primary opacity-50" />
-            </div>
+            <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Saldo em Aberto</p>
+            <p className="text-sm md:text-xl font-bold text-primary">{formatCurrency(openBalance)}</p>
           </div>
           <div className="fluent-card p-3 md:p-4 bg-emerald-500/5 border-l-4 border-l-emerald-500">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Contas Abertas</p>
-                <p className="text-sm md:text-xl font-bold text-emerald-600">{openTabsCount}</p>
-              </div>
-              <Receipt24Regular className="w-4 h-4 md:w-5 md:h-5 text-emerald-500 opacity-50" />
-            </div>
+            <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Contas Abertas</p>
+            <p className="text-sm md:text-xl font-bold text-emerald-600">{openAccounts.length}</p>
           </div>
           <div className="fluent-card p-3 md:p-4 bg-secondary/50 border-l-4 border-l-muted-foreground hidden sm:block">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Total de Contas</p>
-                <p className="text-sm md:text-xl font-bold text-foreground">{totalTabs}</p>
-              </div>
-              <PeopleTeam24Regular className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground opacity-50" />
-            </div>
+            <p className="text-[10px] md:text-xs font-medium text-muted-foreground uppercase">Total de Contas (Dia)</p>
+            <p className="text-sm md:text-xl font-bold text-foreground">{dateFilteredAccounts.length}</p>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-3 mb-4 md:mb-6">
-          <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-            <SelectTrigger className="w-[140px] md:w-[180px] h-9 md:h-10 text-xs md:text-sm">
+        <div className="flex flex-wrap items-center gap-3 mb-4 md:mb-6">
+          <Select value={statusFilter} onValueChange={(v: "all" | "open" | "closed") => setStatusFilter(v)}>
+            <SelectTrigger className="w-[160px] md:w-[190px] h-9 md:h-10 text-xs md:text-sm">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -205,223 +359,457 @@ export function TabsScreen() {
               <SelectItem value="closed">Fechadas</SelectItem>
             </SelectContent>
           </Select>
+          <div className="flex items-center gap-2">
+            <Calendar24Regular className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Data</span>
+            <Input
+              type="date"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+              className="w-[170px] md:w-[190px] h-9 md:h-10 text-xs md:text-sm"
+            />
+          </div>
+          <Input
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Pesquisar conta..."
+            className="w-[200px] md:w-[260px] h-9 md:h-10 text-xs md:text-sm"
+          />
           <div className="text-[10px] md:text-sm text-muted-foreground">
-            {filteredTabs.length} encontrada{filteredTabs.length !== 1 ? "s" : ""}
+            {filteredAccounts.length} encontrada{filteredAccounts.length !== 1 ? "s" : ""}
           </div>
         </div>
 
-
-        {/* Tabs List */}
         <div className="flex-1 overflow-y-auto">
           {isLoading ? (
             <div className="flex items-center justify-center h-64">
               <div className="text-muted-foreground">Carregando contas...</div>
             </div>
-          ) : filteredTabs.length === 0 ? (
+          ) : filteredAccounts.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <PeopleTeam24Regular className="w-16 h-16 mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-semibold mb-2">Nenhuma conta encontrada</h3>
-              <p className="text-muted-foreground mb-4">
-                {statusFilter === "all"
-                  ? "Crie uma nova conta para começar"
-                  : statusFilter === "open"
-                    ? "Não há contas abertas no momento"
-                    : "Não há contas fechadas"}
-              </p>
-              {statusFilter === "all" && (
-                <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
-                  <Add24Regular className="w-4 h-4" />
-                  Criar Primeira Conta
-                </Button>
-              )}
+              <p className="text-muted-foreground mb-4">Crie uma conta para guardar vendas pendentes no backend.</p>
+              <Button onClick={() => setIsCreateModalOpen(true)} className="gap-2">
+                <Add24Regular className="w-4 h-4" />
+                Criar Conta
+              </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-4">
-              {filteredTabs.map((tab) => (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
+              {filteredAccounts.map((account) => (
                 <div
-                  key={tab.id}
-                  className={`fluent-card p-3 md:p-4 hover:shadow-md transition-shadow flex flex-col ${tab.status === "open"
-                    ? "border-l-4 border-l-success"
-                    : "border-l-4 border-l-muted-foreground"
-                    }`}
+                  key={account.id}
+                  className={`fluent-card p-2 hover:shadow-md transition-shadow flex flex-col ${
+                    account.status === "open" ? "border-l-4 border-l-success" : "border-l-4 border-l-muted-foreground"
+                  }`}
                 >
-                  <div className="flex items-start justify-between mb-2 md:mb-3">
+                  <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-sm md:text-lg mb-0.5 md:mb-1 truncate">{tab.client_name}</h3>
-                      {tab.client_phone && (
-                        <div className="flex items-center gap-1 text-[10px] md:text-sm text-muted-foreground">
-                          <Phone24Regular className="w-3 h-3 md:w-4 md:h-4" />
-                          {tab.client_phone}
+                      <h3 className="font-bold text-sm mb-0.5 truncate">{account.client_name}</h3>
+                      {account.client_phone && (
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                          <Phone24Regular className="w-3 h-3" />
+                          {account.client_phone}
                         </div>
                       )}
                     </div>
                     <Badge
-                      variant={tab.status === "open" ? "default" : "secondary"}
-                      className={`text-[9px] md:text-xs px-1.5 py-0 md:px-2 md:py-0.5 h-auto ${tab.status === "open"
-                        ? "bg-success text-white"
-                        : "bg-muted-foreground text-white"
-                        }`}
+                      variant={account.status === "open" ? "default" : "secondary"}
+                      className={account.status === "open" ? "bg-success text-white" : "bg-muted-foreground text-white"}
                     >
-                      {tab.status === "open" ? "Aberta" : "Fechada"}
+                      {account.status === "open" ? "Aberta" : "Fechada"}
                     </Badge>
                   </div>
 
-                  <div className="flex items-center justify-between mb-3 md:mb-4 bg-secondary/30 p-2 rounded-lg">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] md:text-sm text-muted-foreground flex items-center gap-1">
-                        <Money24Regular className="w-3 h-3 md:w-4 md:h-4" />
+                  <div className="grid grid-cols-2 gap-1 mb-2 bg-secondary/30 p-2 rounded-lg text-[10px]">
+                    <div>
+                      <p className="text-muted-foreground flex items-center gap-1">
+                        <Money24Regular className="w-3 h-3" />
                         Saldo
-                      </span>
-                      <span className="font-bold text-base md:text-xl text-primary">
-                        {formatCurrency(tab.current_balance)}
-                      </span>
+                      </p>
+                      <p className="font-bold text-sm text-primary">{formatCurrency(account.current_balance)}</p>
                     </div>
-                    <div className="flex flex-col items-end">
-                      <span className="text-[9px] md:text-xs text-muted-foreground flex items-center gap-1">
-                        <Calendar24Regular className="w-2.5 h-2.5 md:w-3 md:h-3" />
-                        Desde
-                      </span>
-                      <span className="text-[10px] md:text-xs font-medium">
-                        {new Date(tab.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })}
-                      </span>
+                    <div>
+                      <p className="text-muted-foreground flex items-center gap-1">
+                        <Person24Regular className="w-3 h-3" />
+                        Caixa
+                      </p>
+                      <p className="font-medium truncate">{account.opened_by_name || "Sem nome"}</p>
                     </div>
+                    <div>
+                      <p className="text-muted-foreground flex items-center gap-1">
+                        <Calendar24Regular className="w-3 h-3" />
+                        Abertura
+                      </p>
+                      <p className="font-medium">{formatDate(account.created_at)}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground">Produtos</p>
+                      <p className="font-medium">{account.items.length}</p>
+                    </div>
+                    {account.status === "closed" && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Troco</p>
+                        <p
+                          className={`font-medium ${
+                            account.change_status === "given" ? "text-emerald-600" : "text-amber-600"
+                          }`}
+                        >
+                          {account.change_status === "given" ? "Entregue" : "Pendente"}
+                        </p>
+                      </div>
+                    )}
+                    {account.status === "closed" && (
+                      <div className="col-span-2">
+                        <p className="text-muted-foreground">Troco</p>
+                        <p className="font-medium">
+                          {account.change_status === "given" ? "Entregue" : "Nao entregue"}
+                        </p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="flex gap-2 mt-auto">
-                    {tab.status === "open" && (
+                  <div className="grid grid-cols-3 gap-1 mt-auto">
+                    <Button variant="outline" size="sm" className="gap-1 text-[10px] h-7" onClick={() => openDetail(account)}>
+                      <Eye24Regular className="w-4 h-4" />
+                      Ver
+                    </Button>
+                    {account.status === "open" ? (
                       <Button
-                        variant="outline"
                         size="sm"
-                        className="flex-1 gap-1 md:gap-2 text-[10px] md:text-sm h-8 md:h-9"
+                        className="gap-1 text-[10px] h-7"
                         onClick={() => {
-                          setSelectedTab(tab);
+                          setSelectedAccountId(account.id);
+                          setChangeStatus("given");
                           setIsCloseModalOpen(true);
                         }}
                       >
-                        <Checkmark24Regular className="w-3 h-3 md:w-4 md:h-4" />
+                        <Checkmark24Regular className="w-4 h-4" />
                         Fechar
                       </Button>
+                    ) : (
+                      <Button variant="secondary" size="sm" disabled className="text-[10px] h-7">
+                        Fechada
+                      </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={`flex-1 text-[10px] md:text-sm h-8 md:h-9 ${tab.status !== "open" ? "w-full" : ""}`}
-                      onClick={async () => {
-                        try {
-                          const orders = await fastfoodApi.getTabOrders(restaurantId, tab.id);
-                          toast.info(`Esta conta tem ${orders.length} pedido(s)`);
-                        } catch (error: any) {
-                          toast.error(`Erro ao buscar pedidos: ${error.message}`);
-                        }
-                      }}
-                    >
-                      Pedidos
-                    </Button>
                   </div>
+                  <Button variant="ghost" size="sm" className="gap-1 mt-1 text-[10px] h-7" onClick={() => handlePrintAccount(account)}>
+                    <Print24Regular className="w-4 h-4" />
+                    Imprimir
+                  </Button>
+                  {account.status === "open" && (
+                    <div className="grid grid-cols-2 gap-1 mt-1">
+                      <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-7" onClick={() => openEdit(account)}>
+                        <Edit24Regular className="w-4 h-4" />
+                        Editar
+                      </Button>
+                      <Button variant="ghost" size="sm" className="gap-1 text-[10px] h-7 text-destructive" onClick={() => handleDelete(account.id)}>
+                        <Delete24Regular className="w-4 h-4" />
+                        Excluir
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           )}
         </div>
-
-        {/* Create Tab Modal */}
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Nova Conta de Cliente</DialogTitle>
-              <DialogDescription>
-                Abra uma nova conta para um cliente. O saldo será atualizado conforme pedidos forem adicionados.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="closing_total">Valor a Fechar</Label>
-                <Input
-                  id="closing_total"
-                  value={selectedTab ? formatCurrency(selectedTab.current_balance) : ""}
-                  readOnly
-                  disabled
-                />
-                <p className="text-xs text-muted-foreground">
-                  A conta sera fechada com o mesmo valor vendido/disponivel nesta conta.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="client_name">Nome do Cliente *</Label>
-                <Input
-                  id="client_name"
-                  value={newTab.client_name}
-                  onChange={(e) =>
-                    setNewTab({ ...newTab, client_name: e.target.value })
-                  }
-                  placeholder="Ex: João Silva"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="client_phone">Telefone (Opcional)</Label>
-                <Input
-                  id="client_phone"
-                  value={newTab.client_phone || ""}
-                  onChange={(e) =>
-                    setNewTab({ ...newTab, client_phone: e.target.value })
-                  }
-                  placeholder="84..."
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleCreateTab}
-                disabled={!newTab.client_name.trim() || createTab.isPending}
-              >
-                {createTab.isPending ? "Criando..." : "Criar Conta"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        {/* Close Tab Modal */}
-        <Dialog open={isCloseModalOpen} onOpenChange={setIsCloseModalOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Fechar Conta</DialogTitle>
-              <DialogDescription>
-                Fechar a conta de {selectedTab?.client_name}. O saldo atual é{" "}
-                {selectedTab && formatCurrency(selectedTab.current_balance)}.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="payment_method">Método de Pagamento</Label>
-                <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Dinheiro</SelectItem>
-                    <SelectItem value="skywallet">SkyWallet</SelectItem>
-                    <SelectItem value="pos">Cartão (POS)</SelectItem>
-                    <SelectItem value="mpesa">M-Pesa</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCloseModalOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleCloseTab} className="gap-2">
-                <Checkmark24Regular className="w-4 h-4" />
-                Fechar Conta
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nova Conta</DialogTitle>
+            <DialogDescription>Abra uma conta no backend do SkyPDV para acumular produtos antes de fechar a venda.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create_client_name">Nome do Cliente *</Label>
+              <Input
+                id="create_client_name"
+                value={accountForm.client_name}
+                onChange={(e) => setAccountForm((prev) => ({ ...prev, client_name: e.target.value }))}
+                placeholder="Ex: Joao Silva"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create_client_phone">Telefone</Label>
+              <Input
+                id="create_client_phone"
+                value={accountForm.client_phone || ""}
+                onChange={(e) => setAccountForm((prev) => ({ ...prev, client_phone: e.target.value }))}
+                placeholder="84..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCreateModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleCreate} disabled={createAccount.isPending}>
+              {createAccount.isPending ? "Criando..." : "Criar Conta"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Conta</DialogTitle>
+            <DialogDescription>Atualize os dados do cliente antes do fechamento.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit_client_name">Nome do Cliente *</Label>
+              <Input
+                id="edit_client_name"
+                value={accountForm.client_name}
+                onChange={(e) => setAccountForm((prev) => ({ ...prev, client_name: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit_client_phone">Telefone</Label>
+              <Input
+                id="edit_client_phone"
+                value={accountForm.client_phone || ""}
+                onChange={(e) => setAccountForm((prev) => ({ ...prev, client_phone: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleEdit} disabled={updateAccount.isPending}>
+              {updateAccount.isPending ? "Salvando..." : "Salvar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isCloseModalOpen} onOpenChange={setIsCloseModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Fechar Conta</DialogTitle>
+            <DialogDescription>
+              O fechamento cria uma venda real no SkyPDV com os produtos desta conta.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="payment_method">Metodo de Pagamento</Label>
+              <Select value={paymentMethod} onValueChange={(value: PaymentMethod) => setPaymentMethod(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="mpesa">M-pesa</SelectItem>
+                  <SelectItem value="emola">E-Mola</SelectItem>
+                  <SelectItem value="bci_pos">BCI POS</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {isCloseCash && closeChangeAmount > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                  <div>
+                    <Label htmlFor="change_status">Troco nao entregue</Label>
+                    <p className="text-xs text-muted-foreground">Ative se nao entregou o troco</p>
+                  </div>
+                  <Switch
+                    id="change_status"
+                    checked={changeStatus === "not_given"}
+                    onCheckedChange={(checked) => setChangeStatus(checked ? "not_given" : "given")}
+                  />
+                </div>
+                {changeStatus === "given" && (
+                  <p className="text-xs text-muted-foreground">Troco entregue.</p>
+                )}
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="amount_paid">Valor Entregue</Label>
+              <Input
+                id="amount_paid"
+                type="number"
+                step="0.01"
+                value={amountPaid}
+                onChange={(e) => setAmountPaid(e.target.value)}
+                placeholder="0.00"
+              />
+              <div className="text-xs text-muted-foreground">
+                Troco: {closeChangeAmount.toFixed(2)} MT
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsCloseModalOpen(false)}>Cancelar</Button>
+            <Button onClick={handleClose} disabled={closeAccount.isPending}>
+              {closeAccount.isPending ? "Fechando..." : "Fechar Conta"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDetailModalOpen} onOpenChange={setIsDetailModalOpen}>
+      <DialogContent className="sm:max-w-[720px] max-h-[90vh] overflow-hidden">
+          <DialogHeader className="sticky top-0 z-10 bg-background pb-3">
+            <DialogTitle>Detalhes da Conta</DialogTitle>
+            <DialogDescription>Veja o caixa que abriu, os produtos consumidos e o estado atual da conta.</DialogDescription>
+          </DialogHeader>
+          {selectedAccount ? (
+            <div className="space-y-4 overflow-y-auto pr-1 max-h-[78vh]">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-muted-foreground">Cliente</p>
+                  <p className="font-semibold">{selectedAccount.client_name}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-muted-foreground">Caixa que abriu</p>
+                  <p className="font-semibold">{selectedAccount.opened_by_name || "Sem nome"}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-muted-foreground">Abertura</p>
+                  <p className="font-semibold">{formatDate(selectedAccount.created_at)}</p>
+                </div>
+                <div className="rounded-lg border border-border p-3">
+                  <p className="text-muted-foreground">Fechamento</p>
+                  <p className="font-semibold">{formatDate(selectedAccount.closed_at)}</p>
+                </div>
+                {selectedAccount.status === "closed" && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-muted-foreground">Estado do Troco</p>
+                    <p className="font-semibold">
+                      {selectedAccount.change_status === "given" ? "Entregue" : "Nao entregue"}
+                    </p>
+                  </div>
+                )}
+                {selectedAccount.status === "closed" && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-muted-foreground">Valor Entregue</p>
+                    <p className="font-semibold">{formatCurrency(selectedAccount.amount_paid)}</p>
+                  </div>
+                )}
+                {selectedAccount.status === "closed" && (
+                  <div className="rounded-lg border border-border p-3">
+                    <p className="text-muted-foreground">Troco</p>
+                    <p className="font-semibold">{formatCurrency(selectedAccount.change_amount)}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-border overflow-hidden">
+                <div className="px-4 py-3 border-b border-border font-semibold">Produtos da Conta</div>
+                {selectedAccount.items.length === 0 ? (
+                  <div className="p-4 text-sm text-muted-foreground">Nenhum produto adicionado.</div>
+                ) : (
+                  <div className="divide-y divide-border">
+                    {selectedAccount.items.map((item) => (
+                      <div key={item.id} className="px-4 py-3 flex items-center justify-between gap-3 text-sm">
+                        <div>
+                          <p className="font-medium">{item.product_name}</p>
+                          <p className="text-muted-foreground">
+                            {formatQuantity(item.quantity)} x {formatCurrency(item.unit_price)}
+                          </p>
+                        </div>
+                        <div className="font-semibold">{formatCurrency(item.subtotal)}</div>
+                        <div className="flex items-center gap-2">
+                          {selectedAccount.status === "open" && (
+                            <>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 w-7 p-0"
+                                onClick={() => handleDecreaseItem(item.id, item.quantity)}
+                                title="Diminuir"
+                              >
+                                <Subtract24Regular className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 w-7 p-0 text-destructive"
+                                onClick={() => handleRemoveItem(item.id)}
+                                title="Eliminar"
+                              >
+                                <Delete24Regular className="w-4 h-4" />
+                              </Button>
+                            </>
+                          )}
+                          {(kitchenSentByAccount[selectedAccount.id] || []).includes(item.id) ? (
+                            <span className="text-xs text-emerald-600 font-semibold">Enviado</span>
+                          ) : (
+                            <Button variant="ghost" size="sm" onClick={() => handlePrintSingleKitchen(item.id)}>
+                              Enviar
+                            </Button>
+                          )}
+                          <input
+                            type="checkbox"
+                            checked={selectedKitchenItems.includes(item.id)}
+                            onChange={(e) => {
+                              setSelectedKitchenItems((prev) =>
+                                e.target.checked ? [...prev, item.id] : prev.filter((id) => id !== item.id)
+                              );
+                            }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between rounded-lg bg-muted/30 p-4">
+                <span className="text-muted-foreground">Total da Conta</span>
+                <span className="text-lg font-bold text-primary">{formatCurrency(selectedAccount.current_balance)}</span>
+              </div>
+
+              <div className="flex items-center justify-between gap-2">
+              {selectedAccount.status === "closed" && selectedAccount.change_status === "not_given" && (
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={async () => {
+                    await updateAccount.mutateAsync({
+                      id: selectedAccount.id,
+                      data: { change_status: "given" },
+                    });
+                    refetch();
+                  }}
+                >
+                  Marcar troco entregue
+                </Button>
+              )}
+              
+                <Button
+                  variant="secondary"
+                  className="gap-2"
+                  onClick={() => {
+                    const alreadySent = kitchenSentByAccount[selectedAccount.id] || [];
+                    const available = selectedAccount.items.filter((item) => !alreadySent.includes(item.id)).map((item) => item.id);
+                    setSelectedKitchenItems(
+                      selectedKitchenItems.length === available.length ? [] : available
+                    );
+                  }}
+                >
+                  {selectedKitchenItems.length === (selectedAccount.items.filter((item) => !(kitchenSentByAccount[selectedAccount.id] || []).includes(item.id)).length) ? "Limpar selecao" : "Selecionar tudo"}
+                </Button>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" className="gap-2" onClick={handlePrintKitchen}>
+                    <Print24Regular className="w-4 h-4" />
+                    Enviar cozinha
+                  </Button>
+                  <Button variant="outline" className="gap-2" onClick={() => handlePrintAccount(selectedAccount)}>
+                    <Print24Regular className="w-4 h-4" />
+                    Imprimir Conta
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="py-6 text-muted-foreground">Carregando detalhes...</div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
