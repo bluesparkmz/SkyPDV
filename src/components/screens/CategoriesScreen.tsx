@@ -7,8 +7,6 @@ import {
     Globe24Regular,
     Copy24Regular,
     Search24Regular,
-    DocumentText24Regular,
-    DataTrending24Regular,
 } from "@fluentui/react-icons";
 import { Category } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -144,6 +142,9 @@ export function CategoriesScreen() {
                                         )}
                                     </div>
                                     <h3 className="font-semibold text-lg">{category.name}</h3>
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                        {category.product_count || 0} produto{(category.product_count || 0) === 1 ? "" : "s"}
+                                    </p>
                                     {category.description && (
                                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{category.description}</p>
                                     )}
