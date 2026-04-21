@@ -853,7 +853,6 @@ function createEmptyInvoiceItem(): InvoiceDraftItem {
 const INVOICE_SETTINGS_STORAGE_KEY = "skypdv_invoice_settings_local";
 
 function InvoiceSection() {
-  const { user } = useAuth();
   const { data: invoices, isLoading } = useInvoices();
   const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });
   const { data: terminal } = useQuery({
@@ -883,7 +882,6 @@ function InvoiceSection() {
   const payInvoice = usePayInvoice();
 
   const products = productsData || [];
-  const canPersistInvoiceSettingsToTerminal = terminal?.user_id === user?.user?.id;
   const localInvoiceSettings = (() => {
     try {
       const raw = localStorage.getItem(INVOICE_SETTINGS_STORAGE_KEY);
@@ -978,11 +976,6 @@ function InvoiceSection() {
 
     localStorage.setItem(INVOICE_SETTINGS_STORAGE_KEY, JSON.stringify(invoiceSettingsPayload));
 
-    if (!canPersistInvoiceSettingsToTerminal) {
-      toast.success("Configuracao da fatura guardada neste dispositivo");
-      return;
-    }
-
     try {
       await terminalApi.update({
         settings: {
@@ -993,7 +986,7 @@ function InvoiceSection() {
 
       toast.success("Configuracao da fatura guardada");
     } catch (error: any) {
-      toast.error(error?.message || "Nao foi possivel guardar a configuracao da fatura");
+      toast.error(error?.message || "Nao foi possivel guardar no servidor. A configuracao ficou guardada neste dispositivo");
     }
   };
 
@@ -1055,18 +1048,16 @@ function InvoiceSection() {
     };
     localStorage.setItem(INVOICE_SETTINGS_STORAGE_KEY, JSON.stringify(nextInvoiceDefaults));
 
-    if (canPersistInvoiceSettingsToTerminal) {
-      try {
-        await terminalApi.update({
-          settings: {
-            ...(terminal?.settings || {}),
-            ...nextInvoiceDefaults,
-          },
-        });
-      } catch {
-        // Se o utilizador nao puder alterar as configuracoes do terminal,
-        // a fatura ainda deve ser criada com os dados manuais preenchidos.
-      }
+    try {
+      await terminalApi.update({
+        settings: {
+          ...(terminal?.settings || {}),
+          ...nextInvoiceDefaults,
+        },
+      });
+    } catch {
+      // Se a gravacao no servidor falhar, a fatura ainda deve ser criada
+      // com os dados manuais e a configuracao local mantida.
     }
 
     await createInvoice.mutateAsync({
