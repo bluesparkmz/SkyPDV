@@ -46,7 +46,7 @@ import {
 } from "@/hooks/useAccounts";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { formatAccountReceipt, formatAccountItemsReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
-import { Account, CreateAccount, PaymentMethod, terminalApi } from "@/services/api";
+import { Account, CreateAccount, PaymentMethodValue, terminalApi } from "@/services/api";
 import { toast } from "sonner";
 
 export function TabsScreen() {
@@ -66,7 +66,7 @@ export function TabsScreen() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);

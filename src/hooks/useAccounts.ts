@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { accountsApi, CreateAccount, CreateAccountItem, PaymentMethod, UpdateAccount, UpdateAccountItem } from "@/services/api";
+import { accountsApi, CreateAccount, CreateAccountItem, PaymentMethodValue, UpdateAccount, UpdateAccountItem } from "@/services/api";
 import { toast } from "sonner";
 
 export function useAccounts(status?: "open" | "closed" | "all") {
@@ -64,7 +64,7 @@ export function useAddAccountItems() {
 export function useCloseAccount() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, payment_method, amount_paid, change_status }: { id: number; payment_method: PaymentMethod; amount_paid: string; change_status: "given" | "not_given" }) =>
+    mutationFn: ({ id, payment_method, amount_paid, change_status }: { id: number; payment_method: PaymentMethodValue; amount_paid: string; change_status: "given" | "not_given" }) =>
       accountsApi.close(id, payment_method, amount_paid, change_status),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });

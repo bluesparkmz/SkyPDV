@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateSale } from "@/hooks/useSales";
 import { CartItem } from "@/types/product";
-import { CreateSale, PaymentMethod } from "@/services/api";
+import { CreateSale, PaymentMethodValue } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
 
@@ -34,7 +34,7 @@ interface SaleDialogProps {
 
 export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: SaleDialogProps) {
   const createSale = useCreateSale();
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const { isConnected: hardwareConnected, isConnecting: isConnectingHardware, printReceipt, openCashDrawer } =

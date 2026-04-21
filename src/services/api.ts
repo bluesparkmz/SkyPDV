@@ -252,6 +252,27 @@ export const profileApi = {
   updatePhone: (phone: string) => apiPost<{ status: string; phone: string }>("/user/phone", { phone }),
 };
 
+export const accountsApi = {
+  list: (status?: "open" | "closed" | "all") => {
+    const query = new URLSearchParams();
+    if (status && status !== "all") query.append("status", status);
+    const qs = query.toString();
+    return apiGet<Account[]>(`/skypdv/accounts${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: number) => apiGet<Account>(`/skypdv/accounts/${id}`),
+  create: (data: CreateAccount) => apiPost<Account>("/skypdv/accounts", data),
+  update: (id: number, data: UpdateAccount) => apiPut<Account>(`/skypdv/accounts/${id}`, data),
+  addItems: (id: number, items: CreateAccountItem[]) =>
+    apiPost<Account>(`/skypdv/accounts/${id}/items`, items),
+  updateItem: (accountId: number, itemId: number, data: UpdateAccountItem) =>
+    apiPut<Account>(`/skypdv/accounts/${accountId}/items/${itemId}`, data),
+  removeItem: (accountId: number, itemId: number) =>
+    apiDelete<void>(`/skypdv/accounts/${accountId}/items/${itemId}`),
+  close: (id: number, payment_method: PaymentMethodValue, amount_paid: string, change_status: "given" | "not_given") =>
+    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method, amount_paid, change_status }),
+  remove: (id: number) => apiDelete<void>(`/skypdv/accounts/${id}`),
+};
+
 // FinanÃ§as
 export const financeApi = {
   summary: (start_date?: string, end_date?: string, user_id?: number) => {
@@ -829,6 +850,10 @@ export interface PaymentMethod {
   updated_at: string;
 }
 
+export type PaymentMethodValue = "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+export type PaymentMethodType = PaymentMethodValue;
+export type PaymentMethodName = PaymentMethodValue;
+
 export interface CreatePaymentMethod {
   name: string;
   description?: string;
@@ -1024,5 +1049,63 @@ export interface PDVTaxSummaryUpdate {
   is_paid: boolean;
   notes?: string;
   change_status?: "given" | "not_given";
+}
+
+export interface AccountItem {
+  id: number;
+  account_id: number;
+  product_id: number | null;
+  product_name: string;
+  quantity: string;
+  unit_price: string;
+  subtotal: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateAccountItem {
+  product_id: number;
+  quantity: string;
+  unit_price?: string;
+}
+
+export interface UpdateAccountItem {
+  quantity: string;
+}
+
+export interface CreateAccount {
+  client_name: string;
+  client_phone?: string;
+  notes?: string;
+  items?: CreateAccountItem[];
+}
+
+export interface UpdateAccount {
+  client_name?: string;
+  client_phone?: string;
+  notes?: string;
+  change_status?: "given" | "not_given";
+}
+
+export interface Account {
+  id: number;
+  terminal_id: number;
+  linked_sale_id: number | null;
+  client_name: string;
+  client_phone: string | null;
+  status: "open" | "closed";
+  current_balance: string;
+  amount_paid: string;
+  change_amount: string;
+  change_status: "given" | "not_given";
+  opened_by_user_id: number | null;
+  opened_by_name: string | null;
+  closed_by_user_id: number | null;
+  closed_by_name: string | null;
+  notes: string | null;
+  closed_at: string | null;
+  created_at: string;
+  updated_at: string;
+  items: AccountItem[];
 }
 
