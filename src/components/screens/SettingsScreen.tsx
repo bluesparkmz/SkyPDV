@@ -993,6 +993,7 @@ export function InvoiceSection() {
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
   const [newCustomerAddress, setNewCustomerAddress] = useState("");
   const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
+  const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const createInvoice = useCreateInvoice();
   const payInvoice = usePayInvoice();
 
@@ -1403,6 +1404,7 @@ export function InvoiceSection() {
     setNewCustomerNuit("");
     setNewCustomerPhone("");
     setNewCustomerAddress("");
+    setCustomerModalOpen(false);
     toast.success("Cliente cadastrado");
   };
 
@@ -1412,6 +1414,7 @@ export function InvoiceSection() {
     setNewCustomerNuit(row.nuit || "");
     setNewCustomerPhone(row.phone || "");
     setNewCustomerAddress(row.address || "");
+    setCustomerModalOpen(true);
   };
 
   const handleCancelEditCustomer = () => {
@@ -1420,6 +1423,7 @@ export function InvoiceSection() {
     setNewCustomerNuit("");
     setNewCustomerPhone("");
     setNewCustomerAddress("");
+    setCustomerModalOpen(false);
   };
 
   const handleDeleteCustomer = async (customerId: string) => {
@@ -1446,34 +1450,38 @@ export function InvoiceSection() {
     <div className="space-y-4 md:space-y-6">
       <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-border bg-card p-3">
-          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Menu da fatura</p>
+          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Faturacao</p>
           <div className="space-y-1">
             <button
               type="button"
               onClick={() => setInvoiceView("invoices")}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "invoices" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "invoices" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
             >
+              <Receipt24Regular className="h-4 w-4" />
               Faturas
             </button>
             <button
               type="button"
               onClick={() => setInvoiceView("clients")}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "clients" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "clients" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
             >
+              <PeopleTeam24Regular className="h-4 w-4" />
               Clientes
             </button>
             <button
               type="button"
               onClick={() => setInvoiceView("receipts")}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "receipts" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "receipts" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
             >
+              <Print24Regular className="h-4 w-4" />
               Recibos
             </button>
             <button
               type="button"
               onClick={() => setInvoiceView("settings")}
-              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "settings" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "settings" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
             >
+              <Settings24Regular className="h-4 w-4" />
               Configuracao
             </button>
           </div>
@@ -1688,9 +1696,15 @@ export function InvoiceSection() {
 
           {invoiceView === "clients" && (
             <>
-              <div>
-                <h2 className="text-base md:text-lg font-semibold text-foreground">Clientes</h2>
-                <p className="text-sm text-muted-foreground">Cadastro e consulta de clientes para faturacao rapida.</p>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">Clientes</h2>
+                  <p className="text-sm text-muted-foreground">Cadastro e consulta de clientes para faturacao rapida.</p>
+                </div>
+                <Button onClick={() => setCustomerModalOpen(true)} className="fluent-button fluent-button-primary">
+                  <PersonAdd24Regular className="mr-2 h-4 w-4" />
+                  Novo cliente
+                </Button>
               </div>
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-border bg-card px-4 py-3">
@@ -1704,37 +1718,6 @@ export function InvoiceSection() {
                 <div className="rounded-xl border border-border bg-card px-4 py-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Clientes com contacto</p>
                   <p className="mt-1 text-2xl font-bold text-emerald-600">{customersWithContact}</p>
-                </div>
-              </div>
-              <div className="rounded-2xl border border-border bg-card p-4">
-                <h3 className="mb-3 text-sm font-semibold text-foreground">
-                  {editingCustomerId ? "Editar cliente" : "Cadastrar cliente"}
-                </h3>
-                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-                  <div className="space-y-2">
-                    <Label>Nome</Label>
-                    <Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Nome do cliente" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>NUIT</Label>
-                    <Input value={newCustomerNuit} onChange={(e) => setNewCustomerNuit(e.target.value)} placeholder="Opcional" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Contacto</Label>
-                    <Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Morada</Label>
-                    <Input value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} placeholder="Morada" />
-                  </div>
-                </div>
-                <div className="mt-4 flex justify-end gap-2">
-                  {editingCustomerId && (
-                    <Button variant="outline" onClick={handleCancelEditCustomer}>Cancelar</Button>
-                  )}
-                  <Button onClick={() => void handleRegisterCustomer()}>
-                    {editingCustomerId ? "Salvar edicao" : "Cadastrar cliente"}
-                  </Button>
                 </div>
               </div>
               <div className="rounded-2xl border border-border overflow-auto">
@@ -1781,6 +1764,44 @@ export function InvoiceSection() {
           )}
         </section>
       </div>
+
+      <Dialog open={customerModalOpen} onOpenChange={(open) => {
+        setCustomerModalOpen(open);
+        if (!open) handleCancelEditCustomer();
+      }}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{editingCustomerId ? "Editar cliente" : "Cadastrar cliente"}</DialogTitle>
+            <DialogDescription>
+              Os dados do cliente serao usados para preencher automaticamente ao criar fatura.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="space-y-2 md:col-span-2">
+              <Label>Nome</Label>
+              <Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Nome do cliente" />
+            </div>
+            <div className="space-y-2">
+              <Label>NUIT</Label>
+              <Input value={newCustomerNuit} onChange={(e) => setNewCustomerNuit(e.target.value)} placeholder="Opcional" />
+            </div>
+            <div className="space-y-2">
+              <Label>Contacto</Label>
+              <Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
+            </div>
+            <div className="space-y-2 md:col-span-2">
+              <Label>Morada</Label>
+              <Input value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} placeholder="Morada" />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleCancelEditCustomer}>Cancelar</Button>
+            <Button onClick={() => void handleRegisterCustomer()}>
+              {editingCustomerId ? "Salvar edicao" : "Cadastrar cliente"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
