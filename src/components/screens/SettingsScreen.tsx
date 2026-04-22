@@ -954,6 +954,11 @@ function ReceiptSettings() {
 }
 
 export function InvoiceSection() {
+  const styles = useStyles();
+  const isMobile = useIsMobile();
+  const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const restoreFocusTargetAttributes = useRestoreFocusTarget();
   const queryClient = useQueryClient();
   const { data: invoices, isLoading } = useInvoices();
   const { data: productsData } = useProducts({ is_fastfood: undefined, limit: 1000 });
@@ -996,6 +1001,10 @@ export function InvoiceSection() {
   const [customerModalOpen, setCustomerModalOpen] = useState(false);
   const createInvoice = useCreateInvoice();
   const payInvoice = usePayInvoice();
+
+  useEffect(() => {
+    setIsNavOpen(!isMobile);
+  }, [isMobile]);
 
   const products = productsData || [];
   const localInvoiceSettings = (() => {
@@ -1447,47 +1456,76 @@ export function InvoiceSection() {
   };
 
   return (
-    <div className="space-y-4 md:space-y-6">
-      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-border bg-card p-3">
-          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Faturacao</p>
-          <div className="space-y-1">
-            <button
-              type="button"
-              onClick={() => setInvoiceView("invoices")}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "invoices" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
-            >
-              <Receipt24Regular className="h-4 w-4" />
-              Faturas
-            </button>
-            <button
-              type="button"
-              onClick={() => setInvoiceView("clients")}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "clients" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
-            >
-              <PeopleTeam24Regular className="h-4 w-4" />
-              Clientes
-            </button>
-            <button
-              type="button"
-              onClick={() => setInvoiceView("receipts")}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "receipts" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
-            >
-              <Print24Regular className="h-4 w-4" />
-              Recibos
-            </button>
-            <button
-              type="button"
-              onClick={() => setInvoiceView("settings")}
-              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "settings" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
-            >
-              <Settings24Regular className="h-4 w-4" />
-              Configuracao
-            </button>
-          </div>
-        </aside>
+    <div className={styles.root}>
+      <NavDrawer
+        selectedValue={invoiceView}
+        open={isNavOpen}
+        type={drawerType}
+        className={styles.nav}
+        onOpenChange={(_, data) => setIsNavOpen(data.open)}
+        onNavItemSelect={(_, data) => {
+          setInvoiceView(data.value as typeof invoiceView);
+          if (isMobile) setIsNavOpen(false);
+        }}
+      >
+        <NavDrawerHeader>
+          <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
+        </NavDrawerHeader>
+        <NavDrawerBody>
+          <NavSectionHeader>Faturacao</NavSectionHeader>
+          <NavItem value="invoices" icon={<Receipt24Regular />}>
+            Faturas
+          </NavItem>
+          <NavItem value="clients" icon={<PeopleTeam24Regular />}>
+            Clientes
+          </NavItem>
+          <NavItem value="receipts" icon={<Print24Regular />}>
+            Recibos
+          </NavItem>
+          <NavItem value="settings" icon={<Settings24Regular />}>
+            Configuracao
+          </NavItem>
+        </NavDrawerBody>
+      </NavDrawer>
 
-        <section className="space-y-4 min-w-0">
+      <div className={styles.content + " flex flex-col h-full overflow-hidden"}>
+        <div className="p-3 md:p-6 border-b border-border bg-background/80 backdrop-blur-md z-10">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {(isMobile || !isNavOpen) && (
+                <Tooltip content="Abrir menu" relationship="label">
+                  <Hamburger
+                    onClick={() => setIsNavOpen(true)}
+                    {...restoreFocusTargetAttributes}
+                    aria-expanded={isNavOpen}
+                    className="md:hidden"
+                  />
+                </Tooltip>
+              )}
+              <div className="flex items-center gap-2">
+                <Receipt24Regular className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                <div>
+                  <h1 className="text-lg md:text-2xl font-bold text-foreground">Faturas</h1>
+                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">
+                    Gestao de faturas, recibos e clientes
+                  </p>
+                </div>
+              </div>
+            </div>
+            {!isNavOpen && !isMobile && (
+              <Tooltip content="Abrir menu" relationship="label">
+                <Hamburger
+                  onClick={() => setIsNavOpen(true)}
+                  {...restoreFocusTargetAttributes}
+                  aria-expanded={isNavOpen}
+                />
+              </Tooltip>
+            )}
+          </div>
+        </div>
+
+        <div className="flex-1 p-3 md:p-6 overflow-auto windows-scrollbar">
+          <section className="space-y-4 min-w-0">
           {invoiceView === "settings" && (
             <SettingsPanel
               title="Empresa da fatura"
@@ -1763,6 +1801,7 @@ export function InvoiceSection() {
             </>
           )}
         </section>
+      </div>
       </div>
 
       <Dialog open={customerModalOpen} onOpenChange={(open) => {
