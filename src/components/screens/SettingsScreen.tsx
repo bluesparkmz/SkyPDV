@@ -154,6 +154,10 @@ export function SettingsScreen({ onOpenSetup }: Props) {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
+  if (activeTab === "invoice") {
+    return <InvoiceSection />;
+  }
+
   return (
       <div className="flex-1 min-h-0 flex flex-col">
       <div className={styles.root}>
@@ -991,6 +995,8 @@ export function InvoiceSection() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "mpesa" | "skywallet" | "mixed">("cash");
   const [taxIncludedInPrice, setTaxIncludedInPrice] = useState(true);
   const [invoiceView, setInvoiceView] = useState<"clients" | "receipts" | "invoices" | "settings">("invoices");
+  const [receiptFilterStart, setReceiptFilterStart] = useState("");
+  const [receiptFilterEnd, setReceiptFilterEnd] = useState("");
   const [invoiceCustomers, setInvoiceCustomers] = useState<InvoiceCustomer[]>([]);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>("manual");
   const [newCustomerName, setNewCustomerName] = useState("");
@@ -1287,10 +1293,40 @@ export function InvoiceSection() {
     }
   };
 
+  const handleGenerateReceipt = async (invoiceId: number) => {
+    try {
+      await invoicesApi.generateReceipt(invoiceId);
+      await queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      await handleDownload(invoiceId, "receipt");
+      toast.success("Recibo gerado com sucesso");
+    } catch (e: any) {
+      toast.error(`Erro ao gerar recibo: ${e.message}`);
+    }
+  };
+
   const paidInvoices = (invoices || []).filter((inv) => inv.payment_status === "paid");
+  const generatedReceipts = paidInvoices
+    .filter((inv) => parseInvoiceMeta(inv.notes)?.receipt_generated_at)
+    .sort((a, b) => {
+      const aTime = new Date(parseInvoiceMeta(a.notes)?.receipt_generated_at || a.created_at).getTime();
+      const bTime = new Date(parseInvoiceMeta(b.notes)?.receipt_generated_at || b.created_at).getTime();
+      return bTime - aTime;
+    });
+  const filteredGeneratedReceipts = generatedReceipts.filter((inv) => {
+    const generatedAt = parseInvoiceMeta(inv.notes)?.receipt_generated_at;
+    if (!generatedAt) return false;
+    const generatedDate = new Date(generatedAt);
+    if (Number.isNaN(generatedDate.getTime())) return false;
+    const generatedDateStr = generatedDate.toISOString().split("T")[0];
+    if (receiptFilterStart && generatedDateStr < receiptFilterStart) return false;
+    if (receiptFilterEnd && generatedDateStr > receiptFilterEnd) return false;
+    return true;
+  });
+  const invoicesWithoutReceipt = (invoices || []).filter((inv) => !parseInvoiceMeta(inv.notes)?.receipt_generated_at);
   const totalInvoices = (invoices || []).length;
   const totalPaidInvoices = paidInvoices.length;
   const totalUnpaidInvoices = Math.max(0, totalInvoices - totalPaidInvoices);
+  const totalReceipts = generatedReceipts.length;
   const totalCustomers = invoiceCustomers.length;
   const customersWithNuit = invoiceCustomers.filter((c) => c.nuit).length;
   const customersWithContact = invoiceCustomers.filter((c) => c.phone).length;
@@ -1672,6 +1708,16 @@ export function InvoiceSection() {
                               Marcar pago
                             </Button>
                           )}
+                          {inv.payment_status === "paid" && !parseInvoiceMeta(inv.notes)?.receipt_generated_at && (
+                            <Button size="sm" variant="outline" onClick={() => void handleGenerateReceipt(inv.id)}>
+                              Gerar recibo
+                            </Button>
+                          )}
+                          {inv.payment_status === "paid" && parseInvoiceMeta(inv.notes)?.receipt_generated_at && (
+                            <Button size="sm" variant="outline" onClick={() => handleDownload(inv.id, "receipt")}>
+                              Recibo
+                            </Button>
+                          )}
                           <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id)}>
                             PDF
                           </Button>
@@ -1686,16 +1732,44 @@ export function InvoiceSection() {
 
           {invoiceView === "receipts" && (
             <>
-              <div>
-                <h2 className="text-base md:text-lg font-semibold text-foreground">Recibos</h2>
-                <p className="text-sm text-muted-foreground">Recibos pagos, prontos para impressao.</p>
+              <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+                <div>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">Recibos</h2>
+                  <p className="text-sm text-muted-foreground">Aqui aparecem apenas os recibos ja gerados a partir das faturas.</p>
+                </div>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    type="date"
+                    value={receiptFilterStart}
+                    onChange={(e) => setReceiptFilterStart(e.target.value)}
+                    className="w-full sm:w-[170px]"
+                  />
+                  <Input
+                    type="date"
+                    value={receiptFilterEnd}
+                    onChange={(e) => setReceiptFilterEnd(e.target.value)}
+                    className="w-full sm:w-[170px]"
+                  />
+                </div>
               </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total de recibos</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{totalReceipts}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Faturas sem recibo</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-600">{invoicesWithoutReceipt.length}</p>
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-border overflow-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-secondary/50">
                     <tr className="text-left">
                       <th className="px-3 py-2">Recibo</th>
-                      <th className="px-3 py-2">Data</th>
+                      <th className="px-3 py-2">Data do recibo</th>
                       <th className="px-3 py-2">Cliente</th>
                       <th className="px-3 py-2">Total</th>
                       <th className="px-3 py-2">Pagamento</th>
@@ -1703,18 +1777,20 @@ export function InvoiceSection() {
                     </tr>
                   </thead>
                   <tbody>
-                    {!isLoading && paidInvoices.length === 0 && (
+                    {!isLoading && filteredGeneratedReceipts.length === 0 && (
                       <tr>
                         <td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">Nenhum recibo encontrado</td>
                       </tr>
                     )}
-                    {paidInvoices.map((inv) => (
+                    {filteredGeneratedReceipts.map((inv) => (
                       <tr key={inv.id} className="border-t border-border">
                         <td className="px-3 py-2 font-semibold">
-                          {parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
+                          {parseInvoiceMeta(inv.notes)?.receipt_invoice_number || parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
                         </td>
                         <td className="px-3 py-2">
-                          {parseInvoiceMeta(inv.notes)?.invoice_date || new Date(inv.created_at).toLocaleString()}
+                          {parseInvoiceMeta(inv.notes)?.receipt_generated_at
+                            ? new Date(parseInvoiceMeta(inv.notes)?.receipt_generated_at as string).toLocaleString()
+                            : new Date(inv.created_at).toLocaleString()}
                         </td>
                         <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
                         <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>

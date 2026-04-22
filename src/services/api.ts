@@ -282,6 +282,7 @@ export const invoicesApi = {
     return apiGet<Sale[]>(`/skypdv/invoices${qs ? `?${qs}` : ""}`);
   },
   pay: (id: number) => apiPost<Sale>(`/skypdv/invoices/${id}/pay`),
+  generateReceipt: (id: number) => apiPost<Sale>(`/skypdv/invoices/${id}/generate-receipt`),
   downloadPdf: (id: number, phone?: string, documentType: "invoice" | "receipt" = "invoice") => {
     const query = new URLSearchParams();
     if (phone) query.append("phone", phone);
