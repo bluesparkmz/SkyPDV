@@ -1022,8 +1022,8 @@ export function InvoiceSection() {
   const taxRate = terminal?.tax_rate ? parseFloat(terminal.tax_rate) || 0 : 16;
   const taxFactor = 1 + (taxRate / 100);
   const grossTotal = invoiceItemsWithProducts.reduce((sum, item) => sum + item.total, 0);
-  const subtotal = taxIncludedInPrice ? (grossTotal / taxFactor) : grossTotal;
-  const taxAmount = taxIncludedInPrice ? (grossTotal - subtotal) : (subtotal * (taxRate / 100));
+  const subtotal = taxIncludedInPrice ? grossTotal : grossTotal;
+  const taxAmount = taxIncludedInPrice ? 0 : (subtotal * (taxRate / 100));
   const totalAmount = taxIncludedInPrice ? grossTotal : (subtotal + taxAmount);
 
   const handleItemChange = (id: string, field: keyof InvoiceDraftItem, value: string | number | null) => {
@@ -1495,13 +1495,17 @@ export function InvoiceSection() {
               <div className="grid gap-3 md:grid-cols-3">
                 <div className="rounded-xl border border-border bg-background px-3 py-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                    {taxIncludedInPrice ? "Subtotal (sem IVA)" : "Subtotal"}
+                    {taxIncludedInPrice ? "Subtotal" : "Subtotal"}
                   </p>
                   <p className="mt-1 text-lg font-semibold text-foreground">{subtotal.toFixed(2)} MZN</p>
                 </div>
                 <div className="rounded-xl border border-border bg-background px-3 py-3">
-                  <p className="text-xs uppercase tracking-wide text-muted-foreground">IVA ({taxRate.toFixed(0)}%)</p>
-                  <p className="mt-1 text-lg font-semibold text-foreground">{taxAmount.toFixed(2)} MZN</p>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                    {taxIncludedInPrice ? "IVA Incluso" : `IVA (${taxRate.toFixed(0)}%)`}
+                  </p>
+                  <p className="mt-1 text-lg font-semibold text-foreground">
+                    {taxIncludedInPrice ? "" : `${taxAmount.toFixed(2)} MZN`}
+                  </p>
                 </div>
                 <div className="rounded-xl border border-border bg-background px-3 py-3">
                   <p className="text-xs uppercase tracking-wide text-muted-foreground">Total</p>
