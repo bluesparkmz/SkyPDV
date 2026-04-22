@@ -1765,6 +1765,54 @@ export function InvoiceSection() {
               </div>
 
               <div className="rounded-2xl border border-border overflow-auto">
+                <div className="border-b border-border px-4 py-3">
+                  <h3 className="text-sm font-semibold text-foreground">Faturas prontas para gerar recibo</h3>
+                  <p className="text-xs text-muted-foreground">Apenas faturas pagas que ainda nao receberam recibo.</p>
+                </div>
+                <table className="min-w-full text-sm">
+                  <thead className="bg-secondary/50">
+                    <tr className="text-left">
+                      <th className="px-3 py-2">Fatura</th>
+                      <th className="px-3 py-2">Data</th>
+                      <th className="px-3 py-2">Cliente</th>
+                      <th className="px-3 py-2">Total</th>
+                      <th className="px-3 py-2">Pagamento</th>
+                      <th className="px-3 py-2">Acoes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!isLoading && invoicesWithoutReceipt.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">
+                          Nenhuma fatura pendente de recibo
+                        </td>
+                      </tr>
+                    )}
+                    {invoicesWithoutReceipt
+                      .filter((inv) => inv.payment_status === "paid")
+                      .map((inv) => (
+                        <tr key={`pending-receipt-${inv.id}`} className="border-t border-border">
+                          <td className="px-3 py-2 font-semibold">
+                            {parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
+                          </td>
+                          <td className="px-3 py-2">
+                            {parseInvoiceMeta(inv.notes)?.invoice_date || new Date(inv.created_at).toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
+                          <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
+                          <td className="px-3 py-2 capitalize">{inv.payment_method}</td>
+                          <td className="px-3 py-2">
+                            <Button size="sm" variant="outline" onClick={() => void handleGenerateReceipt(inv.id)}>
+                              Gerar recibo
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="rounded-2xl border border-border overflow-auto">
                 <table className="min-w-full text-sm">
                   <thead className="bg-secondary/50">
                     <tr className="text-left">
