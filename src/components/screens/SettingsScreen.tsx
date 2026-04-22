@@ -49,7 +49,7 @@ import { BuildingShop24Regular } from "@fluentui/react-icons";
 import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
-import { invoicesApi, terminalApi } from "@/services/api";
+import { invoiceCustomersApi, invoicesApi, terminalApi } from "@/services/api";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -823,6 +823,15 @@ type InvoiceDraftItem = {
   unit_price: string;
 };
 
+type InvoiceCustomer = {
+  id: string;
+  name: string;
+  nuit: string;
+  address: string;
+  phone: string;
+  created_at: string;
+};
+
 function parseInvoiceMeta(notes?: string | null) {
   if (!notes) return null;
   try {
@@ -846,6 +855,7 @@ function createEmptyInvoiceItem(): InvoiceDraftItem {
 }
 
 const INVOICE_SETTINGS_STORAGE_KEY = "skypdv_invoice_settings_local";
+const INVOICE_CUSTOMERS_STORAGE_KEY = "skypdv_invoice_customers_local";
 const RECEIPT_SETTINGS_STORAGE_KEY = "skypdv_receipt_settings_local";
 
 function ReceiptSettings() {
@@ -951,6 +961,10 @@ export function InvoiceSection() {
     queryKey: ["terminal"],
     queryFn: () => terminalApi.get(),
   });
+  const { data: dbInvoiceCustomers } = useQuery({
+    queryKey: ["invoiceCustomers"],
+    queryFn: () => invoiceCustomersApi.list(),
+  });
   const [open, setOpen] = useState(false);
   const [companyConfigName, setCompanyConfigName] = useState("");
   const [companyConfigNuit, setCompanyConfigNuit] = useState("");
@@ -971,6 +985,14 @@ export function InvoiceSection() {
   const [logoUrl, setLogoUrl] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "mpesa" | "skywallet" | "mixed">("cash");
   const [taxIncludedInPrice, setTaxIncludedInPrice] = useState(true);
+  const [invoiceView, setInvoiceView] = useState<"clients" | "receipts" | "invoices" | "settings">("invoices");
+  const [invoiceCustomers, setInvoiceCustomers] = useState<InvoiceCustomer[]>([]);
+  const [selectedCustomerId, setSelectedCustomerId] = useState<string>("manual");
+  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newCustomerNuit, setNewCustomerNuit] = useState("");
+  const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerAddress, setNewCustomerAddress] = useState("");
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const createInvoice = useCreateInvoice();
   const payInvoice = usePayInvoice();
 
@@ -983,6 +1005,27 @@ export function InvoiceSection() {
       return {};
     }
   })();
+  const localInvoiceCustomers = (() => {
+    try {
+      const raw = localStorage.getItem(INVOICE_CUSTOMERS_STORAGE_KEY);
+      if (!raw) return [] as InvoiceCustomer[];
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) return [] as InvoiceCustomer[];
+      return parsed
+        .filter((row) => row && typeof row === "object")
+        .map((row: any) => ({
+          id: String(row.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+          name: String(row.name || "").trim(),
+          nuit: String(row.nuit || "").trim(),
+          address: String(row.address || "").trim(),
+          phone: String(row.phone || "").trim(),
+          created_at: String(row.created_at || new Date().toISOString()),
+        }))
+        .filter((row) => row.name.length > 0);
+    } catch {
+      return [] as InvoiceCustomer[];
+    }
+  })();
 
   useEffect(() => {
     const invoiceSettings = (terminal?.settings as Record<string, string> | null) || {};
@@ -992,7 +1035,44 @@ export function InvoiceSection() {
     setCompanyConfigLogo(String(invoiceSettings.invoice_logo || localInvoiceSettings.invoice_logo || terminal?.logo || ""));
     setCompanyConfigStamp(String(invoiceSettings.invoice_stamp || localInvoiceSettings.invoice_stamp || ""));
     setCompanyConfigLocation(String(invoiceSettings.invoice_location || localInvoiceSettings.invoice_location || ""));
-  }, [terminal]);
+
+    let customersFromSettings: InvoiceCustomer[] = [];
+    try {
+      const raw = invoiceSettings.invoice_customers || "[]";
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        customersFromSettings = parsed
+          .filter((row) => row && typeof row === "object")
+          .map((row: any) => ({
+            id: String(row.id || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+            name: String(row.name || "").trim(),
+            nuit: String(row.nuit || "").trim(),
+            address: String(row.address || "").trim(),
+            phone: String(row.phone || "").trim(),
+            created_at: String(row.created_at || new Date().toISOString()),
+          }))
+          .filter((row) => row.name.length > 0);
+      }
+    } catch {
+      customersFromSettings = [];
+    }
+    const customersFromDb: InvoiceCustomer[] = (dbInvoiceCustomers || []).map((row: any) => ({
+      id: String(row.id),
+      name: String(row.name || "").trim(),
+      nuit: String(row.nuit || "").trim(),
+      address: String(row.address || "").trim(),
+      phone: String(row.phone || "").trim(),
+      created_at: String(row.created_at || new Date().toISOString()),
+    })).filter((row) => row.name.length > 0);
+
+    const mergedCustomers =
+      customersFromDb.length > 0
+        ? customersFromDb
+        : customersFromSettings.length > 0
+          ? customersFromSettings
+          : localInvoiceCustomers;
+    setInvoiceCustomers(mergedCustomers);
+  }, [terminal, dbInvoiceCustomers]);
 
   useEffect(() => {
     if (!open) return;
@@ -1007,6 +1087,7 @@ export function InvoiceSection() {
     setCustomerPhone("");
     setClientNuit("");
     setClientAddress("");
+    setSelectedCustomerId("manual");
     setPaymentMethod("cash");
     setTaxIncludedInPrice(true);
     setInvoiceItems([createEmptyInvoiceItem()]);
@@ -1196,143 +1277,509 @@ export function InvoiceSection() {
     }
   };
 
+  const paidInvoices = (invoices || []).filter((inv) => inv.payment_status === "paid");
+  const totalInvoices = (invoices || []).length;
+  const totalPaidInvoices = paidInvoices.length;
+  const totalUnpaidInvoices = Math.max(0, totalInvoices - totalPaidInvoices);
+  const totalCustomers = invoiceCustomers.length;
+  const customersWithNuit = invoiceCustomers.filter((c) => c.nuit).length;
+  const customersWithContact = invoiceCustomers.filter((c) => c.phone).length;
+
+  const handleSelectCustomer = (value: string) => {
+    setSelectedCustomerId(value);
+    if (value === "manual") {
+      setCustomerName("");
+      setClientNuit("");
+      setClientAddress("");
+      setCustomerPhone("");
+      return;
+    }
+    const selected = invoiceCustomers.find((c) => c.id === value);
+    if (!selected) return;
+    setCustomerName(selected.name);
+    setClientNuit(selected.nuit);
+    setClientAddress(selected.address);
+    setCustomerPhone(selected.phone);
+  };
+
+  const persistCustomersLocal = (nextCustomers: InvoiceCustomer[]) => {
+    localStorage.setItem(INVOICE_CUSTOMERS_STORAGE_KEY, JSON.stringify(nextCustomers));
+    setInvoiceCustomers(nextCustomers);
+  };
+
+  const handleRegisterCustomer = async () => {
+    const normalizedName = newCustomerName.trim();
+    if (!normalizedName) {
+      toast.error("Informe o nome do cliente");
+      return;
+    }
+
+    const duplicate = invoiceCustomers.some(
+      (c) =>
+        c.id !== editingCustomerId &&
+        c.name.toLowerCase() === normalizedName.toLowerCase() &&
+        c.phone === newCustomerPhone.trim()
+    );
+    if (duplicate) {
+      toast.error("Cliente ja cadastrado");
+      return;
+    }
+
+    if (editingCustomerId) {
+      try {
+        const updated = await invoiceCustomersApi.update(Number(editingCustomerId), {
+          name: normalizedName,
+          nuit: newCustomerNuit.trim() || undefined,
+          phone: newCustomerPhone.trim() || undefined,
+          address: newCustomerAddress.trim() || undefined,
+        });
+        const nextCustomers = invoiceCustomers.map((row) =>
+          row.id === editingCustomerId
+            ? {
+                ...row,
+                name: String(updated.name || "").trim(),
+                nuit: String(updated.nuit || "").trim(),
+                phone: String(updated.phone || "").trim(),
+                address: String(updated.address || "").trim(),
+              }
+            : row
+        );
+        persistCustomersLocal(nextCustomers);
+        queryClient.invalidateQueries({ queryKey: ["invoiceCustomers"] });
+      } catch {
+        const nextCustomers = invoiceCustomers.map((row) =>
+          row.id === editingCustomerId
+            ? {
+                ...row,
+                name: normalizedName,
+                nuit: newCustomerNuit.trim(),
+                phone: newCustomerPhone.trim(),
+                address: newCustomerAddress.trim(),
+              }
+            : row
+        );
+        persistCustomersLocal(nextCustomers);
+      }
+      setEditingCustomerId(null);
+      setNewCustomerName("");
+      setNewCustomerNuit("");
+      setNewCustomerPhone("");
+      setNewCustomerAddress("");
+      toast.success("Cliente atualizado");
+      return;
+    }
+
+    try {
+      const created = await invoiceCustomersApi.create({
+        name: normalizedName,
+        nuit: newCustomerNuit.trim() || undefined,
+        phone: newCustomerPhone.trim() || undefined,
+        address: newCustomerAddress.trim() || undefined,
+      });
+      const customer: InvoiceCustomer = {
+        id: String(created.id),
+        name: String(created.name || "").trim(),
+        nuit: String(created.nuit || "").trim(),
+        address: String(created.address || "").trim(),
+        phone: String(created.phone || "").trim(),
+        created_at: String(created.created_at || new Date().toISOString()),
+      };
+      const nextCustomers = [customer, ...invoiceCustomers];
+      persistCustomersLocal(nextCustomers);
+      queryClient.invalidateQueries({ queryKey: ["invoiceCustomers"] });
+    } catch {
+      const customer: InvoiceCustomer = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: normalizedName,
+        nuit: newCustomerNuit.trim(),
+        address: newCustomerAddress.trim(),
+        phone: newCustomerPhone.trim(),
+        created_at: new Date().toISOString(),
+      };
+      const nextCustomers = [customer, ...invoiceCustomers];
+      persistCustomersLocal(nextCustomers);
+    }
+    setNewCustomerName("");
+    setNewCustomerNuit("");
+    setNewCustomerPhone("");
+    setNewCustomerAddress("");
+    toast.success("Cliente cadastrado");
+  };
+
+  const handleEditCustomer = (row: InvoiceCustomer) => {
+    setEditingCustomerId(row.id);
+    setNewCustomerName(row.name);
+    setNewCustomerNuit(row.nuit || "");
+    setNewCustomerPhone(row.phone || "");
+    setNewCustomerAddress(row.address || "");
+  };
+
+  const handleCancelEditCustomer = () => {
+    setEditingCustomerId(null);
+    setNewCustomerName("");
+    setNewCustomerNuit("");
+    setNewCustomerPhone("");
+    setNewCustomerAddress("");
+  };
+
+  const handleDeleteCustomer = async (customerId: string) => {
+    try {
+      await invoiceCustomersApi.delete(Number(customerId));
+      const nextCustomers = invoiceCustomers.filter((row) => row.id !== customerId);
+      persistCustomersLocal(nextCustomers);
+      queryClient.invalidateQueries({ queryKey: ["invoiceCustomers"] });
+    } catch {
+      const nextCustomers = invoiceCustomers.filter((row) => row.id !== customerId);
+      persistCustomersLocal(nextCustomers);
+    }
+    if (selectedCustomerId === customerId) {
+      setSelectedCustomerId("manual");
+      setCustomerName("");
+      setClientNuit("");
+      setClientAddress("");
+      setCustomerPhone("");
+    }
+    toast.success("Cliente apagado");
+  };
+
   return (
     <div className="space-y-4 md:space-y-6">
-      <SettingsPanel
-        title="Empresa da fatura"
-        description="Defina os dados padrao da empresa para preencher automaticamente ao criar faturas."
-      >
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Nome da empresa</Label>
-            <Input value={companyConfigName} onChange={(e) => setCompanyConfigName(e.target.value)} />
+      <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <aside className="rounded-2xl border border-border bg-card p-3">
+          <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Menu da fatura</p>
+          <div className="space-y-1">
+            <button
+              type="button"
+              onClick={() => setInvoiceView("invoices")}
+              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "invoices" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+            >
+              Faturas
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvoiceView("clients")}
+              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "clients" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+            >
+              Clientes
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvoiceView("receipts")}
+              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "receipts" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+            >
+              Recibos
+            </button>
+            <button
+              type="button"
+              onClick={() => setInvoiceView("settings")}
+              className={`w-full rounded-lg px-3 py-2 text-left text-sm transition-colors ${invoiceView === "settings" ? "bg-primary text-primary-foreground" : "hover:bg-secondary/70 text-foreground"}`}
+            >
+              Configuracao
+            </button>
           </div>
-          <div className="space-y-2">
-            <Label>NUIT</Label>
-            <Input value={companyConfigNuit} onChange={(e) => setCompanyConfigNuit(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Contacto</Label>
-            <Input value={companyConfigContacts} onChange={(e) => setCompanyConfigContacts(e.target.value)} />
-          </div>
-          <div className="space-y-2">
-            <Label>Logotipo</Label>
-            <div className="flex items-center gap-2">
-              <Input value={companyConfigLogo} readOnly placeholder="Envie o logotipo do dispositivo" />
-              <Input
-                type="file"
-                accept="image/*"
-                className="max-w-[220px]"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleUploadInvoiceAsset(file, "logo");
-                  e.currentTarget.value = "";
-                }}
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Carimbo</Label>
-            <div className="flex items-center gap-2">
-              <Input value={companyConfigStamp} readOnly placeholder="Envie o carimbo do dispositivo" />
-              <Input
-                type="file"
-                accept="image/*"
-                className="max-w-[220px]"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) void handleUploadInvoiceAsset(file, "stamp");
-                  e.currentTarget.value = "";
-                }}
-              />
-            </div>
-          </div>
-          <div className="space-y-2 md:col-span-2">
-            <Label>Morada curta da empresa</Label>
-            <Input
-              value={companyConfigLocation}
-              onChange={(e) => setCompanyConfigLocation(e.target.value)}
-              placeholder="Ex: LICHINGA-NIASSA"
-            />
-            <p className="text-xs text-muted-foreground">
-              Essa linha aparece abaixo do contacto no PDF da fatura.
-            </p>
-          </div>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button onClick={handleSaveInvoiceConfig}>Guardar configuracao</Button>
-        </div>
-      </SettingsPanel>
+        </aside>
 
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
-          <p className="text-sm text-muted-foreground">
-            Liste e gere faturas. Os itens sao os produtos do PDV.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Link to="/products" className="fluent-button">Produtos</Link>
-          <Button className="fluent-button fluent-button-primary" onClick={() => setOpen(true)}>
-            Criar Fatura
-          </Button>
-        </div>
-      </div>
+        <section className="space-y-4 min-w-0">
+          {invoiceView === "settings" && (
+            <SettingsPanel
+              title="Empresa da fatura"
+              description="Defina os dados padrao da empresa para preencher automaticamente ao criar faturas."
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Nome da empresa</Label>
+                  <Input value={companyConfigName} onChange={(e) => setCompanyConfigName(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>NUIT</Label>
+                  <Input value={companyConfigNuit} onChange={(e) => setCompanyConfigNuit(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contacto</Label>
+                  <Input value={companyConfigContacts} onChange={(e) => setCompanyConfigContacts(e.target.value)} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Logotipo</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={companyConfigLogo} readOnly placeholder="Envie o logotipo do dispositivo" />
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="max-w-[220px]"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleUploadInvoiceAsset(file, "logo");
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Carimbo</Label>
+                  <div className="flex items-center gap-2">
+                    <Input value={companyConfigStamp} readOnly placeholder="Envie o carimbo do dispositivo" />
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      className="max-w-[220px]"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) void handleUploadInvoiceAsset(file, "stamp");
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label>Morada curta da empresa</Label>
+                  <Input
+                    value={companyConfigLocation}
+                    onChange={(e) => setCompanyConfigLocation(e.target.value)}
+                    placeholder="Ex: LICHINGA-NIASSA"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Essa linha aparece abaixo do contacto no PDF da fatura.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 flex justify-end">
+                <Button onClick={handleSaveInvoiceConfig}>Guardar configuracao</Button>
+              </div>
+            </SettingsPanel>
+          )}
 
-      <div className="rounded-2xl border border-border overflow-auto">
-        <table className="min-w-full text-sm">
-          <thead className="bg-secondary/50">
-            <tr className="text-left">
-              <th className="px-3 py-2">Fatura</th>
-              <th className="px-3 py-2">Data</th>
-              <th className="px-3 py-2">Cliente</th>
-              <th className="px-3 py-2">Total</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Pagamento</th>
-              <th className="px-3 py-2">Acoes</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading && (
-              <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Carregando...</td>
-              </tr>
-            )}
-            {!isLoading && invoices && invoices.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Nenhuma fatura encontrada</td>
-              </tr>
-            )}
-            {invoices?.map((inv) => (
-              <tr key={inv.id} className="border-t border-border">
-                <td className="px-3 py-2 font-semibold">
-                  {parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
-                </td>
-                <td className="px-3 py-2">
-                  {parseInvoiceMeta(inv.notes)?.invoice_date || new Date(inv.created_at).toLocaleString()}
-                </td>
-                <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
-                <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
-                <td className="px-3 py-2">
-                  <span className={`px-2 py-1 rounded-full text-xs ${inv.payment_status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {inv.payment_status === "paid" ? "Pago" : "Pendente"}
-                  </span>
-                </td>
-                <td className="px-3 py-2 capitalize">{inv.payment_method}</td>
-                <td className="px-3 py-2 flex gap-2">
-                  {inv.payment_status !== "paid" && (
-                    <Button size="sm" variant="outline" onClick={() => payInvoice.mutate(inv.id)}>
-                      Marcar pago
-                    </Button>
-                  )}
-                  <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id)}>
-                    PDF
+          {invoiceView === "invoices" && (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Liste e gere faturas. Os itens sao os produtos do PDV.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Link to="/products" className="fluent-button">Produtos</Link>
+                  <Button className="fluent-button fluent-button-primary" onClick={() => setOpen(true)}>
+                    Criar Fatura
                   </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total de faturas</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{totalInvoices}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Faturas nao pagas</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-600">{totalUnpaidInvoices}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Faturas pagas</p>
+                  <p className="mt-1 text-2xl font-bold text-emerald-600">{totalPaidInvoices}</p>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-border overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-secondary/50">
+                    <tr className="text-left">
+                      <th className="px-3 py-2">Fatura</th>
+                      <th className="px-3 py-2">Data</th>
+                      <th className="px-3 py-2">Cliente</th>
+                      <th className="px-3 py-2">Total</th>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Pagamento</th>
+                      <th className="px-3 py-2">Acoes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {isLoading && (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Carregando...</td>
+                      </tr>
+                    )}
+                    {!isLoading && invoices && invoices.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="px-3 py-4 text-center text-muted-foreground">Nenhuma fatura encontrada</td>
+                      </tr>
+                    )}
+                    {invoices?.map((inv) => (
+                      <tr key={inv.id} className="border-t border-border">
+                        <td className="px-3 py-2 font-semibold">
+                          {parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
+                        </td>
+                        <td className="px-3 py-2">
+                          {parseInvoiceMeta(inv.notes)?.invoice_date || new Date(inv.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
+                        <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
+                        <td className="px-3 py-2">
+                          <span className={`px-2 py-1 rounded-full text-xs ${inv.payment_status === "paid" ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                            {inv.payment_status === "paid" ? "Pago" : "Pendente"}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2 capitalize">{inv.payment_method}</td>
+                        <td className="px-3 py-2 flex gap-2">
+                          {inv.payment_status !== "paid" && (
+                            <Button size="sm" variant="outline" onClick={() => payInvoice.mutate(inv.id)}>
+                              Marcar pago
+                            </Button>
+                          )}
+                          <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id)}>
+                            PDF
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {invoiceView === "receipts" && (
+            <>
+              <div>
+                <h2 className="text-base md:text-lg font-semibold text-foreground">Recibos</h2>
+                <p className="text-sm text-muted-foreground">Recibos pagos, prontos para impressao.</p>
+              </div>
+              <div className="rounded-2xl border border-border overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-secondary/50">
+                    <tr className="text-left">
+                      <th className="px-3 py-2">Recibo</th>
+                      <th className="px-3 py-2">Data</th>
+                      <th className="px-3 py-2">Cliente</th>
+                      <th className="px-3 py-2">Total</th>
+                      <th className="px-3 py-2">Pagamento</th>
+                      <th className="px-3 py-2">Acoes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!isLoading && paidInvoices.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">Nenhum recibo encontrado</td>
+                      </tr>
+                    )}
+                    {paidInvoices.map((inv) => (
+                      <tr key={inv.id} className="border-t border-border">
+                        <td className="px-3 py-2 font-semibold">
+                          {parseInvoiceMeta(inv.notes)?.invoice_number || `#${inv.id}`}
+                        </td>
+                        <td className="px-3 py-2">
+                          {parseInvoiceMeta(inv.notes)?.invoice_date || new Date(inv.created_at).toLocaleString()}
+                        </td>
+                        <td className="px-3 py-2">{inv.customer_name || "Consumidor Final"}</td>
+                        <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
+                        <td className="px-3 py-2 capitalize">{inv.payment_method}</td>
+                        <td className="px-3 py-2">
+                          <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id)}>
+                            PDF
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {invoiceView === "clients" && (
+            <>
+              <div>
+                <h2 className="text-base md:text-lg font-semibold text-foreground">Clientes</h2>
+                <p className="text-sm text-muted-foreground">Cadastro e consulta de clientes para faturacao rapida.</p>
+              </div>
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Total de clientes</p>
+                  <p className="mt-1 text-2xl font-bold text-foreground">{totalCustomers}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Clientes com NUIT</p>
+                  <p className="mt-1 text-2xl font-bold text-primary">{customersWithNuit}</p>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Clientes com contacto</p>
+                  <p className="mt-1 text-2xl font-bold text-emerald-600">{customersWithContact}</p>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-border bg-card p-4">
+                <h3 className="mb-3 text-sm font-semibold text-foreground">
+                  {editingCustomerId ? "Editar cliente" : "Cadastrar cliente"}
+                </h3>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+                  <div className="space-y-2">
+                    <Label>Nome</Label>
+                    <Input value={newCustomerName} onChange={(e) => setNewCustomerName(e.target.value)} placeholder="Nome do cliente" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>NUIT</Label>
+                    <Input value={newCustomerNuit} onChange={(e) => setNewCustomerNuit(e.target.value)} placeholder="Opcional" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Contacto</Label>
+                    <Input value={newCustomerPhone} onChange={(e) => setNewCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Morada</Label>
+                    <Input value={newCustomerAddress} onChange={(e) => setNewCustomerAddress(e.target.value)} placeholder="Morada" />
+                  </div>
+                </div>
+                <div className="mt-4 flex justify-end gap-2">
+                  {editingCustomerId && (
+                    <Button variant="outline" onClick={handleCancelEditCustomer}>Cancelar</Button>
+                  )}
+                  <Button onClick={() => void handleRegisterCustomer()}>
+                    {editingCustomerId ? "Salvar edicao" : "Cadastrar cliente"}
+                  </Button>
+                </div>
+              </div>
+              <div className="rounded-2xl border border-border overflow-auto">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-secondary/50">
+                    <tr className="text-left">
+                      <th className="px-3 py-2">Cliente</th>
+                      <th className="px-3 py-2">Contacto</th>
+                      <th className="px-3 py-2">NUIT</th>
+                      <th className="px-3 py-2">Morada</th>
+                      <th className="px-3 py-2">Ultimo cadastro</th>
+                      <th className="px-3 py-2">Acoes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {!isLoading && invoiceCustomers.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-3 py-4 text-center text-muted-foreground">Nenhum cliente cadastrado</td>
+                      </tr>
+                    )}
+                    {invoiceCustomers.map((row) => (
+                      <tr key={row.id} className="border-t border-border">
+                        <td className="px-3 py-2 font-medium">{row.name}</td>
+                        <td className="px-3 py-2">{row.phone || "-"}</td>
+                        <td className="px-3 py-2">{row.nuit || "-"}</td>
+                        <td className="px-3 py-2">{row.address || "-"}</td>
+                        <td className="px-3 py-2">{new Date(row.created_at).toLocaleDateString()}</td>
+                        <td className="px-3 py-2">
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => handleEditCustomer(row)}>
+                              Editar
+                            </Button>
+                            <Button size="sm" variant="destructive" onClick={() => void handleDeleteCustomer(row.id)}>
+                              Apagar
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
       </div>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -1380,20 +1827,53 @@ export function InvoiceSection() {
                 </div>
                 <div className="space-y-2">
                   <Label>Cliente</Label>
-                  <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nome do cliente" />
+                  <Select value={selectedCustomerId} onValueChange={handleSelectCustomer}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione um cliente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Preencher manualmente</SelectItem>
+                      {invoiceCustomers.map((customer) => (
+                        <SelectItem key={customer.id} value={customer.id}>
+                          {customer.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>NUIT do cliente</Label>
-                  <Input value={clientNuit} onChange={(e) => setClientNuit(e.target.value)} placeholder="Opcional" />
+                  <Input
+                    value={clientNuit}
+                    onChange={(e) => setClientNuit(e.target.value)}
+                    placeholder="Opcional"
+                    readOnly={selectedCustomerId !== "manual"}
+                  />
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                   <Label>Morada do cliente</Label>
-                  <Input value={clientAddress} onChange={(e) => setClientAddress(e.target.value)} placeholder="Morada" />
+                  <Input
+                    value={clientAddress}
+                    onChange={(e) => setClientAddress(e.target.value)}
+                    placeholder="Morada"
+                    readOnly={selectedCustomerId !== "manual"}
+                  />
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                   <Label>Contactos do cliente</Label>
-                  <Input value={customerPhone} onChange={(e) => setCustomerPhone(e.target.value)} placeholder="Ex: 2588..." />
+                  <Input
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    placeholder="Ex: 2588..."
+                    readOnly={selectedCustomerId !== "manual"}
+                  />
                 </div>
+                {selectedCustomerId === "manual" && (
+                  <div className="space-y-2 lg:col-span-2">
+                    <Label>Nome do cliente</Label>
+                    <Input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="Nome do cliente" />
+                  </div>
+                )}
                 <div className="space-y-2 lg:col-span-2">
                   <Label>Forma de pagamento</Label>
                   <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>

@@ -289,6 +289,14 @@ export const invoicesApi = {
   uploadAsset: (file: File) => apiUploadFile("/skypdv/invoice-assets/upload", file),
 };
 
+export const invoiceCustomersApi = {
+  list: () => apiGet<InvoiceCustomer[]>("/skypdv/invoice-customers"),
+  create: (data: CreateInvoiceCustomer) => apiPost<InvoiceCustomer>("/skypdv/invoice-customers", data),
+  update: (id: number, data: Partial<CreateInvoiceCustomer>) =>
+    apiPut<InvoiceCustomer>(`/skypdv/invoice-customers/${id}`, data),
+  delete: (id: number) => apiDelete<{ message: string }>(`/skypdv/invoice-customers/${id}`),
+};
+
 // Perfil
 export const profileApi = {
   updatePhone: (phone: string) => apiPost<{ status: string; phone: string }>("/user/phone", { phone }),
@@ -505,6 +513,26 @@ export interface Terminal {
   active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface InvoiceCustomer {
+  id: number;
+  terminal_id: number;
+  name: string;
+  nuit: string | null;
+  phone: string | null;
+  address: string | null;
+  is_active: boolean;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateInvoiceCustomer {
+  name: string;
+  nuit?: string;
+  phone?: string;
+  address?: string;
 }
 
 export interface CreateTerminal {
