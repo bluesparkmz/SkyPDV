@@ -50,7 +50,7 @@ import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
 import { invoiceCustomersApi, invoicesApi, terminalApi } from "@/services/api";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1264,13 +1264,13 @@ export function InvoiceSection() {
     setOpen(false);
   };
 
-  const handleDownload = async (id: number) => {
+  const handleDownload = async (id: number, documentType: "invoice" | "receipt" = "invoice") => {
     try {
-      const { blob, filename } = await invoicesApi.downloadPdf(id);
+      const { blob, filename } = await invoicesApi.downloadPdf(id, undefined, documentType);
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = filename || `fatura-${id}.pdf`;
+      a.download = filename || (documentType === "receipt" ? `recibo-${id}.pdf` : `fatura-${id}.pdf`);
       a.click();
       URL.revokeObjectURL(url);
     } catch (e: any) {
@@ -1682,7 +1682,7 @@ export function InvoiceSection() {
                         <td className="px-3 py-2">{Number(inv.total).toFixed(2)} MZN</td>
                         <td className="px-3 py-2 capitalize">{inv.payment_method}</td>
                         <td className="px-3 py-2">
-                          <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id)}>
+                          <Button size="sm" variant="ghost" onClick={() => handleDownload(inv.id, "receipt")}>
                             PDF
                           </Button>
                         </td>

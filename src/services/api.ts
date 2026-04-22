@@ -282,9 +282,12 @@ export const invoicesApi = {
     return apiGet<Sale[]>(`/skypdv/invoices${qs ? `?${qs}` : ""}`);
   },
   pay: (id: number) => apiPost<Sale>(`/skypdv/invoices/${id}/pay`),
-  downloadPdf: (id: number, phone?: string) => {
-    const qs = phone ? `?phone=${encodeURIComponent(phone)}` : "";
-    return apiGetBlob(`/skypdv/invoices/${id}/pdf${qs}`);
+  downloadPdf: (id: number, phone?: string, documentType: "invoice" | "receipt" = "invoice") => {
+    const query = new URLSearchParams();
+    if (phone) query.append("phone", phone);
+    query.append("document_type", documentType);
+    const qs = query.toString();
+    return apiGetBlob(`/skypdv/invoices/${id}/pdf${qs ? `?${qs}` : ""}`);
   },
   uploadAsset: (file: File) => apiUploadFile("/skypdv/invoice-assets/upload", file),
 };
