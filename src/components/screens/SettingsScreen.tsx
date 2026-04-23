@@ -1548,15 +1548,6 @@ export function InvoiceSection() {
                 </div>
               </div>
             </div>
-            {!isNavOpen && !isMobile && (
-              <Tooltip content="Abrir menu" relationship="label">
-                <Hamburger
-                  onClick={() => setIsNavOpen(true)}
-                  {...restoreFocusTargetAttributes}
-                  aria-expanded={isNavOpen}
-                />
-              </Tooltip>
-            )}
           </div>
         </div>
 
@@ -1632,13 +1623,7 @@ export function InvoiceSection() {
 
           {invoiceView === "invoices" && (
             <>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-base md:text-lg font-semibold text-foreground">Faturas</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Liste e gere faturas. Os itens sao os produtos do PDV.
-                  </p>
-                </div>
+              <div className="flex items-center justify-end gap-2">
                 <div className="flex gap-2">
                   <Link to="/products" className="fluent-button">Produtos</Link>
                   <Button className="fluent-button fluent-button-primary" onClick={() => setOpen(true)}>
