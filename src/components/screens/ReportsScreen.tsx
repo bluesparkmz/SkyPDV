@@ -339,8 +339,17 @@ export function ReportsScreen() {
       }
       // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
       const isDailyView = activeView === "daily" && selectedDate;
-      const exportStart = isDailyView ? selectedDate : startDate;
-      const exportEnd = isDailyView ? selectedDate : endDate;
+      let exportStart: string | undefined = undefined;
+      let exportEnd: string | undefined = undefined;
+      if (isDailyView && selectedDate) {
+        const s = startOfDay(parseISO(selectedDate));
+        const e = endOfDay(parseISO(selectedDate));
+        exportStart = s.toISOString();
+        exportEnd = e.toISOString();
+      } else {
+        exportStart = startDate;
+        exportEnd = endDate;
+      }
 
       const phoneParam = whatsappPrefs.enabled && hasPhone ? whatsappPrefs.phone : undefined;
       const { blob, filename: apiFilename } =
