@@ -653,13 +653,27 @@ export function SkyPDV() {
               O servidor vai desligar hoje às 22h
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <p className="text-sm text-muted-foreground mb-4">
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
               O pagamento do servidor da bluesparkmz está atrasado. O servidor será desligado hoje às 22h.
             </p>
             <p className="text-sm text-muted-foreground">
               Por favor, regularize o pagamento para evitar interrupções no serviço.
             </p>
+
+            {/* Storage Progress Bar */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-foreground">Armazenamento Mensal</span>
+                <span className="text-muted-foreground">45 GB / 50 GB</span>
+              </div>
+              <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
+                <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: "90%" }} />
+              </div>
+              <p className="text-xs text-amber-600 font-medium">
+                ⚠️ Armazenamento quase cheio (90%)
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button onClick={() => setShowServerShutdownAlert(false)}>
