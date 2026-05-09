@@ -42,6 +42,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
+  const [showShutdownWarning, setShowShutdownWarning] = useState(false);
   const { isConnected: hardwareConnected, isConnecting: isConnectingHardware, printReceipt, openCashDrawer } =
     useHardwarePlugin();
 

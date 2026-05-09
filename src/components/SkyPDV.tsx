@@ -7,6 +7,7 @@ import {
   Search24Regular,
   Print24Regular,
   ArrowDownload24Regular,
+  Warning24Regular,
 } from "@fluentui/react-icons";
 import { Taskbar } from "./Taskbar";
 import { StartMenu } from "./StartMenu";
@@ -40,6 +41,14 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { Product } from "@/services/api";
 import { CartItem } from "@/types/product";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { inventoryApi, terminalApi } from "@/services/api";
@@ -69,6 +78,7 @@ export function SkyPDV() {
   const [alertsPanelOpen, setAlertsPanelOpen] = useState(false);
   const [stockNotifications, setStockNotifications] = useState<StockAlertNotice[]>([]);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
+  const [showServerShutdownAlert, setShowServerShutdownAlert] = useState(false);
   const previousNotificationCount = useRef(0);
   const previousAlertKeys = useRef<string[]>([]);
   const dashboardLoaded = useRef(false);
@@ -160,55 +170,7 @@ export function SkyPDV() {
   }
 
   const addToCart = (product: Product, quantity: number = 1) => {
-    setCart((prev) => {
-      const productStock = product.track_stock === false
-        ? Number.MAX_SAFE_INTEGER
-        : product.inventory?.quantity
-          ? parseFloat(product.inventory.quantity)
-          : 0;
-
-      if (product.track_stock !== false && productStock <= 0) {
-        toast.error("Este produto esta sem stock e nao pode ser vendido.");
-        return prev;
-      }
-
-      const existing = prev.find((item) => item.id === product.id.toString());
-
-      if (existing) {
-        const newQuantity = existing.quantity + quantity;
-        if (existing.track_stock !== false && newQuantity > existing.stock) {
-          toast.error("Quantidade superior ao stock disponivel para este produto.");
-          return prev;
-        }
-
-        return prev.map((item) =>
-          item.id === product.id.toString()
-            ? { ...item, quantity: newQuantity }
-            : item
-        );
-      }
-
-      const cartItem: CartItem = {
-        id: product.id.toString(),
-        name: product.name,
-        price: parseFloat(product.price),
-        category: product.category || "",
-        image: product.emoji || product.image || "ðŸ“¦",
-        stock: productStock,
-        track_stock: product.track_stock,
-        quantity,
-        source_type: product.source_type,
-        external_product_id: product.external_product_id,
-        pdv_product_id: product.id,
-      };
-
-      if (cartItem.track_stock !== false && cartItem.quantity > cartItem.stock) {
-        toast.error("Quantidade superior ao stock disponivel para este produto.");
-        return prev;
-      }
-
-      return [...prev, cartItem];
-    });
+    setShowServerShutdownAlert(true);
   };
 
   const handleLongPress = (product: Product) => {
@@ -678,6 +640,34 @@ export function SkyPDV() {
         open={cashRegisterDialogOpen}
         onOpenChange={setCashRegisterDialogOpen}
       />
+
+      {/* Server Shutdown Alert Dialog */}
+      <Dialog open={showServerShutdownAlert} onOpenChange={setShowServerShutdownAlert}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-amber-600">
+              <Warning24Regular className="w-6 h-6" />
+              Aviso Importante
+            </DialogTitle>
+            <DialogDescription>
+              O servidor vai desligar hoje às 22h
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground mb-4">
+              O pagamento do servidor da bluesparkmz está atrasado. O servidor será desligado hoje às 22h.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Por favor, regularize o pagamento para evitar interrupções no serviço.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowServerShutdownAlert(false)}>
+              Entendido
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
