@@ -665,13 +665,13 @@ export function SkyPDV() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="font-medium text-foreground">Armazenamento Mensal</span>
-                <span className="text-muted-foreground">45 GB / 50 GB</span>
+                <span className="text-muted-foreground">1.94 GB / 2 GB</span>
               </div>
               <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: "90%" }} />
+                <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: "97%" }} />
               </div>
-              <p className="text-xs text-amber-600 font-medium">
-                ⚠️ Armazenamento quase cheio (90%)
+              <p className="text-xs text-red-600 font-medium">
+                ⚠️ Armazenamento crítico (97%)
               </p>
             </div>
           </div>
