@@ -78,7 +78,6 @@ export function SkyPDV() {
   const [alertsPanelOpen, setAlertsPanelOpen] = useState(false);
   const [stockNotifications, setStockNotifications] = useState<StockAlertNotice[]>([]);
   const [unreadAlertsCount, setUnreadAlertsCount] = useState(0);
-  const [showServerShutdownAlert, setShowServerShutdownAlert] = useState(false);
   const previousNotificationCount = useRef(0);
   const previousAlertKeys = useRef<string[]>([]);
   const dashboardLoaded = useRef(false);
@@ -170,7 +169,27 @@ export function SkyPDV() {
   }
 
   const addToCart = (product: Product, quantity: number = 1) => {
-    setShowServerShutdownAlert(true);
+    setCart((prev) => {
+      const existingItem = prev.find((item) => item.id === product.id);
+      if (existingItem) {
+        return prev.map((item) =>
+          item.id === product.id
+            ? { ...item, quantity: item.quantity + quantity }
+            : item
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: product.id,
+          name: product.name,
+          price: product.price,
+          quantity,
+          stock: product.inventory?.quantity ? parseFloat(product.inventory.quantity) : 0,
+          track_stock: product.track_stock,
+        },
+      ];
+    });
   };
 
   const handleLongPress = (product: Product) => {
@@ -641,47 +660,6 @@ export function SkyPDV() {
         onOpenChange={setCashRegisterDialogOpen}
       />
 
-      {/* Server Shutdown Alert Dialog */}
-      <Dialog open={showServerShutdownAlert} onOpenChange={setShowServerShutdownAlert}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-amber-600">
-              <Warning24Regular className="w-6 h-6" />
-              Aviso Importante
-            </DialogTitle>
-            <DialogDescription>
-              O servidor vai desligar hoje às 22h
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              O pagamento do servidor da bluesparkmz está atrasado. O servidor será desligado hoje às 22h.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Por favor, regularize o pagamento para evitar interrupções no serviço.
-            </p>
-
-            {/* Storage Progress Bar */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground">Armazenamento Mensal</span>
-                <span className="text-muted-foreground">1.94 GB / 2 GB</span>
-              </div>
-              <div className="h-3 w-full rounded-full bg-secondary overflow-hidden">
-                <div className="h-full bg-red-500 rounded-full transition-all" style={{ width: "97%" }} />
-              </div>
-              <p className="text-xs text-red-600 font-medium">
-                ⚠️ Armazenamento crítico (97%)
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={() => setShowServerShutdownAlert(false)}>
-              Entendido
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
