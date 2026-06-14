@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -49,7 +49,7 @@ import { BuildingShop24Regular } from "@fluentui/react-icons";
 import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
-import { invoiceCustomersApi, invoicesApi, terminalApi } from "@/services/api";
+import { invoiceCustomersApi, invoicesApi, terminalApi, skyWalletApi } from "@/services/api";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,6 +127,11 @@ export function SettingsScreen({ onOpenSetup }: Props) {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const { logout, user: profileData, baseUrl } = useAuth();
+
+  const { data: skyWalletData, isLoading: skyWalletLoading } = useQuery({
+    queryKey: ["skywallet-balance"],
+    queryFn: () => skyWalletApi.getBalance(),
+  });
 
   const u = profileData?.user;
   const stats = profileData?.stats;
@@ -316,12 +321,12 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                       <p className="mt-1 text-xs text-muted-foreground">Canal principal de comunicacao</p>
                     </div>
                     <div className="rounded-xl border border-border bg-background/80 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo E-Mola</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo SkyWallet</p>
                       <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-emerald-600">
                         <Money24Regular className="w-4 h-4" />
-                        {u?.wallet_balance?.toLocaleString() || "0"} MZN
+                        {skyWalletLoading ? "Carregando..." : skyWalletData?.balance?.main_balance?.toLocaleString() || "0"} MZN
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">Disponivel para operacoes</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Disponível para operações</p>
                     </div>
                   </div>
                 </section>

@@ -1,4 +1,4 @@
-﻿// ConfiguraÃ§Ã£o base da API
+// ConfiguraÃ§Ã£o base da API
 const BASE_URL = "https://skypdvmz.bluesparkmz.com";
 
 export class ApiError<T = unknown> extends Error {
@@ -499,6 +499,14 @@ export const terminalUsersApi = {
     apiPut<PDVTerminalUser>(`/skypdv/terminal/users/${id}`, data),
   remove: (id: number) =>
     apiDelete<{ message: string }>(`/skypdv/terminal/users/${id}`),
+};
+
+// SkyWallet
+export const skyWalletApi = {
+  getBalance: () => apiGet<{ balance: { main_balance: number; bonus_balance: number }; user: any }>("/skypdv/skywallet/balance"),
+  paySubscription: () => apiPost<any>("/skypdv/terminal/subscription/pay"),
+  paySubscriptionAdvance: (months: number) => apiPost<any>("/skypdv/terminal/subscription/pay-advance", { months }),
+  deposit: () => apiPost<any>("/skypdv/skywallet/deposit"),
 };
 
 // === Types ===
