@@ -506,7 +506,7 @@ export const skyWalletApi = {
   getBalance: () => apiGet<{ balance: { main_balance: number; bonus_balance: number }; user: any }>("/skypdv/skywallet/balance"),
   paySubscription: () => apiPost<any>("/skypdv/terminal/subscription/pay"),
   paySubscriptionAdvance: (months: number) => apiPost<any>("/skypdv/terminal/subscription/pay-advance", { months }),
-  deposit: () => apiPost<any>("/skypdv/skywallet/deposit"),
+  deposit: (amount: number, msisdn: string) => apiPost<any>("/skypdv/skywallet/deposit", { amount, msisdn }),
 };
 
 // === Types ===
@@ -523,6 +523,9 @@ export interface Terminal {
   currency: string;
   settings: Record<string, unknown> | null;
   active: boolean;
+  subscription_status?: string;
+  next_billing_date?: string;
+  grace_period_ends_at?: string | null;
   created_at: string;
   updated_at: string;
 }
