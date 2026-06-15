@@ -143,6 +143,17 @@ export function SettingsScreen({ onOpenSetup }: Props) {
   const [isPaying, setIsPaying] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
 
+  useEffect(() => {
+    const openBilling = () => setBillingModalOpen(true);
+    const openDeposit = () => setDepositModalOpen(true);
+    window.addEventListener("open-billing-modal", openBilling as EventListener);
+    window.addEventListener("open-deposit-modal", openDeposit as EventListener);
+    return () => {
+      window.removeEventListener("open-billing-modal", openBilling as EventListener);
+      window.removeEventListener("open-deposit-modal", openDeposit as EventListener);
+    };
+  }, []);
+
   const u = profileData?.user;
   const stats = profileData?.stats;
 

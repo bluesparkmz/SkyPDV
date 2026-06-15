@@ -176,6 +176,47 @@ export function SkyPDV() {
   const now = new Date();
   const shouldShowPaymentAlert = isTerminalSuspended && now >= paymentAlertStart && now <= paymentAlertLimit;
 
+  // Alert visibility with 5-minute snooze support
+  const [alertVisible, setAlertVisible] = useState(true);
+  const alertSnoozeRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Reset visibility when terminal or time window changes
+    if (shouldShowPaymentAlert) {
+      setAlertVisible(true);
+    } else {
+      setAlertVisible(false);
+    }
+    return () => {
+      if (alertSnoozeRef.current) {
+        clearTimeout(alertSnoozeRef.current);
+        alertSnoozeRef.current = null;
+      }
+    };
+  }, [shouldShowPaymentAlert]);
+
+  const snoozeAlert = (minutes = 5) => {
+    setAlertVisible(false);
+    if (alertSnoozeRef.current) {
+      clearTimeout(alertSnoozeRef.current);
+    }
+    alertSnoozeRef.current = window.setTimeout(() => {
+      setAlertVisible(true);
+      alertSnoozeRef.current = null;
+    }, minutes * 60 * 1000);
+  };
+
+  const openBillingFromBanner = () => {
+    // navigate to settings and open billing modal there
+    setCurrentScreen("settings");
+    setTimeout(() => window.dispatchEvent(new CustomEvent("open-billing-modal")), 250);
+  };
+
+  const openDepositFromBanner = () => {
+    setCurrentScreen("settings");
+    setTimeout(() => window.dispatchEvent(new CustomEvent("open-deposit-modal")), 250);
+  };
+
   const addToCart = (product: Product, quantity: number = 1) => {
     if (isTerminalSuspended) {
       toast.error("Vendas bloqueadas: assinatura pendente. Pagar a assinatura para continuar.");
@@ -386,7 +427,7 @@ export function SkyPDV() {
         return (
           <>
             {/* Main Content */}
-            {shouldShowPaymentAlert && (
+            {shouldShowPaymentAlert && alertVisible && (
               <div className="bg-amber-600 text-white px-4 py-2 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Warning24Regular className="w-5 h-5" />
@@ -395,8 +436,14 @@ export function SkyPDV() {
                     <div className="text-sm">Limite: 17/06/2026 — vendas bloqueadas até regularizar.</div>
                   </div>
                 </div>
-                <div>
-                  <Button size="sm" variant="outline" onClick={() => setCurrentScreen("settings")}>Pagar agora</Button>
+                <div className="flex items-center gap-2">
+                  {isAdmin && (
+                    <>
+                      <Button size="sm" variant="outline" onClick={openBillingFromBanner}>Pagar agora</Button>
+                      <Button size="sm" variant="ghost" onClick={openDepositFromBanner}>Depositar</Button>
+                    </>
+                  )}
+                  <Button size="sm" variant="secondary" onClick={() => snoozeAlert(5)}>Lembrar depois</Button>
                 </div>
               </div>
             )}
