@@ -168,7 +168,19 @@ export function SkyPDV() {
     );
   }
 
+  const isTerminalSuspended = terminal?.subscription_status === "suspended";
+
+  // Payment alert details (for now hard-coded as requested)
+  const paymentAlertStart = new Date("2026-06-16T00:00:00Z");
+  const paymentAlertLimit = new Date("2026-06-17T23:59:59Z");
+  const now = new Date();
+  const shouldShowPaymentAlert = isTerminalSuspended && now >= paymentAlertStart && now <= paymentAlertLimit;
+
   const addToCart = (product: Product, quantity: number = 1) => {
+    if (isTerminalSuspended) {
+      toast.error("Vendas bloqueadas: assinatura pendente. Pagar a assinatura para continuar.");
+      return;
+    }
     setCart((prev) => {
       const existingItem = prev.find((item) => item.id === product.id);
       if (existingItem) {
@@ -374,6 +386,20 @@ export function SkyPDV() {
         return (
           <>
             {/* Main Content */}
+            {shouldShowPaymentAlert && (
+              <div className="bg-amber-600 text-white px-4 py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Warning24Regular className="w-5 h-5" />
+                  <div>
+                    <div className="font-semibold">Assinatura pendente</div>
+                    <div className="text-sm">Limite: 17/06/2026 — vendas bloqueadas até regularizar.</div>
+                  </div>
+                </div>
+                <div>
+                  <Button size="sm" variant="outline" onClick={() => setCurrentScreen("settings")}>Pagar agora</Button>
+                </div>
+              </div>
+            )}
             <div className="flex-1 flex flex-col p-3 md:p-4 overflow-hidden">
               {/* Header */}
               <div className="flex items-center justify-between mb-3 md:mb-4">
