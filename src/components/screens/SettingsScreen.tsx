@@ -135,8 +135,10 @@ export function SettingsScreen({ onOpenSetup }: Props) {
 
   const queryClient = useQueryClient();
   const [billingModalOpen, setBillingModalOpen] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [depositMsisdn, setDepositMsisdn] = useState("");
   const [depositAmount, setDepositAmount] = useState(1200);
+  const [months, setMonths] = useState(1);
   const [depositCompleted, setDepositCompleted] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
@@ -340,10 +342,18 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                           onClick={() => {
                             setBillingModalOpen(true);
                             setDepositCompleted(false);
+                            setMonths(1);
                           }}
                           className="w-full sm:w-auto"
                         >
                           Pagar plano mensal
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => setDepositModalOpen(true)}
+                          className="w-full sm:w-auto"
+                        >
+                          Depositar
                         </Button>
                       </div>
                     </div>
@@ -374,67 +384,26 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         </p>
                       </div>
 
-                      {!skyWalletLoading && skyWalletData?.balance?.main_balance !== undefined && skyWalletData.balance.main_balance < 1200 && (
-                        <div className="rounded-2xl border border-border bg-secondary/5 p-4">
-                          <p className="text-sm font-semibold text-foreground">Depositar fundos</p>
-                          <p className="mt-1 text-xs text-muted-foreground">
-                            Faça um depósito em M-Pesa e depois clique em pagar novamente.
-                          </p>
-
-                          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                            <div>
-                              <label className="text-sm font-medium text-foreground block mb-2">Nº M-Pesa</label>
-                              <Input
-                                value={depositMsisdn}
-                                onChange={(event) => setDepositMsisdn(event.target.value)}
-                                placeholder="Ex: +25884xxxxxxx"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium text-foreground block mb-2">Valor (MZN)</label>
-                              <Input
-                                type="number"
-                                value={depositAmount}
-                                onChange={(event) => setDepositAmount(Number(event.target.value))}
-                                min={10}
-                                className="w-full"
-                              />
-                            </div>
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-sm font-semibold text-foreground">Pagamento</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Selecione quantos meses quer pagar (1200 MZN / mês)</p>
+                        <div className="mt-3 grid grid-cols-2 gap-3 items-center">
+                          <Input
+                            type="number"
+                            min={1}
+                            value={months}
+                            onChange={(e) => setMonths(Math.max(1, Number(e.target.value) || 1))}
+                          />
+                          <div className="text-right">
+                            <div className="text-sm text-muted-foreground">Total</div>
+                            <div className="font-semibold">{(months * 1200).toLocaleString()} MZN</div>
                           </div>
-
-                          <Button
-                            onClick={async () => {
-                              if (!depositMsisdn.trim()) {
-                                toast.error("Informe o número M-Pesa para o depósito.");
-                                return;
-                              }
-                              if (!depositAmount || depositAmount < 10) {
-                                toast.error("O valor mínimo de depósito é 10 MZN.");
-                                return;
-                              }
-                              setIsDepositing(true);
-                              try {
-                                await skyWalletApi.deposit(depositAmount, depositMsisdn.trim());
-                                toast.success("Depósito iniciado com sucesso. Clique em pagar após a confirmação.");
-                                setDepositCompleted(true);
-                                queryClient.invalidateQueries(["skywallet-balance"]);
-                              } catch (error: any) {
-                                toast.error(error?.message || "Falha ao iniciar o depósito.");
-                              } finally {
-                                setIsDepositing(false);
-                              }
-                            }}
-                            disabled={isDepositing}
-                            className="mt-4"
-                          >
-                            {isDepositing ? "Enviando depósito..." : "Depositar"}
-                          </Button>
-
-                          {depositCompleted && (
-                            <p className="mt-3 text-sm text-emerald-600">Depósito iniciado. Depois volte para pagar o plano.</p>
-                          )}
                         </div>
-                      )}
+
+                        {!skyWalletLoading && skyWalletData?.balance?.main_balance !== undefined && (skyWalletData.balance.main_balance < months * 1200) && (
+                          <p className="mt-3 text-sm text-amber-600">Saldo insuficiente para o pagamento. Use o botão Depositar.</p>
+                        )}
+                      </div>
                     </div>
 
                     <DialogFooter>
@@ -442,7 +411,11 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         onClick={async () => {
                           setIsPaying(true);
                           try {
-                            await skyWalletApi.paySubscription();
+                            if (months && months > 1) {
+                              await skyWalletApi.paySubscriptionAdvance(months);
+                            } else {
+                              await skyWalletApi.paySubscription();
+                            }
                             toast.success("Assinatura paga com sucesso.");
                             queryClient.invalidateQueries(["skywallet-balance"]);
                             setBillingModalOpen(false);
@@ -455,6 +428,76 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         disabled={skyWalletLoading || isPaying}
                       >
                         {isPaying ? "Pagando..." : "Pagar plano (1200 MZN)"}
+                      </Button>
+                      <DialogClose asChild>
+                        <Button variant="ghost">Fechar</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={depositModalOpen} onOpenChange={setDepositModalOpen}>
+                  <DialogContent className="sm:max-w-[520px] bg-card border border-border">
+                    <DialogHeader>
+                      <DialogTitle>Depositar fundos</DialogTitle>
+                      <DialogDescription>
+                        Inicie um depósito via M-Pesa. Após confirmar no seu telefone, o saldo será atualizado.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 mt-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label className="text-sm font-medium text-foreground block mb-2">Nº M-Pesa</label>
+                          <Input
+                            value={depositMsisdn}
+                            onChange={(event) => setDepositMsisdn(event.target.value)}
+                            placeholder="Ex: +25884xxxxxxx"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-sm font-medium text-foreground block mb-2">Valor (MZN)</label>
+                          <Input
+                            type="number"
+                            value={depositAmount}
+                            onChange={(event) => setDepositAmount(Number(event.target.value))}
+                            min={10}
+                            className="w-full"
+                          />
+                        </div>
+                      </div>
+
+                      {depositCompleted && (
+                        <p className="mt-1 text-sm text-emerald-600">Depósito iniciado. Aguarde a confirmação no seu telefone.</p>
+                      )}
+                    </div>
+
+                    <DialogFooter>
+                      <Button
+                        onClick={async () => {
+                          if (!depositMsisdn.trim()) {
+                            toast.error("Informe o número M-Pesa para o depósito.");
+                            return;
+                          }
+                          if (!depositAmount || depositAmount < 10) {
+                            toast.error("O valor mínimo de depósito é 10 MZN.");
+                            return;
+                          }
+                          setIsDepositing(true);
+                          try {
+                            await skyWalletApi.deposit(depositAmount, depositMsisdn.trim());
+                            toast.success("Depósito iniciado com sucesso. Confirme no seu telefone.");
+                            setDepositCompleted(true);
+                            queryClient.invalidateQueries(["skywallet-balance"]);
+                          } catch (error: any) {
+                            toast.error(error?.message || "Falha ao iniciar o depósito.");
+                          } finally {
+                            setIsDepositing(false);
+                          }
+                        }}
+                        disabled={isDepositing}
+                      >
+                        {isDepositing ? "Iniciando depósito..." : "Iniciar depósito"}
                       </Button>
                       <DialogClose asChild>
                         <Button variant="ghost">Fechar</Button>
