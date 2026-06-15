@@ -50,7 +50,7 @@ import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
 import { invoiceCustomersApi, invoicesApi, terminalApi, skyWalletApi } from "@/services/api";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
