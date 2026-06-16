@@ -348,21 +348,23 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         {skyWalletLoading ? "Carregando..." : skyWalletData?.balance?.main_balance?.toLocaleString() || "0"} MZN
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">Disponível para operações</p>
-                      <div className="mt-4 flex flex-wrap gap-2">
+                      <div className="mt-4 grid gap-3 sm:inline-flex sm:items-center sm:flex-wrap sm:gap-3">
                         <Button
+                          size="lg"
                           onClick={() => {
                             setBillingModalOpen(true);
                             setDepositCompleted(false);
                             setMonths(1);
                           }}
-                          className="w-full sm:w-auto"
+                          className="w-full sm:w-auto min-w-[180px] justify-center"
                         >
                           Pagar plano mensal
                         </Button>
                         <Button
+                          size="lg"
                           variant="outline"
                           onClick={() => setDepositModalOpen(true)}
-                          className="w-full sm:w-auto"
+                          className="w-full sm:w-auto min-w-[180px] justify-center"
                         >
                           Depositar
                         </Button>

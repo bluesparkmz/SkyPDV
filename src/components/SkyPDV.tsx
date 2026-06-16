@@ -288,6 +288,9 @@ export function SkyPDV() {
     queryClient.invalidateQueries({ queryKey: ["categorySalesSummaryToday"] });
     queryClient.invalidateQueries({ queryKey: ["inventoryAlertsSummary"] });
     queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
+    if (shouldShowPaymentAlert) {
+      setAlertVisible(true);
+    }
   };
 
   const handleNavigate = (screen: Screen) => {
