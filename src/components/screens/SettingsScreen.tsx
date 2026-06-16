@@ -148,6 +148,14 @@ export function SettingsScreen({ onOpenSetup }: Props) {
     queryFn: () => terminalApi.get(),
   });
 
+  const nextBillingDate = terminalData?.next_billing_date ? new Date(terminalData.next_billing_date) : null;
+  const paidMonths = nextBillingDate
+    ? Math.max(1, Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30)))
+    : 0;
+  const daysRemaining = nextBillingDate
+    ? Math.max(0, Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
+    : null;
+
   useEffect(() => {
     const openBilling = () => setBillingModalOpen(true);
     const openDeposit = () => setDepositModalOpen(true);
@@ -529,7 +537,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                     <DialogHeader>
                       <DialogTitle>Planos pagos</DialogTitle>
                       <DialogDescription>
-                        Visualize o status atual da assinatura, meses pagos estimados e data de expiração.
+                        Visualize o status atual da assinatura, meses pagos estimados, dias restantes e data de expiração.
                       </DialogDescription>
                     </DialogHeader>
 
@@ -539,31 +547,63 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         <p className="mt-2 text-lg font-semibold text-foreground">
                           {terminalData?.subscription_status || "Não disponível"}
                         </p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {terminalData?.subscription_status === "active"
+                            ? "A assinatura está ativa no momento."
+                            : "A assinatura não está ativa ou expirou."}
+                        </p>
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="rounded-xl border border-border bg-background/80 p-4">
                           <p className="text-xs text-muted-foreground">Meses pagos</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">{paidMonths}</p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/80 p-4">
+                          <p className="text-xs text-muted-foreground">Dias restantes</p>
                           <p className="mt-2 text-lg font-semibold text-foreground">
-                            {terminalData?.next_billing_date
-                              ? Math.max(1, Math.ceil((new Date(terminalData.next_billing_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30)))
-                              : 0}
+                            {daysRemaining !== null ? daysRemaining : "-"}
                           </p>
                         </div>
                         <div className="rounded-xl border border-border bg-background/80 p-4">
                           <p className="text-xs text-muted-foreground">Expira em</p>
                           <p className="mt-2 text-lg font-semibold text-foreground">
-                            {terminalData?.next_billing_date
-                              ? new Date(terminalData.next_billing_date).toLocaleDateString()
-                              : "Não definido"}
+                            {nextBillingDate ? nextBillingDate.toLocaleDateString() : "Não definido"}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-border bg-background/80 p-4">
-                          <p className="text-xs text-muted-foreground">Plano ativo</p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">
-                            {terminalData?.subscription_status === "active" ? "Sim" : "Não"}
-                          </p>
-                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-xs text-muted-foreground">Saldo SkyWallet atual</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {skyWalletLoading ? "Carregando..." : `${skyWalletData?.balance?.main_balance?.toLocaleString() || 0} MZN`}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <Button
+                          size="lg"
+                          onClick={() => {
+                            setBillingModalOpen(true);
+                            setPaidPlansModalOpen(false);
+                            setDepositCompleted(false);
+                            setMonths(1);
+                          }}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Pagar agora
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={() => {
+                            setDepositModalOpen(true);
+                            setPaidPlansModalOpen(false);
+                          }}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Depositar
+                        </Button>
                       </div>
                     </div>
 
