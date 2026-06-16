@@ -49,7 +49,7 @@ import { BuildingShop24Regular } from "@fluentui/react-icons";
 import { HARDWARE_PLUGIN_URL } from "@/config";
 import { useInvoices, useCreateInvoice, usePayInvoice } from "@/hooks/useInvoices";
 import { useProducts } from "@/hooks/useProducts";
-import { invoiceCustomersApi, invoicesApi, terminalApi, skyWalletApi } from "@/services/api";
+import { invoiceCustomersApi, invoicesApi, terminalApi, skyWalletApi, type Terminal } from "@/services/api";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,12 +136,17 @@ export function SettingsScreen({ onOpenSetup }: Props) {
   const queryClient = useQueryClient();
   const [billingModalOpen, setBillingModalOpen] = useState(false);
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [paidPlansModalOpen, setPaidPlansModalOpen] = useState(false);
   const [depositMsisdn, setDepositMsisdn] = useState("");
   const [depositAmount, setDepositAmount] = useState(1200);
   const [months, setMonths] = useState(1);
   const [depositCompleted, setDepositCompleted] = useState(false);
   const [isPaying, setIsPaying] = useState(false);
   const [isDepositing, setIsDepositing] = useState(false);
+  const { data: terminalData } = useQuery<Terminal>({
+    queryKey: ["terminal"],
+    queryFn: () => terminalApi.get(),
+  });
 
   useEffect(() => {
     const openBilling = () => setBillingModalOpen(true);
@@ -348,7 +353,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         {skyWalletLoading ? "Carregando..." : skyWalletData?.balance?.main_balance?.toLocaleString() || "0"} MZN
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">Disponível para operações</p>
-                      <div className="mt-4 grid gap-3 sm:inline-flex sm:items-center sm:flex-wrap sm:gap-3">
+                      <div className="mt-4 grid gap-3 sm:inline-flex sm:items-center sm:flex-wrap sm:gap-3 lg:hidden">
                         <Button
                           size="lg"
                           onClick={() => {
@@ -519,6 +524,57 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                   </DialogContent>
                 </Dialog>
 
+                <Dialog open={paidPlansModalOpen} onOpenChange={setPaidPlansModalOpen}>
+                  <DialogContent className="sm:max-w-[520px] bg-card border border-border">
+                    <DialogHeader>
+                      <DialogTitle>Planos pagos</DialogTitle>
+                      <DialogDescription>
+                        Visualize o status atual da assinatura, meses pagos estimados e data de expiração.
+                      </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 mt-4">
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-xs text-muted-foreground">Status da assinatura</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {terminalData?.subscription_status || "Não disponível"}
+                        </p>
+                      </div>
+
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-xl border border-border bg-background/80 p-4">
+                          <p className="text-xs text-muted-foreground">Meses pagos</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">
+                            {terminalData?.next_billing_date
+                              ? Math.max(1, Math.ceil((new Date(terminalData.next_billing_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30)))
+                              : 0}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/80 p-4">
+                          <p className="text-xs text-muted-foreground">Expira em</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">
+                            {terminalData?.next_billing_date
+                              ? new Date(terminalData.next_billing_date).toLocaleDateString()
+                              : "Não definido"}
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-border bg-background/80 p-4">
+                          <p className="text-xs text-muted-foreground">Plano ativo</p>
+                          <p className="mt-2 text-lg font-semibold text-foreground">
+                            {terminalData?.subscription_status === "active" ? "Sim" : "Não"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="ghost">Fechar</Button>
+                      </DialogClose>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
                 <div className="space-y-4">
                   <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
                     <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -541,6 +597,82 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                         <p className="mt-1 break-all text-sm font-semibold text-foreground">
                           {u?.unique_identifier || "Nao definido"}
                         </p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="hidden lg:block rounded-2xl border border-border bg-card p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
+                        <p className="text-xs text-muted-foreground">Use estes botões para pagar o plano, depositar ou ver o status da assinatura.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          size="lg"
+                          onClick={() => {
+                            setBillingModalOpen(true);
+                            setDepositCompleted(false);
+                            setMonths(1);
+                          }}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Pagar plano mensal
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={() => setDepositModalOpen(true)}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Depositar
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="secondary"
+                          onClick={() => setPaidPlansModalOpen(true)}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Mostrar planos pagos
+                        </Button>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section className="hidden lg:block rounded-2xl border border-border bg-card p-4 shadow-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
+                        <p className="text-xs text-muted-foreground">Pagar o plano, fazer depósito ou ver o histórico de planos pagos.</p>
+                      </div>
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          size="lg"
+                          onClick={() => {
+                            setBillingModalOpen(true);
+                            setDepositCompleted(false);
+                            setMonths(1);
+                          }}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Pagar plano mensal
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={() => setDepositModalOpen(true)}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Depositar
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="secondary"
+                          onClick={() => setPaidPlansModalOpen(true)}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Mostrar planos pagos
+                        </Button>
                       </div>
                     </div>
                   </section>
