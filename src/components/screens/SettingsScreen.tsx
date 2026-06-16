@@ -149,12 +149,12 @@ export function SettingsScreen({ onOpenSetup }: Props) {
   });
 
   const nextBillingDate = terminalData?.next_billing_date ? new Date(terminalData.next_billing_date) : null;
-  const paidMonths = nextBillingDate
-    ? Math.max(1, Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30)))
+  const paidMonths = nextBillingDate && new Date() < nextBillingDate
+    ? Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24 * 30))
+    : terminalData?.subscription_status === "active" ? 1 : 0;
+  const daysRemaining = nextBillingDate && new Date() < nextBillingDate
+    ? Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))
     : 0;
-  const daysRemaining = nextBillingDate
-    ? Math.max(0, Math.ceil((nextBillingDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))
-    : null;
 
   useEffect(() => {
     const openBilling = () => setBillingModalOpen(true);
@@ -641,79 +641,39 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                     </div>
                   </section>
 
-                  <section className="hidden lg:block rounded-2xl border border-border bg-card p-4 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
-                        <p className="text-xs text-muted-foreground">Use estes botões para pagar o plano, depositar ou ver o status da assinatura.</p>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        <Button
-                          size="lg"
-                          onClick={() => {
-                            setBillingModalOpen(true);
-                            setDepositCompleted(false);
-                            setMonths(1);
-                          }}
-                          className="min-w-[180px] justify-center"
-                        >
-                          Pagar plano mensal
-                        </Button>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          onClick={() => setDepositModalOpen(true)}
-                          className="min-w-[180px] justify-center"
-                        >
-                          Depositar
-                        </Button>
-                        <Button
-                          size="lg"
-                          variant="secondary"
-                          onClick={() => setPaidPlansModalOpen(true)}
-                          className="min-w-[180px] justify-center"
-                        >
-                          Mostrar planos pagos
-                        </Button>
-                      </div>
+                  <section className="hidden lg:flex lg:items-center lg:gap-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
+                      <p className="text-xs text-muted-foreground">Pagar o plano, depositar ou ver o status da assinatura.</p>
                     </div>
-                  </section>
-
-                  <section className="hidden lg:block rounded-2xl border border-border bg-card p-4 shadow-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
-                        <p className="text-xs text-muted-foreground">Pagar o plano, fazer depósito ou ver o histórico de planos pagos.</p>
-                      </div>
-                      <div className="flex flex-wrap gap-3">
-                        <Button
-                          size="lg"
-                          onClick={() => {
-                            setBillingModalOpen(true);
-                            setDepositCompleted(false);
-                            setMonths(1);
-                          }}
-                          className="min-w-[180px] justify-center"
-                        >
-                          Pagar plano mensal
-                        </Button>
-                        <Button
-                          size="lg"
-                          variant="outline"
-                          onClick={() => setDepositModalOpen(true)}
-                          className="min-w-[180px] justify-center"
-                        >
-                          Depositar
-                        </Button>
-                        <Button
-                          size="lg"
-                          variant="secondary"
-                          onClick={() => setPaidPlansModalOpen(true)}
-                          className="min-w-[180px] justify-center"
-                        >
-                          Mostrar planos pagos
-                        </Button>
-                      </div>
+                    <div className="flex flex-wrap gap-3">
+                      <Button
+                        size="lg"
+                        onClick={() => {
+                          setBillingModalOpen(true);
+                          setDepositCompleted(false);
+                          setMonths(1);
+                        }}
+                        className="min-w-[180px] justify-center"
+                      >
+                        Pagar plano mensal
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="outline"
+                        onClick={() => setDepositModalOpen(true)}
+                        className="min-w-[180px] justify-center"
+                      >
+                        Depositar
+                      </Button>
+                      <Button
+                        size="lg"
+                        variant="secondary"
+                        onClick={() => setPaidPlansModalOpen(true)}
+                        className="min-w-[180px] justify-center"
+                      >
+                        Mostrar planos pagos
+                      </Button>
                     </div>
                   </section>
 
