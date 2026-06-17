@@ -173,6 +173,11 @@ export const terminalApi = {
   update: (data: Partial<Terminal>) => apiPut<Terminal>("/skypdv/terminal", data),
 };
 
+// Configurações simples/flags do SkyPDV
+export const configApi = {
+  get: () => apiGet<{ activate_charging: boolean }>("/skypdv/config"),
+};
+
 // Produtos
 export const productsApi = {
   list: (params?: ProductsParams) => {

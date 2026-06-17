@@ -51,7 +51,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { inventoryApi, terminalApi } from "@/services/api";
+import { inventoryApi, terminalApi, configApi } from "@/services/api";
 
 import { Screen } from "@/types/screen";
 
@@ -92,6 +92,12 @@ export function SkyPDV() {
   const { data: terminal, error: terminalError } = useQuery({
     queryKey: ["terminal"],
     queryFn: () => terminalApi.get(),
+  });
+
+  const { data: skypdvConfig } = useQuery({
+    queryKey: ["skypdvConfig"],
+    queryFn: () => configApi.get(),
+    retry: false,
   });
   const { data: inventoryReport } = useQuery({
     queryKey: ["inventoryAlertsSummary"],
@@ -174,7 +180,8 @@ export function SkyPDV() {
   const paymentAlertStart = new Date("2026-06-16T00:00:00Z");
   const paymentAlertLimit = new Date("2026-06-17T23:59:59Z");
   const now = new Date();
-  const shouldShowPaymentAlert = isTerminalSuspended && now >= paymentAlertStart && now <= paymentAlertLimit;
+  const shouldEnforceCharging = skypdvConfig?.activate_charging ?? true;
+  const shouldShowPaymentAlert = shouldEnforceCharging && isTerminalSuspended && now >= paymentAlertStart && now <= paymentAlertLimit;
 
   // Alert visibility with 5-minute snooze support
   const [alertVisible, setAlertVisible] = useState(true);
