@@ -180,7 +180,7 @@ export function SkyPDV() {
   const paymentAlertStart = new Date("2026-06-16T00:00:00Z");
   const paymentAlertLimit = new Date("2026-06-17T23:59:59Z");
   const now = new Date();
-  const shouldEnforceCharging = skypdvConfig?.activate_charging ?? true;
+  const shouldEnforceCharging = skypdvConfig?.activate_charging ?? false;
   const shouldShowPaymentAlert = shouldEnforceCharging && isTerminalSuspended && now >= paymentAlertStart && now <= paymentAlertLimit;
 
   // Alert visibility with 5-minute snooze support
