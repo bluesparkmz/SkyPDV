@@ -225,7 +225,7 @@ export function SkyPDV() {
   };
 
   const addToCart = (product: Product, quantity: number = 1) => {
-    if (isTerminalSuspended) {
+    if (shouldEnforceCharging && isTerminalSuspended) {
       toast.error("Vendas bloqueadas: assinatura pendente. Pagar a assinatura para continuar.");
       return;
     }
