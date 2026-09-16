@@ -37,6 +37,7 @@ import {
   PersonAdd24Regular,
   PersonDelete24Regular,
   Edit24Regular,
+  PersonCircle24Regular,
 } from "@fluentui/react-icons";
 import { resolveAvatar } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -90,7 +91,7 @@ const useStyles = makeStyles({
   },
 });
 
-type SettingsTab = "general" | "company" | "receipt" | "invoice" | "printer" | "appearance" | "security" | "users";
+type SettingsTab = "profile" | "general" | "company" | "receipt" | "invoice" | "printer" | "appearance" | "security" | "users";
 
 type Props = {
   onOpenSetup?: () => void;
@@ -171,6 +172,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
   const displayName = u?.page_name || u?.name || u?.username;
 
   const tabs = [
+    { id: "profile" as const, name: "Perfil", icon: <PersonCircle24Regular className="w-5 h-5" /> },
     { id: "general" as const, name: "Geral", icon: <Settings24Regular className="w-5 h-5" /> },
     { id: "company" as const, name: "Empresa", icon: <Building24Regular className="w-5 h-5" /> },
     { id: "receipt" as const, name: "Recibos", icon: <Receipt24Regular className="w-5 h-5" /> },
@@ -260,158 +262,104 @@ export function SettingsScreen({ onOpenSetup }: Props) {
             </div>
 
             <div className="flex-1 min-w-0 space-y-6">
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_320px]">
-                <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-                  <div className="border-b border-border px-4 py-4 md:px-5 md:py-5">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="relative shrink-0">
-                          <div className="w-16 h-16 rounded-2xl border border-border bg-secondary/60 p-1.5">
-                            <img
-                              src={resolveAvatar(u?.profile_image, baseUrl)}
-                              className="w-full h-full rounded-xl object-cover bg-background"
-                              alt="Perfil"
-                            />
+              {activeTab === "profile" && (
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_320px]">
+                  <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
+                    <div className="border-b border-border px-4 py-4 md:px-5 md:py-5">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="flex items-center gap-4 min-w-0">
+                          <div className="relative shrink-0">
+                            <div className="w-16 h-16 rounded-2xl border border-border bg-secondary/60 p-1.5">
+                              <img
+                                src={resolveAvatar(u?.profile_image, baseUrl)}
+                                className="w-full h-full rounded-xl object-cover bg-background"
+                                alt="Perfil"
+                              />
+                            </div>
+                            <button className="absolute -bottom-2 -right-2 rounded-full border border-border bg-background p-1.5 text-primary shadow-sm transition-colors hover:bg-secondary">
+                              <Camera24Regular className="w-4 h-4" />
+                            </button>
                           </div>
-                          <button className="absolute -bottom-2 -right-2 rounded-full border border-border bg-background p-1.5 text-primary shadow-sm transition-colors hover:bg-secondary">
-                            <Camera24Regular className="w-4 h-4" />
-                          </button>
+
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
+                                {displayName || "Conta do PDV"}
+                              </h2>
+                              {isVerified && (
+                                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-600">
+                                  <CheckmarkCircle24Regular className="w-4 h-4" />
+                                  Verificado
+                                </span>
+                              )}
+                            </div>
+                            <p className="mt-1 text-sm text-muted-foreground">@{u?.username || "usuario"}</p>
+                            <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+                              Centro de configuracoes do terminal, dados da empresa e preferencias operacionais.
+                            </p>
+                          </div>
                         </div>
 
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h2 className="truncate text-xl font-bold text-foreground md:text-2xl">
-                              {displayName || "Conta do PDV"}
-                            </h2>
-                            {isVerified && (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-600">
-                                <CheckmarkCircle24Regular className="w-4 h-4" />
-                                Verificado
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 text-sm text-muted-foreground">@{u?.username || "usuario"}</p>
-                          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                            Centro de configuracoes do terminal, dados da empresa e preferencias operacionais.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex items-center gap-2"
-                          onClick={() => setActiveTab("company")}
-                        >
-                          <Edit24Regular className="w-4 h-4" />
-                          Editar dados
-                        </Button>
-                        <a
-                          href={`https://skyvenda.com/${u?.username}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80"
-                        >
-                          <Link24Regular className="w-4 h-4" />
-                          Ver no site
-                        </a>
-                        <Button
-                          onClick={logout}
-                          variant="ghost"
-                          className="flex items-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        >
-                          <SignOut24Regular className="w-4 h-4" />
-                          Sair
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4 md:p-5">
-                    <div className="rounded-xl border border-border bg-background/80 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{nameLabel}</p>
-                      <p className="mt-2 truncate text-sm font-semibold text-foreground">{displayName || "Nao definido"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Conta principal do terminal</p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-background/80 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tipo de conta</p>
-                      <p className="mt-2 text-sm font-semibold capitalize text-foreground">{u?.user_type || "Nivel basico"}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">Classificacao atual da conta</p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-background/80 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contacto / WhatsApp</p>
-                      <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Call24Regular className="w-4 h-4 text-primary" />
-                        <span className="truncate">{u?.whatsapp_number || u?.phone || "Nao configurado"}</span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">Canal principal de comunicacao</p>
-                    </div>
-                    <div className="rounded-xl border border-border bg-background/80 p-4">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo SkyWallet</p>
-                          <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-emerald-600">
-                            <Money24Regular className="w-4 h-4" />
-                            {skyWalletLoading ? "Carregando..." : skyWalletData?.balance?.main_balance?.toLocaleString() || "0"} MZN
-                          </div>
-                          <p className="mt-1 text-xs text-muted-foreground">Disponível para operações</p>
-                        </div>
-                        <div className="ml-4 flex-shrink-0 hidden sm:block">
+                        <div className="flex flex-wrap gap-2">
                           <Button
-                            size="sm"
                             variant="outline"
-                            onClick={() => {
-                              queryClient.invalidateQueries(["skywallet-balance"]);
-                              toast.success("Atualizando saldo SkyWallet...");
-                            }}
+                            className="flex items-center gap-2"
+                            onClick={() => setActiveTab("company")}
                           >
-                            Atualizar
+                            <Edit24Regular className="w-4 h-4" />
+                            Editar dados
+                          </Button>
+                          <a
+                            href={`https://skyvenda.com/${u?.username}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-2 rounded-xl border border-border bg-secondary px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary/80"
+                          >
+                            <Link24Regular className="w-4 h-4" />
+                            Ver no site
+                          </a>
+                          <Button
+                            onClick={logout}
+                            variant="ghost"
+                            className="flex items-center gap-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                          >
+                            <SignOut24Regular className="w-4 h-4" />
+                            Sair
                           </Button>
                         </div>
                       </div>
-
-                      <div className="mt-4 grid gap-3 sm:inline-flex sm:items-center sm:flex-wrap sm:gap-3 lg:hidden">
-                        <Button
-                          size="lg"
-                          onClick={() => {
-                            setBillingModalOpen(true);
-                            setMonths(1);
-                          }}
-                          className="w-full sm:w-auto min-w-[180px] justify-center"
-                        >
-                          Pagar plano mensal
-                        </Button>
-                      </div>
                     </div>
-                  </div>
-                </section>
 
-                <Dialog open={billingModalOpen} onOpenChange={setBillingModalOpen}>
-                  <DialogContent className="sm:max-w-[520px] bg-card border border-border">
-                    <DialogHeader>
-                      <DialogTitle>Pagar assinatura SkyWallet</DialogTitle>
-                      <DialogDescription>
-                        Use o saldo disponível para pagar o plano de 1200 MZN. Se não houver saldo suficiente, faça um depósito no SkyWallet.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 mt-4">
+                    <div className="grid gap-3 p-4 md:grid-cols-2 xl:grid-cols-4 md:p-5">
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">{nameLabel}</p>
+                        <p className="mt-2 truncate text-sm font-semibold text-foreground">{displayName || "Nao definido"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Conta principal do terminal</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Tipo de conta</p>
+                        <p className="mt-2 text-sm font-semibold capitalize text-foreground">{u?.user_type || "Nivel basico"}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">Classificacao atual da conta</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Contacto / WhatsApp</p>
+                        <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <Call24Regular className="w-4 h-4 text-primary" />
+                          <span className="truncate">{u?.whatsapp_number || u?.phone || "Nao configurado"}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">Canal principal de comunicacao</p>
+                      </div>
                       <div className="rounded-xl border border-border bg-background/80 p-4">
                         <div className="flex items-start justify-between">
                           <div>
-                            <p className="text-xs text-muted-foreground">Saldo atual</p>
-                            <p className="mt-2 text-xl font-semibold text-foreground">
-                              {skyWalletLoading ? "Carregando..." : `${skyWalletData?.balance?.main_balance?.toLocaleString() || 0} MZN`}
-                            </p>
-                            <p className="mt-1 text-sm text-muted-foreground">
-                              {skyWalletLoading
-                                ? "Aguardando saldo"
-                                : skyWalletData?.balance?.main_balance && skyWalletData.balance.main_balance >= 1200
-                                ? "Saldo suficiente para pagar o plano"
-                                : `Saldo insuficiente. Faltam ${Math.max(1200 - (skyWalletData?.balance?.main_balance || 0), 0)} MZN.`}
-                            </p>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Saldo SkyWallet</p>
+                            <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-emerald-600">
+                              <Money24Regular className="w-4 h-4" />
+                              {skyWalletLoading ? "Carregando..." : skyWalletData?.balance?.main_balance?.toLocaleString() || "0"} MZN
+                            </div>
+                            <p className="mt-1 text-xs text-muted-foreground">Disponível para operações</p>
                           </div>
-                          <div className="ml-4 flex-shrink-0">
+                          <div className="ml-4 flex-shrink-0 hidden sm:block">
                             <Button
                               size="sm"
                               variant="outline"
@@ -420,209 +368,263 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                                 toast.success("Atualizando saldo SkyWallet...");
                               }}
                             >
-                              Atualizar saldo
+                              Atualizar
                             </Button>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="rounded-xl border border-border bg-background/80 p-4">
-                        <p className="text-sm font-semibold text-foreground">Pagamento</p>
-                        <p className="mt-1 text-xs text-muted-foreground">Selecione quantos meses quer pagar (1200 MZN / mês)</p>
-                        <div className="mt-3 grid grid-cols-2 gap-3 items-center">
-                          <Input
-                            type="number"
-                            min={1}
-                            value={months}
-                            onChange={(e) => setMonths(Math.max(1, Number(e.target.value) || 1))}
-                          />
-                          <div className="text-right">
-                            <div className="text-sm text-muted-foreground">Total</div>
-                            <div className="font-semibold">{(months * 1200).toLocaleString()} MZN</div>
-                          </div>
+                        <div className="mt-4 grid gap-3 sm:inline-flex sm:items-center sm:flex-wrap sm:gap-3 lg:hidden">
+                          <Button
+                            size="lg"
+                            onClick={() => {
+                              setBillingModalOpen(true);
+                              setMonths(1);
+                            }}
+                            className="w-full sm:w-auto min-w-[180px] justify-center"
+                          >
+                            Pagar plano mensal
+                          </Button>
                         </div>
-
-                        {!skyWalletLoading && skyWalletData?.balance?.main_balance !== undefined && (skyWalletData.balance.main_balance < months * 1200) && (
-                          <p className="mt-3 text-sm text-amber-600">Saldo insuficiente para o pagamento. Use o botão Depositar.</p>
-                        )}
                       </div>
                     </div>
+                  </section>
 
-                    <DialogFooter>
-                      <Button
-                        onClick={async () => {
-                          setIsPaying(true);
-                          try {
-                            if (months && months > 1) {
-                              await skyWalletApi.paySubscriptionAdvance(months);
-                            } else {
-                              await skyWalletApi.paySubscription();
-                            }
-                            toast.success("Assinatura paga com sucesso.");
-                            queryClient.invalidateQueries(["skywallet-balance"]);
-                            setBillingModalOpen(false);
-                          } catch (error: any) {
-                            toast.error(error?.message || "Falha ao pagar a assinatura.");
-                          } finally {
-                            setIsPaying(false);
-                          }
-                        }}
-                        disabled={skyWalletLoading || isPaying}
-                      >
-                        {isPaying ? "Pagando..." : "Pagar plano (1200 MZN)"}
-                      </Button>
-                      <DialogClose asChild>
-                        <Button variant="ghost">Fechar</Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-
-                <Dialog open={paidPlansModalOpen} onOpenChange={setPaidPlansModalOpen}>
-                  <DialogContent className="sm:max-w-[520px] bg-card border border-border">
-                    <DialogHeader>
-                      <DialogTitle>Planos pagos</DialogTitle>
-                      <DialogDescription>
-                        Visualize o status atual da assinatura, meses pagos estimados, dias restantes e data de expiração.
-                      </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="space-y-4 mt-4">
-                      <div className="rounded-xl border border-border bg-background/80 p-4">
-                        <p className="text-xs text-muted-foreground">Status da assinatura</p>
-                        <p className="mt-2 text-lg font-semibold text-foreground">
-                          {terminalData?.subscription_status || "Não disponível"}
-                        </p>
-                        <p className="mt-1 text-sm text-muted-foreground">
-                          {terminalData?.subscription_status === "active"
-                            ? "A assinatura está ativa no momento."
-                            : "A assinatura não está ativa ou expirou."}
-                        </p>
+                  <div className="space-y-4">
+                    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <BuildingShop24Regular className="w-4 h-4 text-primary" />
+                        Resumo do sistema
                       </div>
-
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-xl border border-border bg-background/80 p-4">
-                          <p className="text-xs text-muted-foreground">Meses pagos</p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">{paidMonths}</p>
+                      <div className="mt-4 space-y-3">
+                        <div className="rounded-xl border border-border bg-background/80 p-3">
+                          <p className="text-xs text-muted-foreground">Produtos cadastrados</p>
+                          <p className="mt-1 text-xl font-bold text-foreground">{stats?.total_products || 0}</p>
                         </div>
-                        <div className="rounded-xl border border-border bg-background/80 p-4">
-                          <p className="text-xs text-muted-foreground">Dias restantes</p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">
-                            {daysRemaining !== null ? daysRemaining : "-"}
+                        <div className="rounded-xl border border-border bg-background/80 p-3">
+                          <p className="text-xs text-muted-foreground">Estado da conta</p>
+                          <p className="mt-1 text-sm font-semibold text-foreground">
+                            {isVerified ? "Conta validada" : "Aguardando validacao"}
                           </p>
                         </div>
-                        <div className="rounded-xl border border-border bg-background/80 p-4">
-                          <p className="text-xs text-muted-foreground">Expira em</p>
-                          <p className="mt-2 text-lg font-semibold text-foreground">
-                            {nextBillingDate ? nextBillingDate.toLocaleDateString() : "Não definido"}
+                        <div className="rounded-xl border border-border bg-background/80 p-3">
+                          <p className="text-xs text-muted-foreground">Identificador</p>
+                          <p className="mt-1 break-all text-sm font-semibold text-foreground">
+                            {u?.unique_identifier || "Nao definido"}
                           </p>
                         </div>
                       </div>
+                    </section>
 
-                      <div className="rounded-xl border border-border bg-background/80 p-4">
-                        <p className="text-xs text-muted-foreground">Saldo SkyWallet atual</p>
-                        <p className="mt-2 text-lg font-semibold text-foreground">
-                          {skyWalletLoading ? "Carregando..." : `${skyWalletData?.balance?.main_balance?.toLocaleString() || 0} MZN`}
-                        </p>
+                    <section className="hidden lg:flex lg:items-center lg:gap-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
+                        <p className="text-xs text-muted-foreground">Pagar o plano, depositar ou ver o status da assinatura.</p>
                       </div>
-
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          size="lg"
+                          variant="outline"
+                          onClick={() => window.open("https://skywallet.bluesparkmz.com", "_blank")}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Depositar no SkyWallet
+                        </Button>
                         <Button
                           size="lg"
                           onClick={() => {
                             setBillingModalOpen(true);
-                            setPaidPlansModalOpen(false);
-                            setDepositCompleted(false);
                             setMonths(1);
                           }}
                           className="min-w-[180px] justify-center"
                         >
-                          Pagar agora
+                          Pagar plano mensal
+                        </Button>
+                        <Button
+                          size="lg"
+                          variant="secondary"
+                          onClick={() => setPaidPlansModalOpen(true)}
+                          className="min-w-[180px] justify-center"
+                        >
+                          Mostrar planos pagos
                         </Button>
                       </div>
-                    </div>
+                    </section>
 
-                    <DialogFooter>
-                      <DialogClose asChild>
-                        <Button variant="ghost">Fechar</Button>
-                      </DialogClose>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    {u?.bio && (
+                      <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                          <Info24Regular className="w-4 h-4 text-primary" />
+                          Descricao
+                        </div>
+                        <p className="mt-3 text-sm leading-6 text-muted-foreground">{u.bio}</p>
+                      </section>
+                    )}
+                  </div>
+                </div>
+              )}
 
-                <div className="space-y-4">
-                  <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                    <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                      <BuildingShop24Regular className="w-4 h-4 text-primary" />
-                      Resumo do sistema
-                    </div>
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-xl border border-border bg-background/80 p-3">
-                        <p className="text-xs text-muted-foreground">Produtos cadastrados</p>
-                        <p className="mt-1 text-xl font-bold text-foreground">{stats?.total_products || 0}</p>
+              <Dialog open={billingModalOpen} onOpenChange={setBillingModalOpen}>
+                <DialogContent className="sm:max-w-[520px] bg-card border border-border">
+                  <DialogHeader>
+                    <DialogTitle>Pagar assinatura SkyWallet</DialogTitle>
+                    <DialogDescription>
+                      Use o saldo disponível para pagar o plano de 1200 MZN. Se não houver saldo suficiente, faça um depósito no SkyWallet.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 mt-4">
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Saldo atual</p>
+                          <p className="mt-2 text-xl font-semibold text-foreground">
+                            {skyWalletLoading ? "Carregando..." : `${skyWalletData?.balance?.main_balance?.toLocaleString() || 0} MZN`}
+                          </p>
+                          <p className="mt-1 text-sm text-muted-foreground">
+                            {skyWalletLoading
+                              ? "Aguardando saldo"
+                              : skyWalletData?.balance?.main_balance && skyWalletData.balance.main_balance >= 1200
+                              ? "Saldo suficiente para pagar o plano"
+                              : `Saldo insuficiente. Faltam ${Math.max(1200 - (skyWalletData?.balance?.main_balance || 0), 0)} MZN.`}
+                          </p>
+                        </div>
+                        <div className="ml-4 flex-shrink-0">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              queryClient.invalidateQueries(["skywallet-balance"]);
+                              toast.success("Atualizando saldo SkyWallet...");
+                            }}
+                          >
+                            Atualizar saldo
+                          </Button>
+                        </div>
                       </div>
-                      <div className="rounded-xl border border-border bg-background/80 p-3">
-                        <p className="text-xs text-muted-foreground">Estado da conta</p>
-                        <p className="mt-1 text-sm font-semibold text-foreground">
-                          {isVerified ? "Conta validada" : "Aguardando validacao"}
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-sm font-semibold text-foreground">Pagamento</p>
+                      <p className="mt-1 text-xs text-muted-foreground">Selecione quantos meses quer pagar (1200 MZN / mês)</p>
+                      <div className="mt-3 grid grid-cols-2 gap-3 items-center">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={months}
+                          onChange={(e) => setMonths(Math.max(1, Number(e.target.value) || 1))}
+                        />
+                        <div className="text-right">
+                          <div className="text-sm text-muted-foreground">Total</div>
+                          <div className="font-semibold">{(months * 1200).toLocaleString()} MZN</div>
+                        </div>
+                      </div>
+
+                      {!skyWalletLoading && skyWalletData?.balance?.main_balance !== undefined && (skyWalletData.balance.main_balance < months * 1200) && (
+                        <p className="mt-3 text-sm text-amber-600">Saldo insuficiente para o pagamento. Use o botão Depositar.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <DialogFooter>
+                    <Button
+                      onClick={async () => {
+                        setIsPaying(true);
+                        try {
+                          if (months && months > 1) {
+                            await skyWalletApi.paySubscriptionAdvance(months);
+                          } else {
+                            await skyWalletApi.paySubscription();
+                          }
+                          toast.success("Assinatura paga com sucesso.");
+                          queryClient.invalidateQueries(["skywallet-balance"]);
+                          setBillingModalOpen(false);
+                        } catch (error: any) {
+                          toast.error(error?.message || "Falha ao pagar a assinatura.");
+                        } finally {
+                          setIsPaying(false);
+                        }
+                      }}
+                      disabled={skyWalletLoading || isPaying}
+                    >
+                      {isPaying ? "Pagando..." : "Pagar plano (1200 MZN)"}
+                    </Button>
+                    <DialogClose asChild>
+                      <Button variant="ghost">Fechar</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <Dialog open={paidPlansModalOpen} onOpenChange={setPaidPlansModalOpen}>
+                <DialogContent className="sm:max-w-[520px] bg-card border border-border">
+                  <DialogHeader>
+                    <DialogTitle>Planos pagos</DialogTitle>
+                    <DialogDescription>
+                      Visualize o status atual da assinatura, meses pagos estimados, dias restantes e data de expiração.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <div className="space-y-4 mt-4">
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-xs text-muted-foreground">Status da assinatura</p>
+                      <p className="mt-2 text-lg font-semibold text-foreground">
+                        {terminalData?.subscription_status || "Não disponível"}
+                      </p>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {terminalData?.subscription_status === "active"
+                          ? "A assinatura está ativa no momento."
+                          : "A assinatura não está ativa ou expirou."}
+                      </p>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-xs text-muted-foreground">Meses pagos</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">{paidMonths}</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-xs text-muted-foreground">Dias restantes</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {daysRemaining !== null ? daysRemaining : "-"}
                         </p>
                       </div>
-                      <div className="rounded-xl border border-border bg-background/80 p-3">
-                        <p className="text-xs text-muted-foreground">Identificador</p>
-                        <p className="mt-1 break-all text-sm font-semibold text-foreground">
-                          {u?.unique_identifier || "Nao definido"}
+                      <div className="rounded-xl border border-border bg-background/80 p-4">
+                        <p className="text-xs text-muted-foreground">Expira em</p>
+                        <p className="mt-2 text-lg font-semibold text-foreground">
+                          {nextBillingDate ? nextBillingDate.toLocaleDateString() : "Não definido"}
                         </p>
                       </div>
                     </div>
-                  </section>
 
-                  <section className="hidden lg:flex lg:items-center lg:gap-3">
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-foreground">Ações de faturamento</p>
-                      <p className="text-xs text-muted-foreground">Pagar o plano, depositar ou ver o status da assinatura.</p>
+                    <div className="rounded-xl border border-border bg-background/80 p-4">
+                      <p className="text-xs text-muted-foreground">Saldo SkyWallet atual</p>
+                      <p className="mt-2 text-lg font-semibold text-foreground">
+                        {skyWalletLoading ? "Carregando..." : `${skyWalletData?.balance?.main_balance?.toLocaleString() || 0} MZN`}
+                      </p>
                     </div>
-                    <div className="flex flex-wrap gap-3">
-                                            <Button
-                                              size="lg"
-                                              variant="outline"
-                                              onClick={() => window.open("https://skywallet.bluesparkmz.com", "_blank")}
-                                              className="min-w-[180px] justify-center"
-                                            >
-                                              Depositar no SkyWallet
-                                            </Button>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <Button
                         size="lg"
                         onClick={() => {
                           setBillingModalOpen(true);
+                          setPaidPlansModalOpen(false);
                           setMonths(1);
                         }}
                         className="min-w-[180px] justify-center"
                       >
-                        Pagar plano mensal
-                      </Button>
-                      <Button
-                        size="lg"
-                        variant="secondary"
-                        onClick={() => setPaidPlansModalOpen(true)}
-                        className="min-w-[180px] justify-center"
-                      >
-                        Mostrar planos pagos
+                        Pagar agora
                       </Button>
                     </div>
-                  </section>
+                  </div>
 
-                  {u?.bio && (
-                    <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                        <Info24Regular className="w-4 h-4 text-primary" />
-                        Descricao
-                      </div>
-                      <p className="mt-3 text-sm leading-6 text-muted-foreground">{u.bio}</p>
-                    </section>
-                  )}
-                </div>
-              </div>
+                  <DialogFooter>
+                    <DialogClose asChild>
+                      <Button variant="ghost">Fechar</Button>
+                    </DialogClose>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {activeTab === "general" && (
                 <SettingsPanel
