@@ -1,7 +1,7 @@
 const DEFAULT_API_URL = "https://skypdvmz.bluesparkmz.com";
 const DEFAULT_ACCOUNTS_URL = "https://accounts.bluesparkmz.com";
 const DEFAULT_PRODUCT_CODE = "skypdv";
-const DEFAULT_HARDWARE_PLUGIN_URL = "";
+const DEFAULT_HARDWARE_PLUGIN_URL = "https://storage.bluesparkmz.com/plugin_skypdv.zip";
 
 function normalize(url: string | undefined): string {
   if (!url) return DEFAULT_API_URL;
