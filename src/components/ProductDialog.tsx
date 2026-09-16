@@ -1,9 +1,17 @@
-﻿import { useEffect, useRef, useState } from "react";
-import { Box24Regular, Dismiss24Regular, Image24Regular, Save24Regular } from "@fluentui/react-icons";
+import { useEffect, useRef, useState } from "react";
+import {
+  ArrowClockwise24Regular,
+  Box24Regular,
+  CheckmarkCircle24Regular,
+  Dismiss24Regular,
+  Image24Regular,
+  Save24Regular,
+} from "@fluentui/react-icons";
 
 import { useCategories } from "@/hooks/useCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { isEmoji } from "@/lib/imageUtils";
+import { productsApi } from "@/services/api";
 import { Product } from "@/types/product";
 
 interface ProductDialogProps {
@@ -17,6 +25,8 @@ const DEFAULT_EMOJI = "📦";
 const EMOJIS = ["📦", "🧃", "🍔", "🍕", "🌭", "🍟", "🍿", "🍫", "🍦", "🍰", "🍪", "🍩", "☕", "🧴", "💧", "🍹", "🍺", "🥗", "🥪", "🌮", "🧀"];
 const PRODUCT_FORM_PREFS_KEY = "skypdv_product_form_prefs";
 
+type UploadState = "idle" | "uploading" | "done" | "error";
+
 type ProductFormPrefs = {
   category?: string;
   initialStockLocation?: "balcao" | "armazem" | "congelado";
@@ -26,7 +36,6 @@ type ProductFormPrefs = {
 
 function loadProductFormPrefs(): ProductFormPrefs {
   if (typeof window === "undefined") return {};
-
   try {
     const raw = window.localStorage.getItem(PRODUCT_FORM_PREFS_KEY);
     if (!raw) return {};
@@ -38,7 +47,6 @@ function loadProductFormPrefs(): ProductFormPrefs {
 
 function saveProductFormPrefs(prefs: ProductFormPrefs) {
   if (typeof window === "undefined") return;
-
   try {
     window.localStorage.setItem(PRODUCT_FORM_PREFS_KEY, JSON.stringify(prefs));
   } catch {
@@ -58,6 +66,12 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     is_fastfood: false,
     track_stock: true,
   });
+
+  // Local preview (data URL) shown while uploading, replaced by R2 URL afterwards
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadState, setUploadState] = useState<UploadState>("idle");
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { data: categoriesList = [] } = useCategories();
 
@@ -68,6 +82,10 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
   }, [categoriesList, formData.category, product]);
 
   useEffect(() => {
+    setImagePreview(null);
+    setUploadState("idle");
+    setUploadError(null);
+
     if (product) {
       setFormData({
         name: product.name,
@@ -84,7 +102,6 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     }
 
     const savedPrefs = loadProductFormPrefs();
-
     setFormData({
       name: "",
       price: "",
@@ -100,7 +117,6 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
 
   useEffect(() => {
     if (!isOpen || product) return;
-
     saveProductFormPrefs({
       category: formData.category,
       initialStockLocation: formData.initialStockLocation,
@@ -109,20 +125,38 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     });
   }, [formData.category, formData.initialStockLocation, formData.track_stock, isOpen, product]);
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Show local preview immediately for instant feedback
     const reader = new FileReader();
     reader.onloadend = () => {
-      const result = reader.result as string;
-      setFormData((prev) => ({ ...prev, image: result, emoji: DEFAULT_EMOJI }));
+      setImagePreview(reader.result as string);
     };
     reader.readAsDataURL(file);
+
+    // Upload to Cloudflare R2 (server converts to WebP)
+    setUploadState("uploading");
+    setUploadError(null);
+    try {
+      const { url } = await productsApi.uploadImage(file);
+      // Replace data URL with the actual R2 public URL
+      setFormData((prev) => ({ ...prev, image: url, emoji: DEFAULT_EMOJI }));
+      setImagePreview(null); // clear local preview, image URL is in formData now
+      setUploadState("done");
+    } catch (err: any) {
+      setUploadState("error");
+      setUploadError(err?.message || "Falha no upload. Tente novamente.");
+      // Keep local preview so the user can see what they picked
+    }
   };
 
   const handleEmojiSelect = (emoji: string) => {
     setFormData((prev) => ({ ...prev, image: emoji, emoji }));
+    setImagePreview(null);
+    setUploadState("idle");
+    setUploadError(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -130,6 +164,9 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
 
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
+
+    // Block submit if an upload is still in progress
+    if (uploadState === "uploading") return;
 
     let finalImage = formData.image;
     let finalEmoji = formData.emoji;
@@ -161,6 +198,10 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
 
   const isEditing = Boolean(product);
 
+  // What to show inside the preview box
+  const previewSrc = imagePreview || (!isEmoji(formData.image) ? formData.image : null);
+  const previewEmoji = isEmoji(formData.image) ? formData.image : null;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-h-[88vh] overflow-hidden border-border bg-card sm:max-w-[560px]">
@@ -178,12 +219,25 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
             <div className="space-y-4">
               <div className="rounded-2xl border border-border bg-secondary/20 p-4">
                 <div className="flex flex-col gap-4 md:flex-row md:items-start">
+                  {/* Image preview + upload button */}
                   <div className="flex flex-col items-center gap-2 md:w-[110px]">
-                    <div className="flex h-24 w-24 items-center justify-center rounded-2xl border border-border bg-background">
-                      {formData.image && !isEmoji(formData.image) ? (
-                        <img src={formData.image} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
+                    <div className="relative flex h-24 w-24 items-center justify-center rounded-2xl border border-border bg-background overflow-hidden">
+                      {previewSrc ? (
+                        <img src={previewSrc} alt="Preview" className="h-20 w-20 rounded-xl object-cover" />
                       ) : (
-                        <span className="text-4xl">{formData.emoji || DEFAULT_EMOJI}</span>
+                        <span className="text-4xl">{previewEmoji || DEFAULT_EMOJI}</span>
+                      )}
+
+                      {/* Upload overlay indicators */}
+                      {uploadState === "uploading" && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50">
+                          <ArrowClockwise24Regular className="h-6 w-6 animate-spin text-white" />
+                        </div>
+                      )}
+                      {uploadState === "done" && (
+                        <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-green-500/20">
+                          <CheckmarkCircle24Regular className="h-6 w-6 text-green-500" />
+                        </div>
                       )}
                     </div>
 
@@ -194,16 +248,35 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                       onChange={handleImageUpload}
                       className="hidden"
                       id="image-upload"
+                      disabled={uploadState === "uploading"}
                     />
                     <label
                       htmlFor="image-upload"
-                      className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground transition-colors hover:bg-secondary"
+                      className={`flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-xs text-foreground transition-colors ${
+                        uploadState === "uploading"
+                          ? "pointer-events-none bg-secondary/50 text-muted-foreground"
+                          : "bg-background hover:bg-secondary"
+                      }`}
                     >
                       <Image24Regular className="h-4 w-4" />
-                      {formData.image && !isEmoji(formData.image) ? "Trocar" : "Imagem"}
+                      {uploadState === "uploading"
+                        ? "Enviando…"
+                        : previewSrc
+                          ? "Trocar"
+                          : "Imagem"}
                     </label>
+
+                    {uploadState === "error" && uploadError && (
+                      <p className="w-full rounded-lg border border-destructive/30 bg-destructive/10 px-2 py-1 text-center text-[10px] leading-snug text-destructive">
+                        {uploadError}
+                      </p>
+                    )}
+                    {uploadState === "done" && (
+                      <p className="text-[10px] text-green-500">Imagem enviada ✓</p>
+                    )}
                   </div>
 
+                  {/* Emoji picker */}
                   <div className="min-w-0 flex-1">
                     <label className="mb-2 block text-sm font-medium text-foreground">Icone Rapido</label>
                     <div className="windows-scrollbar flex max-h-24 flex-wrap gap-2 overflow-y-auto rounded-lg bg-background p-3">
@@ -378,7 +451,6 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                 </p>
               )}
             </div>
-
           </div>
 
           <div className="mt-4 flex justify-end gap-2 border-t border-border pt-4">
@@ -386,9 +458,22 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               <Dismiss24Regular className="h-4 w-4" />
               Cancelar
             </button>
-            <button type="submit" className="fluent-button fluent-button-primary gap-2">
-              <Save24Regular className="h-4 w-4" />
-              {isEditing ? "Salvar Alteracoes" : "Cadastrar"}
+            <button
+              type="submit"
+              disabled={uploadState === "uploading"}
+              className="fluent-button fluent-button-primary gap-2 disabled:opacity-60"
+            >
+              {uploadState === "uploading" ? (
+                <>
+                  <ArrowClockwise24Regular className="h-4 w-4 animate-spin" />
+                  Enviando imagem…
+                </>
+              ) : (
+                <>
+                  <Save24Regular className="h-4 w-4" />
+                  {isEditing ? "Salvar Alteracoes" : "Cadastrar"}
+                </>
+              )}
             </button>
           </div>
         </form>

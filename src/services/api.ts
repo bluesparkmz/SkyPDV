@@ -205,6 +205,8 @@ export const productsApi = {
   create: (data: CreateProduct) => apiPost<Product>("/skypdv/products", data),
   update: (id: number, data: UpdateProduct) => apiPut<Product>(`/skypdv/products/${id}`, data),
   delete: (id: number) => apiDelete<void>(`/skypdv/products/${id}`),
+  /** Upload product image to Cloudflare R2 (converted to WebP on the server). Returns { url }. */
+  uploadImage: (file: File) => apiUploadFile("/skypdv/products/upload-image", file),
   getMovements: (id: number, skip = 0, limit = 100) =>
     apiGet<StockMovement[]>(`/skypdv/products/${id}/movements?skip=${skip}&limit=${limit}`),
   getCategorySalesSummaryToday: (category: string) =>
