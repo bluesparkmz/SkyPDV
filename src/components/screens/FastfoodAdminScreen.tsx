@@ -33,6 +33,7 @@ import {
     useRestoreFocusTarget,
 } from "@fluentui/react-components";
 import { Button } from "@/components/ui/button";
+import { ProductImage } from "@/components/ProductImage";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
@@ -1328,9 +1329,13 @@ export function FastfoodAdminScreen() {
                                 {products.map((product) => (
                                     <div key={product.id} className="fluent-card p-4 hover:bg-secondary/30 transition-colors">
                                         <div className="flex items-start gap-3">
-                                            <div className="w-16 h-16 rounded-lg bg-orange-100 dark:bg-orange-950 flex items-center justify-center text-4xl flex-shrink-0">
-                                                {product.emoji || "📦"}
-                                            </div>
+                                            <ProductImage
+                                                emoji={product.emoji}
+                                                image={product.image}
+                                                size="lg"
+                                                alt={product.name}
+                                                productName={product.name}
+                                            />
                                             <div className="flex-1 min-w-0">
                                                 <h4 className="font-bold text-foreground truncate">{product.name}</h4>
                                                 {product.category && (

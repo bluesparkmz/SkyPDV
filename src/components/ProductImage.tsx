@@ -33,29 +33,10 @@ export function ProductImage({
   const [imageError, setImageError] = useState(false);
   const sizeClass = sizeClasses[size];
 
-  // Prioriza emoji se existir e for válido
-  if (emoji && isEmoji(emoji)) {
-    return (
-      <span className={cn(sizeClass.container, sizeClass.emoji, "flex items-center justify-center", className)}>
-        {emoji}
-      </span>
-    );
-  }
-
-  // Se image existe e é emoji válido, usa como emoji
-  if (image && isEmoji(image)) {
-    return (
-      <span className={cn(sizeClass.container, sizeClass.emoji, "flex items-center justify-center", className)}>
-        {image}
-      </span>
-    );
-  }
-
-  // Se image existe e não é emoji, tenta renderizar como imagem
-  if (image && !isEmoji(image)) {
+  // Prioriza imagem real (URL) se existir e não for emoji e não tiver falhado no carregamento
+  if (image && !isEmoji(image) && !imageError) {
     const imageUrl = getImageUrl(image);
-
-    if (imageUrl && !imageError) {
+    if (imageUrl) {
       return (
         <div className={cn(sizeClass.image, sizeClass.rounded, "overflow-hidden bg-gray-100 flex-shrink-0", className)}>
           <img
@@ -67,6 +48,24 @@ export function ProductImage({
         </div>
       );
     }
+  }
+
+  // Se não houver imagem real ou se falhou, exibe emoji se especificado
+  if (emoji && isEmoji(emoji)) {
+    return (
+      <span className={cn(sizeClass.container, sizeClass.emoji, "flex items-center justify-center", className)}>
+        {emoji}
+      </span>
+    );
+  }
+
+  // Se a própria propriedade image for um emoji
+  if (image && isEmoji(image)) {
+    return (
+      <span className={cn(sizeClass.container, sizeClass.emoji, "flex items-center justify-center", className)}>
+        {image}
+      </span>
+    );
   }
 
   // Fallback final: emoji padrão
