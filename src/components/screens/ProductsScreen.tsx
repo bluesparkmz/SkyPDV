@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Add24Regular,
+  ArrowUpload24Regular,
   Box24Regular,
   BrainCircuit24Regular,
   CheckmarkSquare24Regular,
@@ -27,6 +28,7 @@ import {
 import { toast } from "sonner";
 
 import { AdoptProductDialog } from "@/components/AdoptProductDialog";
+import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 import { ProductDialog } from "@/components/ProductDialog";
 import { ProductImage } from "@/components/ProductImage";
@@ -75,6 +77,7 @@ export function ProductsScreen() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAdoptDialogOpen, setIsAdoptDialogOpen] = useState(false);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [bulkAction, setBulkAction] = useState<"delete" | "disable-stock" | "enable-stock" | "move" | "">("");
@@ -85,7 +88,7 @@ export function ProductsScreen() {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
-  const { data: products = [], isLoading: productsLoading } = useProducts({
+  const { data: products = [], isLoading: productsLoading, refetch } = useProducts({
     search: searchQuery || undefined,
     category: selectedCategory !== "all" ? selectedCategory : undefined,
     limit: 1000,
@@ -343,6 +346,10 @@ export function ProductsScreen() {
                 <button onClick={handlePrintProducts} className="fluent-button justify-center gap-2 px-3">
                   <Print24Regular className="h-5 w-5" />
                   <span className="hidden sm:inline">Imprimir</span>
+                </button>
+                <button onClick={() => setIsBulkImportOpen(true)} className="fluent-button justify-center gap-2 px-3">
+                  <ArrowUpload24Regular className="h-5 w-5" />
+                  <span className="hidden sm:inline">Importar CSV</span>
                 </button>
                 <button onClick={() => setIsAdoptDialogOpen(true)} className="fluent-button justify-center gap-2 px-3">
                   <Search24Regular className="h-5 w-5" />
@@ -638,6 +645,11 @@ export function ProductsScreen() {
               product={productForDialog}
             />
             <AdoptProductDialog open={isAdoptDialogOpen} onOpenChange={setIsAdoptDialogOpen} />
+            <BulkImportDialog
+              isOpen={isBulkImportOpen}
+              onClose={() => setIsBulkImportOpen(false)}
+              onSuccess={() => refetch()}
+            />
           </div>
         </div>
       </div>

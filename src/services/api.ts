@@ -72,7 +72,13 @@ async function request<T>(endpoint: string, init: RequestInit): Promise<T> {
   return undefined as T;
 }
 
-export async function apiUploadFile(endpoint: string, file: File): Promise<{ url: string }> {
+export interface CsvImportResult {
+  imported: number;
+  skipped: number;
+  skipped_details: Array<{ line?: number; name: string; reason: string }>;
+}
+
+export async function apiUploadFile<T = { url: string }>(endpoint: string, file: File): Promise<T> {
   const token = getToken();
   const formData = new FormData();
   formData.append("file", file);
@@ -207,6 +213,9 @@ export const productsApi = {
   delete: (id: number) => apiDelete<void>(`/skypdv/products/${id}`),
   /** Upload product image to Cloudflare R2 (converted to WebP on the server). Returns { url }. */
   uploadImage: (file: File) => apiUploadFile("/skypdv/products/upload-image", file),
+  /** Import products in bulk from a CSV file. */
+  importCsv: (file: File) => apiUploadFile<CsvImportResult>("/skypdv/products/import-csv", file),
+  getCsvTemplateUrl: () => `${BASE_URL}/skypdv/products/csv-template`,
   getMovements: (id: number, skip = 0, limit = 100) =>
     apiGet<StockMovement[]>(`/skypdv/products/${id}/movements?skip=${skip}&limit=${limit}`),
   getCategorySalesSummaryToday: (category: string) =>
