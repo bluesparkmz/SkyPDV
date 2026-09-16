@@ -848,11 +848,8 @@ function PrinterSettings() {
   const [savedPrinter, setSavedPrinter] = useState<string | null>(null);
 
   const handleDownloadPlugin = () => {
-    if (!HARDWARE_PLUGIN_URL) {
-      toast.error("Link do plugin nao configurado");
-      return;
-    }
-    window.open(HARDWARE_PLUGIN_URL, "_blank", "noopener,noreferrer");
+    const targetUrl = HARDWARE_PLUGIN_URL || "https://storage.bluesparkmz.com/plugin_skypdv.zip";
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
   };
 
   // Carregar impressora salva do localStorage
@@ -975,17 +972,11 @@ function PrinterSettings() {
             variant="outline"
             size="sm"
             onClick={handleDownloadPlugin}
-            disabled={!HARDWARE_PLUGIN_URL}
             className="shrink-0"
           >
             Download do Plugin
           </Button>
         </div>
-        {!HARDWARE_PLUGIN_URL && (
-          <p className="mt-2 text-[11px] text-muted-foreground">
-            Link nao configurado. Defina `VITE_SKYPDV_HARDWARE_PLUGIN_URL` no ambiente.
-          </p>
-        )}
         <div className="mt-4 rounded-lg border border-border bg-background/70 p-3">
           <p className="text-xs font-semibold text-foreground">Como instalar</p>
           <ol className="mt-2 space-y-1 text-xs text-muted-foreground list-decimal pl-4">
