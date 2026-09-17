@@ -30,6 +30,9 @@ export function QuantityDialog({
   const isDecimal = Boolean(product?.allow_decimal_quantity);
   const unitPrice = product ? parseFloat(product.price) || 0 : 0;
 
+  /** Format Kg: remove trailing zeros (0.500 → 0.5, 8.000 → 8) */
+  const fmtKg = (n: number) => parseFloat(n.toFixed(3)).toString();
+
   const maxStock = product?.track_stock && product.inventory
     ? parseFloat(product.inventory.quantity)
     : Infinity;
@@ -255,7 +258,7 @@ export function QuantityDialog({
             <div>
               <p className="text-muted-foreground">Peso a entregar:</p>
               <p className="font-bold text-foreground text-sm">
-                {quantity.toFixed(3)} {isDecimal ? "Kg" : "un"}
+                {isDecimal ? `${fmtKg(quantity)} Kg` : `${quantity} un`}
               </p>
             </div>
             <div className="text-right">
@@ -281,7 +284,7 @@ export function QuantityDialog({
             onClick={handleConfirm}
             disabled={quantity <= 0}
           >
-            Adicionar {isDecimal ? `(${quantity.toFixed(3)} Kg)` : ""}
+            Adicionar {isDecimal ? `(${fmtKg(quantity)} Kg)` : ""}
           </Button>
         </div>
       </DialogContent>

@@ -31,7 +31,7 @@ export function formatParkedSaleReceipt(
   items.forEach((item) => {
     const itemTotal = (item.price * item.quantity).toFixed(2);
     const isKg = item.allow_decimal_quantity || !Number.isInteger(item.quantity);
-    const qtyStr = isKg ? `${item.quantity} Kg` : `${item.quantity}x`;
+    const qtyStr = isKg ? `${parseFloat(item.quantity.toFixed(3))} Kg` : `${item.quantity}x`;
     lines.push(item.name);
     lines.push(`  ${qtyStr} ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
   });
@@ -110,7 +110,7 @@ export function formatAccountReceipt(
   account.items.forEach((item) => {
     const qty = Number(item.quantity);
     const isKg = !Number.isInteger(qty);
-    const qtyStr = isKg ? `${qty.toFixed(3)} Kg` : `${qty.toFixed(0)}x`;
+    const qtyStr = isKg ? `${parseFloat(qty.toFixed(3))} Kg` : `${qty.toFixed(0)}x`;
     lines.push(item.product_name);
     lines.push(`  ${qtyStr} ${formatMoney(item.unit_price)} = ${formatMoney(item.subtotal)}`);
   });
@@ -153,7 +153,7 @@ export function formatKitchenTicket(
   items.forEach((item) => {
     const qty = Number(item.quantity);
     const isKg = !Number.isInteger(qty);
-    const qtyStr = isKg ? `${qty.toFixed(3)} Kg` : `${qty.toFixed(0)}x`;
+    const qtyStr = isKg ? `${parseFloat(qty.toFixed(3))} Kg` : `${qty.toFixed(0)}x`;
     lines.push(item.product_name);
     lines.push(`  Qtd: ${qtyStr}`);
   });
@@ -197,7 +197,7 @@ export function formatAccountItemsReceipt(
   account.items.forEach((item) => {
     const qty = Number(item.quantity);
     const isKg = !Number.isInteger(qty);
-    const qtyStr = isKg ? `${qty.toFixed(3)} Kg` : `${qty.toFixed(0)}x`;
+    const qtyStr = isKg ? `${parseFloat(qty.toFixed(3))} Kg` : `${qty.toFixed(0)}x`;
     lines.push(item.product_name);
     lines.push(`  ${qtyStr} ${formatMoney(item.unit_price)}`);
   });

@@ -219,7 +219,7 @@ export function ReportsScreen() {
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (Number.isNaN(num)) return String(value);
     if (Number.isInteger(num)) return `${num.toFixed(0)}x`;
-    return `${num.toFixed(3)} Kg`;
+    return `${parseFloat(num.toFixed(3))} Kg`;
   };
 
   const formatDate = (dateString: string) => {
