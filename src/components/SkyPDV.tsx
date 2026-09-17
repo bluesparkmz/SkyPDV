@@ -244,6 +244,8 @@ export function SkyPDV() {
           id: product.id,
           name: product.name,
           price: product.price,
+          category: product.category || "",
+          image: product.image || (product as any).emoji || "📦",
           quantity,
           stock: product.inventory?.quantity ? parseFloat(product.inventory.quantity) : 0,
           track_stock: product.track_stock,
