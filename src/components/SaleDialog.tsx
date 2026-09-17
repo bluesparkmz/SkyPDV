@@ -129,7 +129,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   };
 
   const handleSubmit = async () => {
-    if (!amountPaid || parseFloat(amountPaid) < total) {
+    if (!amountPaid || !isAmountSufficient) {
       return;
     }
 
@@ -295,7 +295,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={!amountPaid || parseFloat(amountPaid) < total || createSale.isPending}
+            disabled={!amountPaid || !isAmountSufficient || createSale.isPending}
           >
             {createSale.isPending ? "Processando..." : "Finalizar Venda"}
           </Button>

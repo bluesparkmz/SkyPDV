@@ -347,10 +347,12 @@ export function CartSidebar({
   canSell,
 }: CartSidebarProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
-  const subtotal = total / (1 + IVA_RATE);
-  const ivaAmount = total - subtotal;
-  const totalItems = items.reduce((acc, item) => acc + item.quantity, 0);
+  const total = Math.round(items.reduce((acc, item) => acc + item.price * item.quantity, 0) * 100) / 100;
+  const subtotal = Math.round((total / (1 + IVA_RATE)) * 100) / 100;
+  const ivaAmount = Math.round((total - subtotal) * 100) / 100;
+  const totalItems = items.some((i) => i.allow_decimal_quantity || !Number.isInteger(i.quantity))
+    ? items.length
+    : items.reduce((acc, item) => acc + item.quantity, 0);
 
   return (
     <>
