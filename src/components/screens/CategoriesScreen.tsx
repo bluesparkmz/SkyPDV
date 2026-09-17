@@ -116,9 +116,29 @@ export function CategoriesScreen() {
                         Carregando categorias...
                     </div>
                 ) : filteredCategories.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground bg-card rounded-xl border border-border border-dashed">
+                    <div className="flex flex-col items-center justify-center p-8 text-center text-muted-foreground bg-card rounded-xl border border-border border-dashed">
                         <Tag24Regular className="w-12 h-12 mb-2 opacity-50" />
-                        <p>Nenhuma categoria encontrada</p>
+                        <p className="font-medium text-foreground">
+                            {searchQuery ? "Nenhuma categoria encontrada" : "Nenhuma categoria cadastrada"}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+                            {searchQuery
+                                ? `Nenhum resultado para "${searchQuery}".`
+                                : "A sua empresa ainda não possui categorias cadastradas. Crie as suas próprias categorias para organizar os seus produtos."}
+                        </p>
+                        {!searchQuery && (
+                            <Button
+                                onClick={() => {
+                                    setSelectedCategory(null);
+                                    setIsDialogOpen(true);
+                                }}
+                                className="mt-4 gap-2"
+                                size="sm"
+                            >
+                                <Add24Regular className="w-4 h-4" />
+                                Cadastrar Primeira Categoria
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">

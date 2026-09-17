@@ -107,7 +107,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     setFormData({
       name: "",
       price: "",
-      category: savedPrefs.category || categoriesList[0] || "bebidas",
+      category: savedPrefs.category || categoriesList[0] || "",
       initialStock: "",
       initialStockLocation: savedPrefs.initialStockLocation || "balcao",
       image: DEFAULT_EMOJI,
@@ -375,7 +375,12 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-foreground">Categoria</label>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium text-foreground">Categoria</label>
+                {categoriesList.length === 0 && (
+                  <span className="text-xs text-muted-foreground">Cadastre em Categorias</span>
+                )}
+              </div>
               <select
                 value={formData.category}
                 onChange={(event) => setFormData((prev) => ({ ...prev, category: event.target.value }))}
