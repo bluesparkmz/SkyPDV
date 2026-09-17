@@ -104,10 +104,13 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     }
 
     const savedPrefs = loadProductFormPrefs();
+    const initialCategory = categoriesList.includes(savedPrefs.category)
+      ? savedPrefs.category
+      : (categoriesList[0] || "");
     setFormData({
       name: "",
       price: "",
-      category: savedPrefs.category || categoriesList[0] || "",
+      category: initialCategory,
       initialStock: "",
       initialStockLocation: savedPrefs.initialStockLocation || "balcao",
       image: DEFAULT_EMOJI,

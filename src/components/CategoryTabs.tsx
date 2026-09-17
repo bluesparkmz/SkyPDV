@@ -7,12 +7,24 @@ interface CategoryTabsProps {
 }
 
 export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsProps) {
-  const { data: categories = [] } = useCategories();
+  const { data: categoryNames = [], categories = [] } = useCategories();
+
+  // Se a empresa ainda não cadastrou categorias na API, a barra fica vazia (não renderiza)
+  if (!categoryNames || categoryNames.length === 0) {
+    return null;
+  }
 
   // Add "all" category at the beginning
   const allCategories = [
-    { id: "all", name: "Todos" },
-    ...categories.map(cat => ({ id: cat, name: cat }))
+    { id: "all", name: "Todos", icon: null },
+    ...categoryNames.map((name) => {
+      const catObj = categories.find((c) => c.name === name);
+      return {
+        id: name,
+        name: name,
+        icon: catObj?.icon || null,
+      };
+    }),
   ];
 
   return (
@@ -29,7 +41,11 @@ export function CategoryTabs({ activeCategory, onCategoryChange }: CategoryTabsP
               : "bg-card text-foreground hover:bg-secondary border border-border"
               }`}
           >
-            <Tag24Regular className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            {category.icon ? (
+              <span className="text-sm leading-none">{category.icon}</span>
+            ) : (
+              <Tag24Regular className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            )}
             {category.name}
           </button>
         );
