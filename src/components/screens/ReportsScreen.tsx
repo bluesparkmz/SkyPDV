@@ -270,7 +270,18 @@ export function ReportsScreen() {
   }, [allSales]);
 
   const getPaymentMethodLabel = (method: string) => {
-    const labels: Record<string, string> = { cash: " Dinheiro\, emola: \E-mola\, skywallet: \E-mola\, mpesa: \Mpesa\, bci_pos: \BCI-POS\, card: \BCI-POS\, bim_pos: \BIM-POS\, mozabanco: \MozaBanco\, standerback: \StanderBack\, mixed: \Misto\ };
+    const labels: Record<string, string> = {
+      cash: "Dinheiro",
+      emola: "E-mola",
+      skywallet: "E-mola",
+      mpesa: "Mpesa",
+      bci_pos: "BCI-POS",
+      card: "BCI-POS",
+      bim_pos: "BIM-POS",
+      mozabanco: "MozaBanco",
+      standerback: "StanderBack",
+      mixed: "Misto",
+    };
     return labels[method] || method;
   };
 
