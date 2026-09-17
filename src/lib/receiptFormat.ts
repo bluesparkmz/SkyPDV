@@ -1,23 +1,10 @@
 import type { Account, Terminal } from "@/services/api";
 import type { CartItem } from "@/types/product";
+import { getPaymentMethodLabel } from "@/lib/paymentMethods";
+
+export { getPaymentMethodLabel };
 
 const IVA_RATE = 0.16;
-
-function formatMoney(value: string | number): string {
-  return `${Number(value || 0).toFixed(2)} MT`;
-}
-
-export function getPaymentMethodLabel(method: string): string {
-  const labels: Record<string, string> = {
-    cash: "Cash",
-    bci_pos: "BCI POS",
-    card: "BCI POS",
-    emola: "E-Mola",
-    skywallet: "E-Mola",
-    mpesa: "M-pesa",
-  };
-  return labels[method] || method;
-}
 
 /** Recibo de venda em espera / pendente (impressão via plugin WS). */
 export function formatParkedSaleReceipt(

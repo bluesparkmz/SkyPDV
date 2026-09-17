@@ -24,6 +24,7 @@ import { CreateSale, PaymentMethodValue, terminalApi } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
+import { LOCAL_PAYMENT_METHODS, getPaymentMethodLabel, mapToApiPaymentMethod } from "@/lib/paymentMethods";
 
 interface SaleDialogProps {
   open: boolean;
@@ -124,17 +125,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     return lines.join('\n');
   };
 
-  const getPaymentMethodLabel = (method: string): string => {
-    const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      card: "Cartão/TPA",
-      mpesa: "M-Pesa",
-      skywallet: "E-Mola",
-      mixed: "Misto",
-    };
-    return labels[method] || method;
-  };
-
   const handleSubmit = async () => {
     if (!amountPaid || parseFloat(amountPaid) < total) {
       return;
@@ -146,10 +136,11 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
         quantity: item.quantity.toString(),
         unit_price: item.price.toString(),
       })),
-      payment_method: paymentMethod,
+      payment_method: mapToApiPaymentMethod(paymentMethod) as any,
       amount_paid: amountPaid,
       change_status: changeStatus,
       sale_type: "local",
+      notes: paymentMethod !== "cash" ? `Método: ${getPaymentMethodLabel(paymentMethod)}` : undefined,
     };
 
     try {
@@ -235,11 +226,11 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="cash">Dinheiro</SelectItem>
-                <SelectItem value="mpesa">M-Pesa</SelectItem>
-                <SelectItem value="card">Cartão/TPA</SelectItem>
-                <SelectItem value="skywallet">E-Mola</SelectItem>
-                <SelectItem value="mixed">Misto</SelectItem>
+                {LOCAL_PAYMENT_METHODS.map((method) => (
+                  <SelectItem key={method.value} value={method.value}>
+                    {method.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

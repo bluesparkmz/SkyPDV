@@ -47,6 +47,7 @@ import {
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { formatAccountReceipt, formatAccountItemsReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
 import { Account, CreateAccount, PaymentMethodValue, terminalApi } from "@/services/api";
+import { LOCAL_PAYMENT_METHODS, mapToApiPaymentMethod } from "@/lib/paymentMethods";
 import { toast } from "sonner";
 
 export function TabsScreen() {
@@ -185,7 +186,12 @@ export function TabsScreen() {
       toast.error("Valor entregue deve ser igual ou maior que o total.");
       return;
     }
-    const closedAccount = await closeAccount.mutateAsync({ id: selectedAccountId, payment_method: paymentMethod, amount_paid: amountPaid, change_status: changeStatus });
+    const closedAccount = await closeAccount.mutateAsync({
+      id: selectedAccountId,
+      payment_method: mapToApiPaymentMethod(paymentMethod) as any,
+      amount_paid: amountPaid,
+      change_status: changeStatus,
+    });
     try {
       const receiptContent = formatAccountReceipt(closedAccount, {
         terminal,
@@ -597,15 +603,16 @@ export function TabsScreen() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="payment_method">Metodo de Pagamento</Label>
-              <Select value={paymentMethod} onValueChange={(value: PaymentMethod) => setPaymentMethod(value)}>
+              <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="mpesa">M-pesa</SelectItem>
-                  <SelectItem value="emola">E-Mola</SelectItem>
-                  <SelectItem value="bci_pos">BCI POS</SelectItem>
+                  {LOCAL_PAYMENT_METHODS.map((method) => (
+                    <SelectItem key={method.value} value={method.value}>
+                      {method.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

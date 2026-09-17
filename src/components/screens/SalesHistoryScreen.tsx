@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search24Regular,
@@ -117,7 +117,7 @@ export function SalesHistoryScreen() {
     if (!uid) return false;
     if (!terminalUsers || terminalUsers.length === 0) return true; // fallback: assume dono
     const entry = terminalUsers.find((u) => u.user_id === uid);
-    if (!entry) return true; // se nÃ£o estiver na lista, provavelmente Ã© dono
+    if (!entry) return true; // se nÃƒÂ£o estiver na lista, provavelmente ÃƒÂ© dono
     return (
       entry.role === "admin" ||
       entry.role === "manager" ||
@@ -212,15 +212,7 @@ export function SalesHistoryScreen() {
   };
 
   const getPaymentMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: "Cash",
-      bci_pos: "BCI POS",
-      card: "BCI POS",
-      emola: "E-Mola",
-      skywallet: "E-Mola",
-      mpesa: "M-pesa",
-      mixed: "Misto",
-    };
+    const labels: Record<string, string> = { cash: " Dinheiro\, emola: \E-mola\, skywallet: \E-mola\, mpesa: \Mpesa\, bci_pos: \BCI-POS\, card: \BCI-POS\, bim_pos: \BIM-POS\, mozabanco: \MozaBanco\, standerback: \StanderBack\, mixed: \Misto\ };
     return labels[method] || method;
   };
 
@@ -246,7 +238,7 @@ export function SalesHistoryScreen() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      toast.error(err?.message || "Não foi possível gerar o PDF das vendas.");
+      toast.error(err?.message || "NÃ£o foi possÃ­vel gerar o PDF das vendas.");
     }
   };
 
@@ -283,7 +275,7 @@ export function SalesHistoryScreen() {
             Todas
           </NavItem>
           <NavItem value="completed" icon={<CheckmarkCircle24Regular />}>
-            Concluídas
+            ConcluÃ­das
           </NavItem>
           <NavItem value="cancelled" icon={<DismissCircle24Regular />}>
             Canceladas
@@ -314,7 +306,7 @@ export function SalesHistoryScreen() {
                 <Receipt24Regular className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 <div>
                   <h1 className="text-lg md:text-2xl font-bold text-foreground">Vendas</h1>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Histórico de transações</p>
+                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">HistÃ³rico de transaÃ§Ãµes</p>
                 </div>
               </div>
             </div>
@@ -626,7 +618,7 @@ export function SalesHistoryScreen() {
                     <TableHead className="py-3 px-4 text-xs font-semibold">Total</TableHead>
                     <TableHead className="py-3 px-4 text-xs font-semibold">Pagamento</TableHead>
                     <TableHead className="py-3 px-4 text-xs font-semibold">Status</TableHead>
-                    <TableHead className="py-3 px-4 text-xs font-semibold text-right">Ações</TableHead>
+                    <TableHead className="py-3 px-4 text-xs font-semibold text-right">AÃ§Ãµes</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -657,7 +649,7 @@ export function SalesHistoryScreen() {
                             variant={sale.status === "completed" ? "default" : "destructive"}
                             className="text-[10px] px-2 py-0 h-5"
                           >
-                            {sale.status === "completed" ? "Concluída" : "Cancelada"}
+                            {sale.status === "completed" ? "ConcluÃ­da" : "Cancelada"}
                           </Badge>
                         </TableCell>
                         <TableCell className="h-12 py-2 px-4 text-right">
@@ -719,7 +711,7 @@ export function SalesHistoryScreen() {
                       <Badge
                         variant={selectedSale.status === "completed" ? "default" : "destructive"}
                       >
-                        {selectedSale.status === "completed" ? "Concluída" : "Cancelada"}
+                        {selectedSale.status === "completed" ? "ConcluÃ­da" : "Cancelada"}
                       </Badge>
                     </div>
                     {selectedSale.customer_name && (
@@ -737,7 +729,7 @@ export function SalesHistoryScreen() {
                       </div>
                     )}
                     <div>
-                      <p className="text-sm text-muted-foreground">Método de Pagamento</p>
+                      <p className="text-sm text-muted-foreground">MÃ©todo de Pagamento</p>
                       <p className="font-medium">{getPaymentMethodLabel(selectedSale.payment_method)}</p>
                     </div>
                     <div>
@@ -797,7 +789,7 @@ export function SalesHistoryScreen() {
 
                   {selectedSale.notes && (
                     <div className="border-t border-border pt-4">
-                      <p className="text-sm text-muted-foreground">Observações</p>
+                      <p className="text-sm text-muted-foreground">ObservaÃ§Ãµes</p>
                       <p className="font-medium">{selectedSale.notes}</p>
                     </div>
                   )}
@@ -817,7 +809,7 @@ export function SalesHistoryScreen() {
               <DialogHeader>
                 <DialogTitle>Cancelar Venda</DialogTitle>
                 <DialogDescription>
-                  Tem certeza que deseja cancelar esta venda? Esta ação não pode ser desfeita.
+                  Tem certeza que deseja cancelar esta venda? Esta aÃ§Ã£o nÃ£o pode ser desfeita.
                 </DialogDescription>
               </DialogHeader>
               {selectedSale && (
@@ -830,7 +822,7 @@ export function SalesHistoryScreen() {
                     <span className="font-medium">Total:</span> {formatCurrency(selectedSale.total)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    O estoque será estornado e o valor será deduzido do caixa.
+                    O estoque serÃ¡ estornado e o valor serÃ¡ deduzido do caixa.
                   </p>
                 </div>
               )}
@@ -851,3 +843,4 @@ export function SalesHistoryScreen() {
     </div>
   );
 }
+

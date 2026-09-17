@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+﻿import { useState, useEffect, useMemo } from "react";
 import {
   ChartMultiple24Regular,
   Money24Regular,
@@ -122,12 +122,12 @@ export function ReportsScreen() {
   const [tempPhone, setTempPhone] = useState("");
 
   useEffect(() => {
-    // Sincronizar estado inicial e mudanças de redimensionamento
-    // No desktop, o menu deve começar aberto. No mobile, fechado.
+    // Sincronizar estado inicial e mudanÃ§as de redimensionamento
+    // No desktop, o menu deve comeÃ§ar aberto. No mobile, fechado.
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
-  // Verificar se é admin
+  // Verificar se Ã© admin
   const isAdmin = useIsAdmin();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
@@ -150,7 +150,7 @@ export function ReportsScreen() {
     (u) => u.role === "cashier" && u.is_active && typeof u.user_id === "number" && Number.isFinite(u.user_id)
   );
 
-  // Buscar relatórios diários
+  // Buscar relatÃ³rios diÃ¡rios
   const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(startDate, endDate, selectedCashierId);
 
   // Buscar resumo geral
@@ -196,7 +196,7 @@ export function ReportsScreen() {
     enabled: !!selectedDate && activeView === "daily",
   });
 
-  // Calcular resumo de métodos de pagamento
+  // Calcular resumo de mÃ©todos de pagamento
   const paymentMethodsSummary = (daySales.length > 0 ? daySales : allSales).reduce((acc, sale) => {
     const method = sale.payment_method || "cash";
     if (!acc[method]) {
@@ -270,15 +270,7 @@ export function ReportsScreen() {
   }, [allSales]);
 
   const getPaymentMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: "Cash",
-      bci_pos: "BCI POS",
-      card: "BCI POS",
-      emola: "E-Mola",
-      skywallet: "E-Mola",
-      mpesa: "M-pesa",
-      mixed: "Misto",
-    };
+    const labels: Record<string, string> = { cash: " Dinheiro\, emola: \E-mola\, skywallet: \E-mola\, mpesa: \Mpesa\, bci_pos: \BCI-POS\, card: \BCI-POS\, bim_pos: \BIM-POS\, mozabanco: \MozaBanco\, standerback: \StanderBack\, mixed: \Misto\ };
     return labels[method] || method;
   };
 
@@ -337,7 +329,7 @@ export function ReportsScreen() {
         setShowWhatsappDialog(true);
         return;
       }
-      // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
+      // Se estiver na view diÃ¡ria e tiver uma data selecionada, exporta apenas esse dia
       const isDailyView = activeView === "daily" && selectedDate;
       let exportStart: string | undefined = undefined;
       let exportEnd: string | undefined = undefined;
@@ -364,13 +356,13 @@ export function ReportsScreen() {
           : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId, phoneParam);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
-      // Formata o período para o nome do arquivo
+      // Formata o perÃ­odo para o nome do arquivo
       const periodStr = isDailyView
         ? format(parseISO(selectedDate!), 'dd-MM-yyyy')
         : `${format(parseISO(startDate), 'dd-MM-yyyy')}_a_${format(parseISO(endDate), 'dd-MM-yyyy')}`;
 
       const ext = type === "pdf" ? "pdf" : "xlsx";
-      const filename = `Relatório_${todayStr}_Ref_${periodStr}.${ext}`;
+      const filename = `RelatÃ³rio_${todayStr}_Ref_${periodStr}.${ext}`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -417,7 +409,7 @@ export function ReportsScreen() {
     }
   };
 
-  // Auto-selecionar hoje se não houver seleção
+  // Auto-selecionar hoje se nÃ£o houver seleÃ§Ã£o
   useEffect(() => {
     if (!selectedDate && dailySales.length > 0 && activeView === "daily") {
       const today = format(new Date(), 'yyyy-MM-dd');
@@ -425,7 +417,7 @@ export function ReportsScreen() {
       if (todayReport) {
         setSelectedDate(today);
       } else if (dailySales.length > 0) {
-        // Selecionar a data mais recente (primeira após ordenação)
+        // Selecionar a data mais recente (primeira apÃ³s ordenaÃ§Ã£o)
         const sortedSales = [...dailySales].sort((a: any, b: any) => {
           return new Date(b.period).getTime() - new Date(a.period).getTime();
         });
@@ -439,11 +431,11 @@ export function ReportsScreen() {
       id: "dashboard" as ReportView,
       label: "Dashboard",
       icon: DataTrending24Regular,
-      description: "Visão geral e resumo",
+      description: "VisÃ£o geral e resumo",
     },
     {
       id: "daily" as ReportView,
-      label: "Relatórios Diários",
+      label: "RelatÃ³rios DiÃ¡rios",
       icon: CalendarLtr24Regular,
       description: "Vendas por dia",
     },
@@ -451,7 +443,7 @@ export function ReportsScreen() {
       id: "all-sales" as ReportView,
       label: "Todas as Vendas",
       icon: Receipt24Regular,
-      description: "Histórico completo",
+      description: "HistÃ³rico completo",
     },
     {
       id: "cash-registers" as ReportView,
@@ -472,7 +464,7 @@ export function ReportsScreen() {
         onNavItemSelect={(_, data) => {
           const nextView = data.value as ReportView;
           setActiveView(nextView);
-          if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile após selecionar
+          if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile apÃ³s selecionar
           if (nextView === "daily" && !selectedDate && dailySales.length > 0) {
             const sortedSales = [...dailySales].sort((a: any, b: any) => {
               return new Date(b.period).getTime() - new Date(a.period).getTime();
@@ -485,7 +477,7 @@ export function ReportsScreen() {
           <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
         </NavDrawerHeader>
         <NavDrawerBody className={styles.drawerContent}>
-          <NavSectionHeader>Relatórios</NavSectionHeader>
+          <NavSectionHeader>RelatÃ³rios</NavSectionHeader>
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -531,7 +523,7 @@ export function ReportsScreen() {
 
             {!isMobile && (
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-muted-foreground uppercase">Período</div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase">PerÃ­odo</div>
                 <div className="space-y-2">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Data Inicial</label>
@@ -582,15 +574,15 @@ export function ReportsScreen() {
               )}
               <div>
                 <h1 className="text-lg md:text-xl font-bold tracking-tight">
-                  {activeView === "dashboard" && "Dashboard de Relatórios"}
-                  {activeView === "daily" && "Relatórios Diários"}
+                  {activeView === "dashboard" && "Dashboard de RelatÃ³rios"}
+                  {activeView === "daily" && "RelatÃ³rios DiÃ¡rios"}
                   {activeView === "all-sales" && "Todas as Vendas"}
                   {activeView === "cash-registers" && "Relatorio de Caixas"}
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   {activeView === "dashboard" && ""}
                   {activeView === "daily" && "Visualize vendas por dia"}
-                  {activeView === "all-sales" && "Histórico completo de vendas"}
+                  {activeView === "all-sales" && "HistÃ³rico completo de vendas"}
                   {activeView === "cash-registers" && "Caixas abertos e fechados por operador"}
                 </p>
               </div>
@@ -599,7 +591,7 @@ export function ReportsScreen() {
               <Button variant="outline" onClick={() => handleQuickFilter('today')} size="sm">Hoje</Button>
           <Button variant="outline" onClick={() => handleQuickFilter('yesterday')} size="sm">Ontem</Button>
           <Button variant="outline" onClick={() => handleQuickFilter('week')} size="sm">7 Dias</Button>
-          <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
+          <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">MÃªs</Button>
           {(selectedDate || activeView === "all-sales") && (
             <>
               <Button onClick={handleExportPDF} className="gap-2" variant="outline">
@@ -676,13 +668,13 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Detalhes da Venda</DialogTitle>
               <DialogDescription>
-                Recibo #{selectedSale?.receipt_number || selectedSale?.id} • {selectedSale && formatTime(selectedSale.created_at)}
+                Recibo #{selectedSale?.receipt_number || selectedSale?.id} â€¢ {selectedSale && formatTime(selectedSale.created_at)}
               </DialogDescription>
             </DialogHeader>
 
             {selectedSale && (
               <div className="space-y-6 py-4">
-                {/* Informações da Venda */}
+                {/* InformaÃ§Ãµes da Venda */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
                     <p className="text-xs text-muted-foreground uppercase mb-1">Total</p>
@@ -691,7 +683,7 @@ export function ReportsScreen() {
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Método de Pagamento</p>
+                    <p className="text-xs text-muted-foreground uppercase mb-1">MÃ©todo de Pagamento</p>
                     <p className="text-lg font-semibold">
                       {getPaymentMethodLabel(selectedSale.payment_method)}
                     </p>
@@ -793,8 +785,8 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Enviar para WhatsApp</DialogTitle>
               <DialogDescription>
-                Informe o número de WhatsApp que deve receber o relatório. Você pode desativar esse envio nas
-                configurações.
+                Informe o nÃºmero de WhatsApp que deve receber o relatÃ³rio. VocÃª pode desativar esse envio nas
+                configuraÃ§Ãµes.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-3">
@@ -809,7 +801,7 @@ export function ReportsScreen() {
                   checked={whatsappPrefs.enabled}
                   onChange={(e) => setWhatsappPrefs({ enabled: e.target.checked })}
                 />
-                <span className="text-sm text-muted-foreground">Ativar envio automático para WhatsApp</span>
+                <span className="text-sm text-muted-foreground">Ativar envio automÃ¡tico para WhatsApp</span>
               </div>
             </div>
             <DialogFooter className="gap-2">
@@ -883,7 +875,7 @@ function DashboardView({
 
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket Médio</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket MÃ©dio</p>
             <h3 className="text-2xl font-bold mt-1">
               {summaryLoading ? "..." : formatCurrency(summary?.average_sale_value || 0)}
             </h3>
@@ -892,7 +884,7 @@ function DashboardView({
             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
               <ChartMultiple24Regular className="w-5 h-5" />
             </div>
-            <span className="text-xs text-muted-foreground">Por transação</span>
+            <span className="text-xs text-muted-foreground">Por transaÃ§Ã£o</span>
           </div>
         </div>
 
@@ -930,7 +922,7 @@ function DashboardView({
       {/* Payment Methods Summary */}
       {summary && (
         <div className="fluent-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
+          <h3 className="text-lg font-semibold mb-4">Resumo por MÃ©todo de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {summary.cash_sales && parseFloat(summary.cash_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
@@ -982,10 +974,10 @@ function DailyReportsView({
 }: any) {
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
-      {/* Lista de Relatórios Diários */}
+      {/* Lista de RelatÃ³rios DiÃ¡rios */}
       <div className="lg:col-span-1 flex flex-col overflow-hidden">
         <div className="fluent-card p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-4">Relatórios Diários</h2>
+          <h2 className="text-lg font-semibold mb-4">RelatÃ³rios DiÃ¡rios</h2>
         </div>
 
         <div className="flex-1 overflow-y-auto fluent-card p-2">
@@ -996,7 +988,7 @@ function DailyReportsView({
           ) : dailySales.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <CalendarLtr24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-              <p className="text-sm text-muted-foreground">Nenhum relatório encontrado</p>
+              <p className="text-sm text-muted-foreground">Nenhum relatÃ³rio encontrado</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1024,7 +1016,7 @@ function DailyReportsView({
                     {formatCurrency(day.total_revenue)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Ticket médio: {formatCurrency(day.average_value)}
+                    Ticket mÃ©dio: {formatCurrency(day.average_value)}
                   </div>
                 </button>
               ))}
@@ -1040,7 +1032,7 @@ function DailyReportsView({
             <div className="text-center">
               <CalendarLtr24Regular className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-semibold mb-2">Selecione um dia</h3>
-              <p className="text-muted-foreground">Escolha um relatório diário para ver os detalhes</p>
+              <p className="text-muted-foreground">Escolha um relatÃ³rio diÃ¡rio para ver os detalhes</p>
             </div>
           </div>
         ) : (
@@ -1054,13 +1046,13 @@ function DailyReportsView({
                     <p className="text-sm text-muted-foreground">Carregando...</p>
                   ) : daySummary ? (
                     <p className="text-sm text-muted-foreground">
-                      {daySummary.total_sales} vendas • Total: {formatCurrency(daySummary.total_revenue)}
+                      {daySummary.total_sales} vendas â€¢ Total: {formatCurrency(daySummary.total_revenue)}
                     </p>
                   ) : null}
                 </div>
               </div>
 
-              {/* Resumo de Métodos de Pagamento */}
+              {/* Resumo de MÃ©todos de Pagamento */}
               {Object.keys(paymentMethodsSummary).length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
                   {Object.entries(paymentMethodsSummary).map(([method, data]: any) => (
@@ -1069,7 +1061,7 @@ function DailyReportsView({
                         {getPaymentMethodLabel(method)}
                       </p>
                       <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                      <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
+                      <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
                     </div>
                   ))}
                 </div>
@@ -1096,12 +1088,12 @@ function DailyReportsView({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Hora</TableHead>
-                        <TableHead>Nº Recibo</TableHead>
+                        <TableHead>NÂº Recibo</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Items</TableHead>
                         <TableHead>Total</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
+                        <TableHead>MÃ©todo</TableHead>
+                        <TableHead className="text-right">AÃ§Ãµes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1201,7 +1193,7 @@ function AllSalesView({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Mês</TableHead>
+                    <TableHead>MÃªs</TableHead>
                     <TableHead>Vendas</TableHead>
                     <TableHead>Total</TableHead>
                   </TableRow>
@@ -1244,10 +1236,10 @@ function AllSalesView({
         </div>
       )}
 
-      {/* Resumo de Métodos de Pagamento */}
+      {/* Resumo de MÃ©todos de Pagamento */}
       {Object.keys(paymentMethodsSummary).length > 0 && (
         <div className="fluent-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
+          <h3 className="text-lg font-semibold mb-4">Resumo por MÃ©todo de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Object.entries(paymentMethodsSummary).map(([method, data]: any) => (
               <div key={method} className="p-3 rounded-lg bg-muted/30 border border-border">
@@ -1255,7 +1247,7 @@ function AllSalesView({
                   {getPaymentMethodLabel(method)}
                 </p>
                 <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
+                <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
               </div>
             ))}
           </div>
@@ -1277,7 +1269,7 @@ function AllSalesView({
         ) : sales.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <Receipt24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-            <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no período</p>
+            <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no perÃ­odo</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1285,12 +1277,12 @@ function AllSalesView({
               <TableHeader>
                 <TableRow>
                   <TableHead>Data/Hora</TableHead>
-                  <TableHead>Nº Recibo</TableHead>
+                  <TableHead>NÂº Recibo</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>MÃ©todo</TableHead>
+                  <TableHead className="text-right">AÃ§Ãµes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1473,3 +1465,4 @@ function parseServerUtcDate(value?: string | null) {
   if (!value) return null;
   return /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? new Date(value) : new Date(`${value}Z`);
 }
+
