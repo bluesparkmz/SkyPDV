@@ -38,6 +38,12 @@ import {
   PersonDelete24Regular,
   Edit24Regular,
   PersonCircle24Regular,
+  KeyMultiple24Regular,
+  Eye24Regular,
+  EyeOff24Regular,
+  Drawer24Regular,
+  ShieldLock24Regular,
+  Delete24Regular,
 } from "@fluentui/react-icons";
 import { resolveAvatar } from "@/lib/utils";
 import { Link } from "react-router-dom";
@@ -56,6 +62,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 
 const useStyles = makeStyles({
   root: {
@@ -841,13 +849,274 @@ export function SettingsScreen({ onOpenSetup }: Props) {
     </div>
   );
 }
+// ─── Cash Drawer PIN ─────────────────────────────────────────────────────────
+const DRAWER_PIN_STORAGE_KEY = "skypdv_drawer_pin_config";
+
+type DrawerPinConfig = {
+  enabled: boolean;
+  pin: string; // 4 digits, stored as plain string (local only)
+};
+
+function loadDrawerPinConfig(): DrawerPinConfig {
+  try {
+    const raw = localStorage.getItem(DRAWER_PIN_STORAGE_KEY);
+    if (raw) return JSON.parse(raw) as DrawerPinConfig;
+  } catch { /* ignore */ }
+  return { enabled: false, pin: "" };
+}
+
+function saveDrawerPinConfig(cfg: DrawerPinConfig) {
+  localStorage.setItem(DRAWER_PIN_STORAGE_KEY, JSON.stringify(cfg));
+}
+
+/** Sheet lateral para configurar o PIN da gaveta de dinheiro */
+function CashDrawerPinSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const [config, setConfig] = useState<DrawerPinConfig>(loadDrawerPinConfig);
+  const [newPin, setNewPin] = useState("");
+  const [confirmPin, setConfirmPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
+  const [phase, setPhase] = useState<"view" | "set">("view");
+
+  // Reload when opening
+  useEffect(() => {
+    if (open) {
+      const cfg = loadDrawerPinConfig();
+      setConfig(cfg);
+      setNewPin("");
+      setConfirmPin("");
+      setPhase("view");
+    }
+  }, [open]);
+
+  const handleToggleEnabled = (val: boolean) => {
+    const updated = { ...config, enabled: val };
+    setConfig(updated);
+    saveDrawerPinConfig(updated);
+    toast.success(val ? "PIN da gaveta ativado!" : "PIN da gaveta desativado.");
+  };
+
+  const handleSavePin = () => {
+    if (newPin.length !== 4) {
+      toast.error("O PIN deve ter exatamente 4 dígitos.");
+      return;
+    }
+    if (newPin !== confirmPin) {
+      toast.error("Os PINs não coincidem. Tente novamente.");
+      setConfirmPin("");
+      return;
+    }
+    const updated: DrawerPinConfig = { enabled: true, pin: newPin };
+    setConfig(updated);
+    saveDrawerPinConfig(updated);
+    setNewPin("");
+    setConfirmPin("");
+    setPhase("view");
+    toast.success("PIN da gaveta configurado com sucesso!");
+  };
+
+  const handleRemovePin = () => {
+    const updated: DrawerPinConfig = { enabled: false, pin: "" };
+    setConfig(updated);
+    saveDrawerPinConfig(updated);
+    setNewPin("");
+    setConfirmPin("");
+    setPhase("view");
+    toast.success("PIN da gaveta removido.");
+  };
+
+  const pinIsSet = config.pin.length === 4;
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-full sm:max-w-md flex flex-col gap-0 p-0">
+        {/* Header */}
+        <SheetHeader className="px-6 pt-6 pb-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ShieldLock24Regular className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <SheetTitle className="text-base font-semibold">PIN da Gaveta</SheetTitle>
+              <SheetDescription className="text-xs mt-0.5">
+                Configure o código de segurança para abrir a gaveta de dinheiro.
+              </SheetDescription>
+            </div>
+          </div>
+        </SheetHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+          {/* Toggle ativar/desativar */}
+          <div className="flex items-center justify-between rounded-xl border border-border bg-secondary/30 px-4 py-3.5">
+            <div className="flex items-center gap-3">
+              <Drawer24Regular className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Protecção por PIN</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {config.enabled ? "Gaveta protegida com PIN" : "Gaveta sem protecção de PIN"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="drawer-pin-toggle"
+              checked={config.enabled}
+              onCheckedChange={handleToggleEnabled}
+              disabled={!pinIsSet && !config.enabled}
+            />
+          </div>
+
+          {/* Status do PIN */}
+          {pinIsSet ? (
+            <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 flex items-center gap-3">
+              <CheckmarkCircle24Regular className="w-5 h-5 text-emerald-500 shrink-0" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">PIN configurado</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  PIN: {showPin ? config.pin : "••••"}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowPin(v => !v)}
+                className="text-muted-foreground hover:text-foreground transition-colors p-1"
+                title={showPin ? "Ocultar PIN" : "Mostrar PIN"}
+              >
+                {showPin ? <EyeOff24Regular className="w-4 h-4" /> : <Eye24Regular className="w-4 h-4" />}
+              </button>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-warning/30 bg-warning/5 px-4 py-3 flex items-center gap-3">
+              <Info24Regular className="w-5 h-5 text-warning shrink-0" />
+              <p className="text-sm text-muted-foreground">
+                Nenhum PIN configurado. Configure um PIN de 4 dígitos para proteger a gaveta.
+              </p>
+            </div>
+          )}
+
+          {/* Formulário de definir PIN */}
+          {phase === "set" ? (
+            <div className="rounded-xl border border-border bg-secondary/20 p-5 space-y-5">
+              <div className="flex items-center gap-2 mb-1">
+                <KeyMultiple24Regular className="w-4 h-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">
+                  {pinIsSet ? "Alterar PIN" : "Definir novo PIN"}
+                </h3>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Novo PIN (4 dígitos)</Label>
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={4}
+                    value={newPin}
+                    onChange={setNewPin}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-medium text-muted-foreground">Confirmar PIN</Label>
+                <div className="flex justify-center">
+                  <InputOTP
+                    maxLength={4}
+                    value={confirmPin}
+                    onChange={setConfirmPin}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                  >
+                    <InputOTPGroup>
+                      <InputOTPSlot index={0} />
+                      <InputOTPSlot index={1} />
+                      <InputOTPSlot index={2} />
+                      <InputOTPSlot index={3} />
+                    </InputOTPGroup>
+                  </InputOTP>
+                </div>
+                {confirmPin.length === 4 && newPin !== confirmPin && (
+                  <p className="text-xs text-destructive text-center">Os PINs não coincidem</p>
+                )}
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => { setPhase("view"); setNewPin(""); setConfirmPin(""); }}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="flex-1"
+                  onClick={handleSavePin}
+                  disabled={newPin.length !== 4 || confirmPin.length !== 4}
+                >
+                  Salvar PIN
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Button
+                variant="outline"
+                className="w-full justify-start gap-2"
+                onClick={() => setPhase("set")}
+              >
+                <KeyMultiple24Regular className="w-4 h-4" />
+                {pinIsSet ? "Alterar PIN" : "Definir PIN"}
+              </Button>
+              {pinIsSet && (
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2 text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/50 hover:bg-destructive/5"
+                  onClick={handleRemovePin}
+                >
+                  <Delete24Regular className="w-4 h-4" />
+                  Remover PIN
+                </Button>
+              )}
+            </div>
+          )}
+
+          {/* Info */}
+          <div className="rounded-lg bg-secondary/40 border border-border p-4">
+            <p className="text-xs font-semibold text-foreground mb-2">ℹ️ Como funciona</p>
+            <ul className="text-xs text-muted-foreground space-y-1.5">
+              <li>• O PIN é armazenado localmente no navegador.</li>
+              <li>• Quando ativado, o operador precisará inserir o PIN antes de abrir a gaveta.</li>
+              <li>• O PIN não é sincronizado com o servidor.</li>
+              <li>• Recomendamos ativar para proteger o caixa físico.</li>
+            </ul>
+          </div>
+        </div>
+
+        <SheetFooter className="px-6 py-4 border-t border-border">
+          <Button variant="outline" className="w-full" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 function PrinterSettings() {
+
   const { isConnected, isConnecting, reconnect } = useHardwarePlugin();
   const [printers, setPrinters] = useState<Array<{ name: string; default: boolean }>>([]);
   const [selectedPrinter, setSelectedPrinter] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [savedPrinter, setSavedPrinter] = useState<string | null>(null);
+  const [drawerPinSheetOpen, setDrawerPinSheetOpen] = useState(false);
 
   const handleDownloadPlugin = () => {
     const targetUrl = HARDWARE_PLUGIN_URL || "https://storage.bluesparkmz.com/plugin_skypdv.zip";
@@ -1069,6 +1338,50 @@ function PrinterSettings() {
           </div>
         </>
       )}
+
+      {/* ── Gaveta de Dinheiro – PIN ─────────────────────────────── */}
+      <div
+        className="rounded-xl border border-border bg-secondary/30 p-4 flex items-center justify-between gap-4 cursor-pointer hover:bg-secondary/50 transition-colors"
+        onClick={() => setDrawerPinSheetOpen(true)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && setDrawerPinSheetOpen(true)}
+        id="drawer-pin-settings-btn"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <ShieldLock24Regular className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">PIN da Gaveta de Dinheiro</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {(() => {
+                const cfg = loadDrawerPinConfig();
+                if (!cfg.pin) return "Nenhum PIN configurado";
+                return cfg.enabled ? "PIN ativo — gaveta protegida" : "PIN configurado, mas desativado";
+              })()}
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {(() => {
+            const cfg = loadDrawerPinConfig();
+            return cfg.enabled ? (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-500 bg-emerald-500/10 rounded-full px-2.5 py-0.5">
+                <CheckmarkCircle24Regular className="w-3.5 h-3.5" /> Ativo
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground bg-secondary rounded-full px-2.5 py-0.5">
+                Inativo
+              </span>
+            );
+          })()}
+          <KeyMultiple24Regular className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </div>
+
+      {/* Sheet de configuração do PIN */}
+      <CashDrawerPinSheet open={drawerPinSheetOpen} onOpenChange={setDrawerPinSheetOpen} />
     </div>
   );
 }
