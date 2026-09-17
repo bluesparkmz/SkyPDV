@@ -5,8 +5,8 @@ export const STATIC_CATEGORIES = [
   "Refrescos",
   "Cozinha",
   "Cafetaria",
-  "Roupa",
   "Eletrodoméstico",
+  "Roupa",
   "Outros"
 ];
 

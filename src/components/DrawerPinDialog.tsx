@@ -99,7 +99,7 @@ export function DrawerPinDialog({ open, onOpenChange, onSuccess }: DrawerPinDial
           </DialogDescription>
         </DialogHeader>
 
-        {/* Hidden input to capture physical keyboard naturally */}
+        {/* Hidden input — only exists to receive keyboard focus */}
         <input
           ref={inputRef}
           type="password"
@@ -107,15 +107,10 @@ export function DrawerPinDialog({ open, onOpenChange, onSuccess }: DrawerPinDial
           pattern="[0-9]*"
           maxLength={4}
           value={pin}
-          onChange={(e) => {
-            const val = e.target.value.replace(/\D/g, "").slice(0, 4);
-            setPin(val);
-            if (val.length === 4) {
-              validatePin(val);
-            }
-          }}
+          onChange={() => {/* handled by onKeyDown on DialogContent */}}
           className="sr-only"
           autoComplete="off"
+          readOnly
         />
 
         {/* PIN Circles Display */}
