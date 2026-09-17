@@ -289,6 +289,7 @@ export function ProductsScreen() {
         emoji: selectedProduct.emoji || DEFAULT_EMOJI,
         is_fastfood: selectedProduct.is_fastfood || false,
         track_stock: selectedProduct.track_stock !== false,
+        allow_decimal_quantity: selectedProduct.allow_decimal_quantity ?? false,
         initialStockLocation: "balcao" as const,
       }
     : null;
@@ -577,12 +578,25 @@ export function ProductsScreen() {
                                     color="bg-primary/10"
                                     textColor="text-primary"
                                   />
-                                  <span className="text-sm font-medium text-foreground">{product.name}</span>
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-sm font-medium text-foreground">{product.name}</span>
+                                    {product.allow_decimal_quantity && (
+                                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                                        Kg
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                               </td>
                               <td className="p-4 text-sm text-muted-foreground">{product.category || "Sem categoria"}</td>
-                              <td className="p-4 text-sm font-semibold text-foreground">{parseFloat(product.price).toFixed(2)} MT</td>
-                              <td className="p-4 text-sm text-foreground">{product.track_stock ? `${stock.toFixed(0)} un` : "Sem controle"}</td>
+                              <td className="p-4 text-sm font-semibold text-foreground">
+                                {parseFloat(product.price).toFixed(2)} MT {product.allow_decimal_quantity ? "/Kg" : ""}
+                              </td>
+                              <td className="p-4 text-sm text-foreground">
+                                {product.track_stock
+                                  ? (product.allow_decimal_quantity ? `${stock.toFixed(3)} Kg` : `${stock.toFixed(0)} un`)
+                                  : "Sem controle"}
+                              </td>
                               <td className="p-4">
                                 {product.track_stock ? (
                                   <span
