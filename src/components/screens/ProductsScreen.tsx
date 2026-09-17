@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Add24Regular,
   ArrowUpload24Regular,
+  ArrowDownload24Regular,
   Box24Regular,
   BrainCircuit24Regular,
   CheckmarkSquare24Regular,
@@ -10,8 +11,10 @@ import {
   Filter24Regular,
   Food24Regular,
   Grid24Regular,
+  MoreVertical24Regular,
   Print24Regular,
   Search24Regular,
+  ChartMultiple24Regular,
 } from "@fluentui/react-icons";
 import type { DrawerProps } from "@fluentui/react-components";
 import {
@@ -32,6 +35,8 @@ import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { DeleteProductDialog } from "@/components/DeleteProductDialog";
 import { ProductDialog } from "@/components/ProductDialog";
 import { ProductImage } from "@/components/ProductImage";
+import { StockOperationDialog } from "@/components/StockOperationDialog";
+import { SupplyProductDialog } from "@/components/SupplyProductDialog";
 import { useCategories } from "@/hooks/useCategories";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useCreateProduct, useDeleteProduct, useProducts, useUpdateProduct } from "@/hooks/useProducts";
@@ -78,11 +83,48 @@ export function ProductsScreen() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isAdoptDialogOpen, setIsAdoptDialogOpen] = useState(false);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [isSupplyDialogOpen, setIsSupplyDialogOpen] = useState(false);
+  const [isStockAdjustOpen, setIsStockAdjustOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
   const [bulkAction, setBulkAction] = useState<"delete" | "disable-stock" | "enable-stock" | "move" | "">("");
   const [bulkCategory, setBulkCategory] = useState("all");
   const [isRunningBulkAction, setIsRunningBulkAction] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; product: Product } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+    const handleEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setContextMenu(null); };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleEsc);
+    return () => { document.removeEventListener("mousedown", handleClick); document.removeEventListener("keydown", handleEsc); };
+  }, []);
+
+  const openContextMenu = (e: React.MouseEvent, product: Product) => {
+    e.preventDefault();
+    const x = Math.min(e.clientX, window.innerWidth - 185);
+    const y = Math.min(e.clientY, window.innerHeight - 220);
+    setContextMenu({ x, y, product });
+  };
+
+  const closeContextMenu = () => setContextMenu(null);
+
+  const openSupplyDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setIsSupplyDialogOpen(true);
+  };
+
+  const openStockAdjustDialog = (product: Product) => {
+    setSelectedProduct(product);
+    setIsStockAdjustOpen(true);
+  };
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -193,6 +235,9 @@ export function ProductsScreen() {
     setSelectedProduct(null);
     setIsDialogOpen(true);
   };
+
+  // Fetch all products for StockOperationDialog
+  const allProducts = products;
 
   const toggleProductSelection = (productId: number) => {
     setSelectedProductIds((prev) =>
@@ -558,13 +603,18 @@ export function ProductsScreen() {
                           const stockStatus = stock > 20 ? "normal" : stock > 5 ? "low" : "critical";
 
                           return (
-                            <tr key={product.id} className="border-t border-border transition-colors hover:bg-secondary/30">
+                            <tr
+                              key={product.id}
+                              className="border-t border-border transition-colors hover:bg-secondary/30 cursor-context-menu select-none"
+                              onContextMenu={(e) => openContextMenu(e, product)}
+                            >
                               <td className="p-4">
                                 <input
                                   type="checkbox"
                                   checked={selectedProductIds.includes(product.id)}
                                   onChange={() => toggleProductSelection(product.id)}
                                   className="h-4 w-4 rounded border-border"
+                                  onClick={(e) => e.stopPropagation()}
                                 />
                               </td>
                               <td className="p-4">
@@ -615,18 +665,45 @@ export function ProductsScreen() {
                                 )}
                               </td>
                               <td className="p-4">
-                                <div className="flex items-center justify-end gap-2">
+                                <div className="flex items-center justify-end gap-1">
                                   <button
                                     onClick={() => openEditDialog(product)}
+                                    title="Editar"
                                     className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
                                   >
                                     <Edit24Regular className="h-4 w-4" />
                                   </button>
+                                  {product.track_stock && (
+                                    <>
+                                      <button
+                                        onClick={() => openSupplyDialog(product)}
+                                        title="Fornecer"
+                                        className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+                                      >
+                                        <ArrowDownload24Regular className="h-4 w-4" />
+                                      </button>
+                                      <button
+                                        onClick={() => openStockAdjustDialog(product)}
+                                        title="Ajustar Estoque"
+                                        className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-warning/10 hover:text-warning"
+                                      >
+                                        <ChartMultiple24Regular className="h-4 w-4" />
+                                      </button>
+                                    </>
+                                  )}
                                   <button
                                     onClick={() => openDeleteDialog(product)}
+                                    title="Eliminar"
                                     className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
                                   >
                                     <Delete24Regular className="h-4 w-4" />
+                                  </button>
+                                  <button
+                                    onClick={(e) => openContextMenu(e, product)}
+                                    title="Mais opções"
+                                    className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+                                  >
+                                    <MoreVertical24Regular className="h-4 w-4" />
                                   </button>
                                 </div>
                               </td>
@@ -667,9 +744,78 @@ export function ProductsScreen() {
               onClose={() => setIsBulkImportOpen(false)}
               onSuccess={() => refetch()}
             />
+            <SupplyProductDialog
+              open={isSupplyDialogOpen}
+              onOpenChange={setIsSupplyDialogOpen}
+              product={selectedProduct}
+              onSuccess={() => refetch()}
+            />
+            <StockOperationDialog
+              open={isStockAdjustOpen}
+              onOpenChange={setIsStockAdjustOpen}
+              mode="adjustment"
+              products={allProducts}
+              inventoryRows={[]}
+              initialProductId={selectedProduct?.id ?? null}
+              onSuccess={() => refetch()}
+            />
           </div>
         </div>
       </div>
     </div>
+
+    {/* Floating Context Menu */}
+    {contextMenu && (
+      <div
+        ref={contextMenuRef}
+        style={{ position: "fixed", top: contextMenu.y, left: contextMenu.x, zIndex: 9999 }}
+        className="min-w-[170px] rounded-xl border border-border bg-card shadow-2xl py-1.5 overflow-hidden"
+        onContextMenu={(e) => e.preventDefault()}
+      >
+        {/* Product name header */}
+        <div className="px-3 py-2 border-b border-border">
+          <p className="text-xs font-semibold text-foreground truncate max-w-[140px]">{contextMenu.product.name}</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">{parseFloat(contextMenu.product.price).toFixed(2)} MT</p>
+        </div>
+
+        <button
+          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+          onClick={() => { openEditDialog(contextMenu.product); closeContextMenu(); }}
+        >
+          <Edit24Regular className="h-4 w-4 text-primary" />
+          Editar
+        </button>
+
+        {contextMenu.product.track_stock && (
+          <>
+            <button
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+              onClick={() => { openSupplyDialog(contextMenu.product); closeContextMenu(); }}
+            >
+              <ArrowDownload24Regular className="h-4 w-4 text-primary" />
+              Fornecer
+            </button>
+
+            <button
+              className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-foreground hover:bg-secondary transition-colors"
+              onClick={() => { openStockAdjustDialog(contextMenu.product); closeContextMenu(); }}
+            >
+              <ChartMultiple24Regular className="h-4 w-4 text-warning" />
+              Ajustar Estoque
+            </button>
+          </>
+        )}
+
+        <div className="my-1 border-t border-border" />
+
+        <button
+          className="flex w-full items-center gap-2.5 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors"
+          onClick={() => { openDeleteDialog(contextMenu.product); closeContextMenu(); }}
+        >
+          <Delete24Regular className="h-4 w-4" />
+          Eliminar
+        </button>
+      </div>
+    )}
   );
 }
