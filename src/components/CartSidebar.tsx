@@ -149,10 +149,10 @@ function CartContent({
                   )}
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm text-primary font-semibold">{(item.price * item.quantity).toFixed(2)} MT</p>
+                  <p className="text-sm text-primary font-semibold">{(Number(item.price) * item.quantity).toFixed(2)} MT</p>
                   {item.allow_decimal_quantity && (
                     <span className="text-[11px] text-muted-foreground">
-                      @{item.price.toFixed(2)}/Kg
+                      @{Number(item.price).toFixed(2)}/Kg
                     </span>
                   )}
                 </div>
