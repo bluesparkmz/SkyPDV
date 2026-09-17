@@ -333,7 +333,55 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                 />
               </div>
 
-              <div className={`grid gap-4 ${isEditing || !formData.track_stock ? "md:grid-cols-2" : "md:grid-cols-[1fr_1fr_1fr]"}`}>
+              {!isEditing && formData.track_stock ? (
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={formData.price}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, price: event.target.value }))}
+                      placeholder="0.00"
+                      required
+                      className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial</label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      value={formData.initialStock}
+                      onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
+                      placeholder="0.000"
+                      required
+                      className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-foreground">Local Inicial</label>
+                    <select
+                      value={formData.initialStockLocation}
+                      onChange={(event) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          initialStockLocation: event.target.value as "balcao" | "armazem" | "congelado",
+                        }))
+                      }
+                      className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                      <option value="balcao">Balcao</option>
+                      <option value="armazem">Armazem</option>
+                      <option value="congelado">Congelador</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
                 <div>
                   <label className="mb-2 block text-sm font-medium text-foreground">Preco (MT)</label>
                   <input
@@ -347,43 +395,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                     className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                   />
                 </div>
-
-                {!isEditing && formData.track_stock && (
-                  <>
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-foreground">Estoque Inicial</label>
-                      <input
-                        type="number"
-                        min="0"
-                        step="any"
-                        value={formData.initialStock}
-                        onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
-                        placeholder="0.000"
-                        required
-                        className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-foreground">Local Inicial</label>
-                      <select
-                        value={formData.initialStockLocation}
-                        onChange={(event) =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            initialStockLocation: event.target.value as "balcao" | "armazem" | "congelado",
-                          }))
-                        }
-                        className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
-                      >
-                        <option value="balcao">Balcao</option>
-                        <option value="armazem">Armazem</option>
-                        <option value="congelado">Congelador</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-              </div>
+              )}
 
               {!isEditing && formData.track_stock && (
                 <p className="rounded-lg border border-border bg-secondary/20 px-3 py-2 text-xs text-muted-foreground">
