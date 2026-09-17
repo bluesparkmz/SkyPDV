@@ -198,9 +198,15 @@ export function TabsScreen() {
         paymentMethod,
         amountPaid: paid,
       });
-      await printReceipt(receiptContent);
-    } catch (error) {
+      const printResult = await printReceipt(receiptContent);
+      if (printResult && !printResult.success) {
+        toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, { duration: 6000 });
+      } else if (printResult?.success) {
+        toast.success("Recibo impresso com sucesso!");
+      }
+    } catch (error: any) {
       console.error("Erro ao imprimir recibo da conta:", error);
+      toast.error(`Erro ao comunicar com impressora: ${error?.message || error}`, { duration: 6000 });
     }
     setIsCloseModalOpen(false);
     setPaymentMethod("cash");

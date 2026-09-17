@@ -149,12 +149,24 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       // Recibo via plugin local (WebSocket) — tenta conectar se necessário
       try {
         const receiptContent = formatReceipt(saleData, sale.receipt_number || sale.id.toString());
-        await printReceipt(receiptContent);
+        const printResult = await printReceipt(receiptContent);
+        if (printResult && !printResult.success) {
+          toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, {
+            duration: 6000,
+          });
+        } else if (printResult?.success) {
+          toast.success("Recibo impresso com sucesso!");
+        }
+
         if (paymentMethod === "cash") {
-          await openCashDrawer();
+          const drawerResult = await openCashDrawer();
+          if (drawerResult && !drawerResult.success) {
+            toast.warning(`Aviso da gaveta: ${drawerResult.error || "Falha ao acionar gaveta"}`);
+          }
         }
       } catch (error: any) {
         console.error("Erro ao usar hardware:", error);
+        toast.error(`Erro ao comunicar com impressora: ${error?.message || error}`, { duration: 6000 });
       }
 
       onSuccess();

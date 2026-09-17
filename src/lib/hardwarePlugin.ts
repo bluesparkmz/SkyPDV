@@ -142,20 +142,28 @@ class HardwarePluginClient {
    */
   async printReceipt(content: string, printerName?: string): Promise<{ success: boolean; message?: string; error?: string }> {
     try {
-      // Se uma impressora específica foi fornecida, definir antes de imprimir
-      if (printerName) {
-        await this.setPrinter(printerName);
-      } else {
-        // Tentar usar a impressora salva no localStorage
-        if (typeof window !== 'undefined' && window.localStorage) {
-          const savedPrinter = localStorage.getItem("skypdv_selected_printer");
-          if (savedPrinter) {
-            await this.setPrinter(savedPrinter);
-          }
+      const savedPrinter = typeof window !== 'undefined' ? localStorage.getItem("skypdv_selected_printer") : null;
+      const targetPrinter = printerName || savedPrinter || undefined;
+      if (targetPrinter) {
+        try {
+          await this.setPrinter(targetPrinter);
+        } catch {
+          // ignora falha previa de setPrinter e envia direto no payload
         }
       }
       
-      const response = await this.request('print', { content });
+      const response = await this.request('print', { 
+        content,
+        printer_name: targetPrinter 
+      });
+
+      if (!response.success && response.error === "No printer selected") {
+        return {
+          success: false,
+          error: "Nenhuma impressora configurada. Vá em Configurações > Impressora e clique em Salvar Impressora.",
+        };
+      }
+
       return {
         success: response.success || false,
         message: response.message,
