@@ -24,6 +24,7 @@ export function QuantityDialog({
   onConfirm,
 }: QuantityDialogProps) {
   const [quantity, setQuantity] = useState<number>(1);
+  const [weightInput, setWeightInput] = useState<string>("1");
   const [amountValue, setAmountValue] = useState<string>("");
   const [mode, setMode] = useState<"weight" | "amount">("weight");
 
@@ -39,8 +40,9 @@ export function QuantityDialog({
 
   useEffect(() => {
     if (open && product) {
-      const initialQty = isDecimal ? 1 : 1;
+      const initialQty = 1;
       setQuantity(initialQty);
+      setWeightInput(initialQty.toString());
       setAmountValue((initialQty * unitPrice).toFixed(2));
       setMode("weight");
     }
@@ -56,50 +58,89 @@ export function QuantityDialog({
   };
 
   const handleWeightChange = (valStr: string) => {
-    if (valStr === "") {
+    const normalized = valStr.replace(",", ".");
+
+    if (isDecimal) {
+      if (normalized !== "" && !/^\d*\.?\d*$/.test(normalized)) {
+        return;
+      }
+    } else {
+      if (normalized !== "" && !/^\d*$/.test(normalized)) {
+        return;
+      }
+    }
+
+    setWeightInput(normalized);
+
+    if (normalized === "" || normalized === ".") {
       setQuantity(0);
       setAmountValue("");
       return;
     }
-    const val = parseFloat(valStr);
+
+    const val = parseFloat(normalized);
     if (!isNaN(val) && val >= 0) {
-      const boundedVal = Math.min(val, maxStock);
-      setQuantity(boundedVal);
-      setAmountValue((boundedVal * unitPrice).toFixed(2));
+      if (maxStock !== Infinity && val > maxStock) {
+        setQuantity(maxStock);
+        setAmountValue((maxStock * unitPrice).toFixed(2));
+      } else {
+        setQuantity(val);
+        setAmountValue((val * unitPrice).toFixed(2));
+      }
     }
   };
 
   const handleAmountChange = (amtStr: string) => {
-    setAmountValue(amtStr);
-    if (amtStr === "") {
-      setQuantity(0);
+    const normalized = amtStr.replace(",", ".");
+    if (normalized !== "" && !/^\d*\.?\d*$/.test(normalized)) {
       return;
     }
-    const amt = parseFloat(amtStr);
+    setAmountValue(normalized);
+
+    if (normalized === "" || normalized === ".") {
+      setQuantity(0);
+      setWeightInput("");
+      return;
+    }
+    const amt = parseFloat(normalized);
     if (!isNaN(amt) && amt >= 0 && unitPrice > 0) {
       const calculatedWeight = parseFloat((amt / unitPrice).toFixed(3));
       const boundedWeight = Math.min(calculatedWeight, maxStock);
       setQuantity(boundedWeight);
+      setWeightInput(fmtKg(boundedWeight));
     }
   };
 
   const handleIncrement = () => {
-    const step = isDecimal ? 1 : 1;
+    const step = isDecimal ? (quantity < 1 ? 0.1 : 1) : 1;
     if (quantity + step <= maxStock) {
       const next = parseFloat((quantity + step).toFixed(3));
       setQuantity(next);
+      setWeightInput(fmtKg(next));
       setAmountValue((next * unitPrice).toFixed(2));
     }
   };
 
   const handleDecrement = () => {
-    const step = isDecimal ? 1 : 1;
-    const minLimit = isDecimal ? 0.001 : 1;
-    if (quantity - step >= minLimit) {
-      const next = parseFloat((quantity - step).toFixed(3));
+    const step = isDecimal ? (quantity <= 1 ? 0.1 : 1) : 1;
+    const minLimit = isDecimal ? 0.05 : 1;
+    if (quantity - step >= minLimit - 0.001) {
+      const next = parseFloat(Math.max(minLimit, quantity - step).toFixed(3));
       setQuantity(next);
+      setWeightInput(fmtKg(next));
       setAmountValue((next * unitPrice).toFixed(2));
+    } else if (isDecimal && quantity > minLimit) {
+      setQuantity(minLimit);
+      setWeightInput(fmtKg(minLimit));
+      setAmountValue((minLimit * unitPrice).toFixed(2));
     }
+  };
+
+  const handleQuickWeight = (val: number) => {
+    const bounded = Math.min(val, maxStock);
+    setQuantity(bounded);
+    setWeightInput(fmtKg(bounded));
+    setAmountValue((bounded * unitPrice).toFixed(2));
   };
 
   const handleQuickAmount = (val: number) => {
@@ -175,7 +216,7 @@ export function QuantityDialog({
                   variant="outline"
                   size="icon"
                   onClick={handleDecrement}
-                  disabled={quantity <= (isDecimal ? 0.001 : 1)}
+                  disabled={quantity <= (isDecimal ? 0.05 : 1)}
                   className="h-10 w-10 shrink-0"
                 >
                   <Subtract24Regular className="w-5 h-5" />
@@ -183,15 +224,20 @@ export function QuantityDialog({
 
                 <div className="relative flex-1 max-w-[140px]">
                   <input
-                    type="number"
-                    step="any"
-                    value={quantity === 0 ? "" : quantity}
+                    type="text"
+                    inputMode="decimal"
+                    value={weightInput}
                     onChange={(e) => handleWeightChange(e.target.value)}
-                    placeholder="0.00"
+                    onFocus={(e) => e.target.select()}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && quantity > 0) {
+                        e.preventDefault();
+                        handleConfirm();
+                      }
+                    }}
+                    placeholder={isDecimal ? "0.00" : "1"}
                     autoFocus
                     className="w-full h-11 text-center text-xl font-bold bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary pr-7"
-                    min={isDecimal ? 0.001 : 1}
-                    max={maxStock !== Infinity ? maxStock : undefined}
                   />
                   <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">
                     {isDecimal ? "Kg" : "un"}
@@ -209,9 +255,29 @@ export function QuantityDialog({
                 </Button>
               </div>
 
+              {/* Quick Weight Buttons for decimal/weight products */}
               {isDecimal && (
-                <p className="text-[11px] text-muted-foreground">
-                  Digite o peso (ex: 8.98 ou 0.500 Kg)
+                <div className="flex flex-wrap justify-center gap-1.5 w-full mt-1">
+                  {[0.25, 0.5, 1, 2, 5].map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => handleQuickWeight(w)}
+                      className={`text-[11px] font-semibold px-2 py-1 rounded transition-colors border border-border ${
+                        quantity === w
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "bg-secondary hover:bg-primary/20 hover:text-primary"
+                      }`}
+                    >
+                      {w} Kg
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {isDecimal && (
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Digite o peso (ex: 0.5 para meio quilo, 1.25, 8.98)
                 </p>
               )}
             </div>
@@ -219,14 +285,20 @@ export function QuantityDialog({
             <div className="w-full flex flex-col items-center gap-2">
               <div className="relative w-full max-w-[200px]">
                 <input
-                  type="number"
-                  step="any"
+                  type="text"
+                  inputMode="decimal"
                   value={amountValue}
                   onChange={(e) => handleAmountChange(e.target.value)}
+                  onFocus={(e) => e.target.select()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && quantity > 0) {
+                      e.preventDefault();
+                      handleConfirm();
+                    }
+                  }}
                   placeholder="0.00"
                   autoFocus
                   className="w-full h-11 text-center text-xl font-bold bg-secondary rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary pr-9"
-                  min={0.01}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-muted-foreground pointer-events-none">
                   MT
@@ -284,7 +356,7 @@ export function QuantityDialog({
             onClick={handleConfirm}
             disabled={quantity <= 0}
           >
-            Adicionar {isDecimal ? `(${fmtKg(quantity)} Kg)` : ""}
+            Adicionar {isDecimal && quantity > 0 ? `(${fmtKg(quantity)} Kg)` : ""}
           </Button>
         </div>
       </DialogContent>
