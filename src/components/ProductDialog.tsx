@@ -10,6 +10,7 @@ import {
 
 import { useCategories } from "@/hooks/useCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
 import { isEmoji } from "@/lib/imageUtils";
 import { productsApi } from "@/services/api";
 import { Product } from "@/types/product";
@@ -133,7 +134,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       track_stock: savedPrefs.track_stock ?? true,
       allow_decimal_quantity: false,
     });
-  }, [product, isOpen, categoriesList]);
+  }, [product, isOpen]);
 
   useEffect(() => {
     if (!isOpen || product) return;
@@ -422,22 +423,17 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                     Desative para produtos que podem ser vendidos sem quantidade armazenada.
                   </p>
                 </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    id="track_stock"
-                    checked={formData.track_stock}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        track_stock: event.target.checked,
-                        initialStock: event.target.checked ? prev.initialStock : "",
-                      }))
-                    }
-                    className="peer sr-only"
-                  />
-                  <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
-                </label>
+                <Switch
+                  id="track_stock"
+                  checked={formData.track_stock}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      track_stock: checked,
+                      initialStock: checked ? prev.initialStock : "",
+                    }))
+                  }
+                />
               </div>
 
               <div className="flex items-start justify-between gap-3 rounded-lg bg-background px-3 py-3">
@@ -450,21 +446,16 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                     Permite vender frações e quantidades decimais no caixa (ex: 8.98 Kg, 0.5 Kg, 1.25 L).
                   </p>
                 </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    id="allow_decimal_quantity"
-                    checked={formData.allow_decimal_quantity}
-                    onChange={(event) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        allow_decimal_quantity: event.target.checked,
-                      }))
-                    }
-                    className="peer sr-only"
-                  />
-                  <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
-                </label>
+                <Switch
+                  id="allow_decimal_quantity"
+                  checked={formData.allow_decimal_quantity}
+                  onCheckedChange={(checked) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      allow_decimal_quantity: checked,
+                    }))
+                  }
+                />
               </div>
 
               <div className="flex items-start justify-between gap-3 rounded-lg bg-background px-3 py-3">
@@ -479,16 +470,11 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                     <p className="mt-1 text-xs text-muted-foreground">Opcao desativada por enquanto.</p>
                   </div>
                 </div>
-                <label className="relative inline-flex cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    id="is_fastfood"
-                    checked={false}
-                    disabled
-                    className="peer sr-only"
-                  />
-                  <div className="h-6 w-11 rounded-full bg-gray-200 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] dark:bg-gray-700 dark:border-gray-600" />
-                </label>
+                <Switch
+                  id="is_fastfood"
+                  checked={false}
+                  disabled
+                />
               </div>
 
               {!formData.track_stock && (
