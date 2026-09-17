@@ -243,7 +243,7 @@ export function SkyPDV() {
         {
           id: product.id,
           name: product.name,
-          price: product.price,
+          price: parseFloat(String(product.price)) || 0,
           category: product.category || "",
           image: product.image || (product as any).emoji || "📦",
           quantity,
