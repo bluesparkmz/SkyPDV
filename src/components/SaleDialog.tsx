@@ -48,14 +48,16 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     useHardwarePlugin();
 
   // Os produtos já vêm com IVA incluído no preço
-  // Total = soma dos preços (já com IVA)
-  const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  // Total = soma dos preços (já com IVA), arredondado a 2 casas decimais para evitar imprecisão de float (ex: 444 * 0.1)
+  const total = Math.round(items.reduce((acc, item) => acc + item.price * item.quantity, 0) * 100) / 100;
   // Subtotal = valor sem IVA (total / 1.16)
-  const calculatedSubtotal = total / 1.16;
+  const calculatedSubtotal = Math.round((total / 1.16) * 100) / 100;
   // IVA = diferença entre total e subtotal
-  const taxAmount = total - calculatedSubtotal;
-  const changeAmount = parseFloat(amountPaid || "0") - total;
+  const taxAmount = Math.round((total - calculatedSubtotal) * 100) / 100;
+  const paidNumber = parseFloat(amountPaid || "0") || 0;
+  const changeAmount = Math.max(0, Math.round((paidNumber - total) * 100) / 100);
   const isCash = paymentMethod === "cash";
+  const isAmountSufficient = !isNaN(paidNumber) && paidNumber >= total - 0.005;
 
   useEffect(() => {
     if (open) {
