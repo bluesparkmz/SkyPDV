@@ -45,8 +45,13 @@ export function ProductCard({ product, onAdd, onLongPress }: ProductCardProps) {
       onMouseLeave={endPress}
       onTouchStart={startPress}
       onTouchEnd={endPress}
-      className="fluent-card p-2 md:p-3 flex flex-col items-center gap-1 md:gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group"
+      className="fluent-card relative p-2 md:p-3 flex flex-col items-center gap-1 md:gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer group"
     >
+      {product.allow_decimal_quantity && (
+        <span className="absolute top-2 right-2 text-[10px] font-bold bg-primary/15 text-primary px-1.5 py-0.5 rounded-md border border-primary/20 shadow-xs">
+          Kg
+        </span>
+      )}
       <div className="group-hover:scale-110 transition-transform">
         <ProductImage
           emoji={product.emoji}
@@ -63,12 +68,14 @@ export function ProductCard({ product, onAdd, onLongPress }: ProductCardProps) {
           {product.name}
         </p>
         <p className="text-xs md:text-sm font-bold text-primary mt-0.5 md:mt-1">
-          {parseFloat(product.price).toFixed(2)} MT
+          {parseFloat(product.price).toFixed(2)} MT{product.allow_decimal_quantity ? "/Kg" : ""}
         </p>
       </div>
       {product.track_stock && product.inventory && (
         <div className="text-[10px] md:text-xs text-muted-foreground">
-          Estoque: {parseFloat(product.inventory.quantity).toFixed(0)}
+          Estoque: {product.allow_decimal_quantity
+            ? `${parseFloat(product.inventory.quantity).toFixed(3)} Kg`
+            : parseFloat(product.inventory.quantity).toFixed(0)}
         </div>
       )}
     </button>
