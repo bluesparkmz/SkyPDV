@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Money24Regular,
   AlertOff24Regular,
@@ -247,6 +247,7 @@ export function SkyPDV() {
           quantity,
           stock: product.inventory?.quantity ? parseFloat(product.inventory.quantity) : 0,
           track_stock: product.track_stock,
+          allow_decimal_quantity: product.allow_decimal_quantity,
         },
       ];
     });
@@ -262,7 +263,7 @@ export function SkyPDV() {
   };
 
   const updateQuantity = (id: string, quantity: number) => {
-    if (quantity < 1) {
+    if (quantity <= 0) {
       removeFromCart(id);
       return;
     }
@@ -675,7 +676,14 @@ export function SkyPDV() {
                         <ProductCard
                           key={product.id}
                           product={product}
-                          onAdd={(p) => addToCart(p)}
+                          onAdd={(p) => {
+                            if (p.allow_decimal_quantity) {
+                              setSelectedProduct(p);
+                              setQuantityDialogOpen(true);
+                            } else {
+                              addToCart(p);
+                            }
+                          }}
                           onLongPress={handleLongPress}
                         />
                       ))}

@@ -104,7 +104,8 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     items.forEach(item => {
       const itemTotal = (item.price * item.quantity).toFixed(2);
       lines.push(`${item.name}`);
-      lines.push(`  ${item.quantity}x ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
+      const qtyLabel = item.allow_decimal_quantity ? `${item.quantity}Kg` : `${item.quantity}x`;
+      lines.push(`  ${qtyLabel} ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
     });
     
     lines.push('-'.repeat(42));

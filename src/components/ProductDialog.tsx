@@ -65,6 +65,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     emoji: DEFAULT_EMOJI,
     is_fastfood: false,
     track_stock: true,
+    allow_decimal_quantity: false,
   });
 
   // Local preview (data URL) shown while uploading, replaced by R2 URL afterwards
@@ -97,6 +98,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
         emoji: (product as any).emoji || (isEmoji(product.image) ? product.image : DEFAULT_EMOJI),
         is_fastfood: false,
         track_stock: product.track_stock !== false,
+        allow_decimal_quantity: product.allow_decimal_quantity ?? false,
       });
       return;
     }
@@ -112,6 +114,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       emoji: DEFAULT_EMOJI,
       is_fastfood: false,
       track_stock: savedPrefs.track_stock ?? true,
+      allow_decimal_quantity: false,
     });
   }, [product, isOpen, categoriesList]);
 
@@ -185,12 +188,13 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
       name: formData.name,
       price: parseFloat(formData.price) || 0,
       category: formData.category,
-      initialStock: formData.track_stock ? parseInt(formData.initialStock, 10) || 0 : 0,
+      initialStock: formData.track_stock ? parseFloat(formData.initialStock) || 0 : 0,
       initialStockLocation: formData.initialStockLocation,
       image: finalImage,
       emoji: finalEmoji,
       is_fastfood: false,
       track_stock: formData.track_stock,
+      allow_decimal_quantity: formData.allow_decimal_quantity,
     } as any);
 
     onClose();
@@ -333,9 +337,10 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                       <input
                         type="number"
                         min="0"
+                        step="any"
                         value={formData.initialStock}
                         onChange={(event) => setFormData((prev) => ({ ...prev, initialStock: event.target.value }))}
-                        placeholder="0"
+                        placeholder="0.000"
                         required
                         className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                       />
@@ -405,6 +410,33 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                         ...prev,
                         track_stock: event.target.checked,
                         initialStock: event.target.checked ? prev.initialStock : "",
+                      }))
+                    }
+                    className="peer sr-only"
+                  />
+                  <div className="peer h-6 w-11 rounded-full bg-gray-300 after:absolute after:start-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:bg-gray-700 dark:border-gray-600 rtl:peer-checked:after:-translate-x-full" />
+                </label>
+              </div>
+
+              <div className="flex items-start justify-between gap-3 rounded-lg bg-background px-3 py-3">
+                <div className="pr-4">
+                  <label htmlFor="allow_decimal_quantity" className="cursor-pointer text-sm font-semibold text-foreground flex items-center gap-2">
+                    <span className="text-base">⚖️</span>
+                    <span>Vendido por peso / fração (Kg, Litro)</span>
+                  </label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Permite vender frações e quantidades decimais no caixa (ex: 8.98 Kg, 0.5 Kg, 1.25 L).
+                  </p>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    id="allow_decimal_quantity"
+                    checked={formData.allow_decimal_quantity}
+                    onChange={(event) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        allow_decimal_quantity: event.target.checked,
                       }))
                     }
                     className="peer sr-only"

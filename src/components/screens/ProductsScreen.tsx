@@ -128,6 +128,7 @@ export function ProductsScreen() {
     emoji?: string;
     is_fastfood?: boolean;
     track_stock?: boolean;
+    allow_decimal_quantity?: boolean;
   }) => {
     try {
       if (productData.id) {
@@ -141,6 +142,7 @@ export function ProductsScreen() {
             image: productData.image,
             is_fastfood: productData.is_fastfood,
             track_stock: productData.track_stock,
+            allow_decimal_quantity: productData.allow_decimal_quantity,
           },
         });
       } else {
@@ -154,6 +156,7 @@ export function ProductsScreen() {
           initial_stock_location: productData.track_stock === false ? undefined : productData.initialStockLocation || "balcao",
           track_stock: productData.track_stock !== false,
           is_fastfood: productData.is_fastfood || false,
+          allow_decimal_quantity: productData.allow_decimal_quantity || false,
         });
       }
 

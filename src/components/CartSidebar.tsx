@@ -140,8 +140,22 @@ function CartContent({
               />
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
-                <p className="text-sm text-primary font-semibold">{(item.price * item.quantity).toFixed(2)} MT</p>
+                <div className="flex items-center gap-1.5">
+                  <p className="text-sm font-medium text-foreground truncate">{item.name}</p>
+                  {item.allow_decimal_quantity && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 border border-amber-500/20">
+                      Kg
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm text-primary font-semibold">{(item.price * item.quantity).toFixed(2)} MT</p>
+                  {item.allow_decimal_quantity && (
+                    <span className="text-[11px] text-muted-foreground">
+                      @{item.price.toFixed(2)}/Kg
+                    </span>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center gap-1">
@@ -149,11 +163,13 @@ function CartContent({
                   <button
                     onClick={async () => {
                       setUpdatingId(item.id);
-                      await onUpdateQuantity(item.id, item.quantity - 1);
+                      const step = item.allow_decimal_quantity ? 1 : 1;
+                      const next = Math.max(0, parseFloat((item.quantity - step).toFixed(3)));
+                      await onUpdateQuantity(item.id, next);
                       setUpdatingId(null);
                     }}
                     className="quantity-btn"
-                    disabled={item.quantity <= 1 || updatingId === item.id}
+                    disabled={item.quantity <= (item.allow_decimal_quantity ? 0 : 1) || updatingId === item.id}
                   >
                     {updatingId === item.id ? (
                       <span className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin inline-block" />
@@ -161,11 +177,30 @@ function CartContent({
                       <Subtract24Regular className="w-3 h-3" />
                     )}
                   </button>
-                  <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                  {item.allow_decimal_quantity ? (
+                    <input
+                      type="number"
+                      step="any"
+                      min="0.001"
+                      value={item.quantity}
+                      onChange={async (e) => {
+                        const val = parseFloat(e.target.value);
+                        if (!isNaN(val) && val > 0) {
+                          await onUpdateQuantity(item.id, val);
+                        }
+                      }}
+                      className="w-14 h-6 text-center text-xs font-bold bg-background border border-primary/40 rounded focus:outline-none focus:ring-1 focus:ring-primary px-1"
+                      title="Digite o peso (ex: 8.98)"
+                    />
+                  ) : (
+                    <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                  )}
                   <button
                     onClick={async () => {
                       setUpdatingId(item.id);
-                      await onUpdateQuantity(item.id, item.quantity + 1);
+                      const step = item.allow_decimal_quantity ? 1 : 1;
+                      const next = parseFloat((item.quantity + step).toFixed(3));
+                      await onUpdateQuantity(item.id, next);
                       setUpdatingId(null);
                     }}
                     className="quantity-btn"

@@ -6,6 +6,7 @@ export interface Product {
   image: string;
   stock: number;
   track_stock?: boolean;
+  allow_decimal_quantity?: boolean;
   is_fastfood?: boolean;
   initialStockLocation?: "balcao" | "armazem" | "congelado";
 }
