@@ -348,6 +348,7 @@ export function ProductsScreen() {
   }, [products]);
 
   return (
+    <>
     <div className={styles.root}>
       <NavDrawer
         defaultSelectedValue={activeView}
@@ -817,5 +818,6 @@ export function ProductsScreen() {
         </button>
       </div>
     )}
+    </>
   );
 }
