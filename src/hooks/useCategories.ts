@@ -8,7 +8,7 @@ export function useCategories() {
   const query = useQuery({
     queryKey: CATEGORIES_QUERY_KEY,
     queryFn: () => categoriesApi.listFull(),
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 30,
   });
 
   // Extrair apenas os nomes únicos para uso em selects

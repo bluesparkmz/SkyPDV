@@ -74,7 +74,21 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { data: categoriesList = [] } = useCategories();
+  const { data: categoriesList = [], refetch: refetchCategories } = useCategories();
+
+  useEffect(() => {
+    if (isOpen) {
+      refetchCategories();
+    }
+  }, [isOpen, refetchCategories]);
+
+  const availableCategories = useMemo(() => {
+    const list = [...categoriesList];
+    if (product?.category && !list.includes(product.category)) {
+      list.unshift(product.category);
+    }
+    return list;
+  }, [categoriesList, product?.category]);
 
   useEffect(() => {
     if (categoriesList.length > 0 && !formData.category && !product) {
@@ -390,7 +404,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                 className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
               >
                 <option value="">Sem Categoria</option>
-                {categoriesList.map((category) => (
+                {availableCategories.map((category) => (
                   <option key={category} value={category}>
                     {category}
                   </option>
