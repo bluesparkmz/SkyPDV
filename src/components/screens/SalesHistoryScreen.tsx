@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Search24Regular,
@@ -109,7 +109,8 @@ export function SalesHistoryScreen() {
   const formatQuantity = (value: string | number) => {
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (Number.isNaN(num)) return String(value);
-    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
+    if (Number.isInteger(num)) return `${num.toFixed(0)}x`;
+    return `${num.toFixed(3)} Kg`;
   };
 
   const isAdmin = useMemo(() => {
@@ -760,7 +761,7 @@ export function SalesHistoryScreen() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product_name}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatQuantity(item.quantity)}x {formatCurrency(item.unit_price)}
+                              {formatQuantity(item.quantity)} {formatCurrency(item.unit_price)}
                             </p>
                           </div>
                           <p className="font-semibold">{formatCurrency(item.subtotal)}</p>

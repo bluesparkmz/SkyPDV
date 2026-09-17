@@ -30,8 +30,10 @@ export function formatParkedSaleReceipt(
   lines.push("-".repeat(42));
   items.forEach((item) => {
     const itemTotal = (item.price * item.quantity).toFixed(2);
+    const isKg = item.allow_decimal_quantity || !Number.isInteger(item.quantity);
+    const qtyStr = isKg ? `${item.quantity} Kg` : `${item.quantity}x`;
     lines.push(item.name);
-    lines.push(`  ${item.quantity}x ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
+    lines.push(`  ${qtyStr} ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
   });
   lines.push("-".repeat(42));
   lines.push(`Subtotal: ${subtotal.toFixed(2)} MT`);
@@ -106,8 +108,11 @@ export function formatAccountReceipt(
   lines.push("ITENS:");
   lines.push("-".repeat(42));
   account.items.forEach((item) => {
+    const qty = Number(item.quantity);
+    const isKg = !Number.isInteger(qty);
+    const qtyStr = isKg ? `${qty.toFixed(3)} Kg` : `${qty.toFixed(0)}x`;
     lines.push(item.product_name);
-    lines.push(`  ${Number(item.quantity)}x ${formatMoney(item.unit_price)} = ${formatMoney(item.subtotal)}`);
+    lines.push(`  ${qtyStr} ${formatMoney(item.unit_price)} = ${formatMoney(item.subtotal)}`);
   });
   lines.push("-".repeat(42));
   lines.push(`Subtotal: ${formatMoney(subtotal)}`);
@@ -146,8 +151,11 @@ export function formatKitchenTicket(
   lines.push("ITENS PARA COZINHA:");
   lines.push("-".repeat(42));
   items.forEach((item) => {
+    const qty = Number(item.quantity);
+    const isKg = !Number.isInteger(qty);
+    const qtyStr = isKg ? `${qty.toFixed(3)} Kg` : `${qty.toFixed(0)}x`;
     lines.push(item.product_name);
-    lines.push(`  Qtd: ${Number(item.quantity)}`);
+    lines.push(`  Qtd: ${qtyStr}`);
   });
   lines.push("=".repeat(42));
   lines.push("");
@@ -187,8 +195,11 @@ export function formatAccountItemsReceipt(
   lines.push("ITENS:");
   lines.push("-".repeat(42));
   account.items.forEach((item) => {
+    const qty = Number(item.quantity);
+    const isKg = !Number.isInteger(qty);
+    const qtyStr = isKg ? `${qty.toFixed(3)} Kg` : `${qty.toFixed(0)}x`;
     lines.push(item.product_name);
-    lines.push(`  ${Number(item.quantity)}x ${formatMoney(item.unit_price)}`);
+    lines.push(`  ${qtyStr} ${formatMoney(item.unit_price)}`);
   });
   lines.push("-".repeat(42));
   lines.push(`Subtotal: ${formatMoney(subtotal)}`);

@@ -138,7 +138,8 @@ export function TabsScreen() {
   const formatQuantity = (value: string | number) => {
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (Number.isNaN(num)) return String(value);
-    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
+    if (Number.isInteger(num)) return `${num.toFixed(0)}x`;
+    return `${num.toFixed(3)} Kg`;
   };
 
   const resetForm = () => setAccountForm({ client_name: "", client_phone: "" });
@@ -722,7 +723,7 @@ export function TabsScreen() {
                         <div>
                           <p className="font-medium">{item.product_name}</p>
                           <p className="text-muted-foreground">
-                            {formatQuantity(item.quantity)} x {formatCurrency(item.unit_price)}
+                            {formatQuantity(item.quantity)} {formatCurrency(item.unit_price)}
                           </p>
                         </div>
                         <div className="font-semibold">{formatCurrency(item.subtotal)}</div>

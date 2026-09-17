@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   ChartMultiple24Regular,
   Money24Regular,
@@ -218,7 +218,8 @@ export function ReportsScreen() {
   const formatQuantity = (value: string | number) => {
     const num = typeof value === "string" ? parseFloat(value) : value;
     if (Number.isNaN(num)) return String(value);
-    return Number.isInteger(num) ? num.toFixed(0) : num.toString();
+    if (Number.isInteger(num)) return `${num.toFixed(0)}x`;
+    return `${num.toFixed(3)} Kg`;
   };
 
   const formatDate = (dateString: string) => {
@@ -732,7 +733,7 @@ export function ReportsScreen() {
                           <div className="flex-1">
                             <p className="font-medium">{item.product_name || `Produto #${item.product_id}`}</p>
                             <p className="text-sm text-muted-foreground">
-                              {formatQuantity(item.quantity)} x {formatCurrency(item.unit_price || 0)}
+                              {formatQuantity(item.quantity)} {formatCurrency(item.unit_price || 0)}
                             </p>
                           </div>
                           <div className="text-right">
