@@ -15,6 +15,8 @@ import { ReserveBillDialog } from "./ReserveBillDialog";
 import { toast } from "sonner";
 import { ProductImage } from "./ProductImage";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
+import { DrawerPinDialog } from "./DrawerPinDialog";
+import { isDrawerPinRequired } from "@/lib/drawerPin";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +69,7 @@ function CartContent({
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
   const [clearCartDialogOpen, setClearCartDialogOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [drawerPinDialogOpen, setDrawerPinDialogOpen] = useState(false);
   const { openCashDrawer } = useHardwarePlugin();
 
   const handleFinalizeSale = () => {
@@ -81,11 +84,25 @@ function CartContent({
     setSaleDialogOpen(true);
   };
 
-  const handleOpenCashDrawer = async () => {
+  const performOpenCashDrawer = async () => {
     try {
-      await openCashDrawer();
-    } catch (error) {
+      const result = await openCashDrawer();
+      if (result && !result.success) {
+        toast.error(`Falha ao abrir gaveta: ${result.error || "Verifique se o plugin de hardware está rodando"}`);
+      } else {
+        toast.success("Gaveta aberta com sucesso!");
+      }
+    } catch (error: any) {
       console.error("Erro ao abrir gaveta:", error);
+      toast.error(`Erro ao acionar gaveta: ${error?.message || error}`);
+    }
+  };
+
+  const handleOpenCashDrawer = () => {
+    if (isDrawerPinRequired()) {
+      setDrawerPinDialogOpen(true);
+    } else {
+      performOpenCashDrawer();
     }
   };
 
@@ -274,6 +291,12 @@ function CartContent({
           onClear();
           onSaleComplete?.();
         }}
+      />
+
+      <DrawerPinDialog
+        open={drawerPinDialogOpen}
+        onOpenChange={setDrawerPinDialogOpen}
+        onSuccess={performOpenCashDrawer}
       />
     </>
   );

@@ -851,24 +851,11 @@ export function SettingsScreen({ onOpenSetup }: Props) {
   );
 }
 // ─── Cash Drawer PIN ─────────────────────────────────────────────────────────
-const DRAWER_PIN_STORAGE_KEY = "skypdv_drawer_pin_config";
-
-type DrawerPinConfig = {
-  enabled: boolean;
-  pin: string; // 4 digits, stored as plain string (local only)
-};
-
-function loadDrawerPinConfig(): DrawerPinConfig {
-  try {
-    const raw = localStorage.getItem(DRAWER_PIN_STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as DrawerPinConfig;
-  } catch { /* ignore */ }
-  return { enabled: false, pin: "" };
-}
-
-function saveDrawerPinConfig(cfg: DrawerPinConfig) {
-  localStorage.setItem(DRAWER_PIN_STORAGE_KEY, JSON.stringify(cfg));
-}
+import {
+  loadDrawerPinConfig,
+  saveDrawerPinConfig,
+  type DrawerPinConfig,
+} from "@/lib/drawerPin";
 
 /** Sheet lateral para configurar o PIN da gaveta de dinheiro */
 function CashDrawerPinSheet({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
