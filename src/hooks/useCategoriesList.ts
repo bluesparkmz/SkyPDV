@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { categoriesApi, CreateCategory, UpdateCategory } from "@/services/api";
+import { categoriesApi, Category, CreateCategory, UpdateCategory } from "@/services/api";
 import { toast } from "sonner";
 
 export function useCategoriesList() {
@@ -32,9 +32,15 @@ export function useUpdateCategory() {
     return useMutation({
         mutationFn: (data: { id: number; data: UpdateCategory }) =>
             categoriesApi.update(data.id, data.data),
-        onSuccess: () => {
+        onSuccess: (updated) => {
+            queryClient.setQueryData<Category[]>(["categories-list"], (prev) =>
+                Array.isArray(prev)
+                    ? prev.map((category) => (category.id === updated.id ? { ...category, ...updated } : category))
+                    : prev
+            );
             queryClient.invalidateQueries({ queryKey: ["categories-list"] });
             queryClient.invalidateQueries({ queryKey: ["categories"] });
+            queryClient.invalidateQueries({ queryKey: ["products"] });
             toast.success("Categoria atualizada com sucesso");
         },
         onError: (error: any) => {

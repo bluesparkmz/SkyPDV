@@ -22,7 +22,7 @@ interface CategoryDialogProps {
         icon?: string;
         color?: string;
         isGlobal?: boolean;
-    }) => void;
+    }) => void | Promise<void>;
     category?: Category | null;
 }
 
@@ -74,10 +74,10 @@ export function CategoryDialog({ isOpen, onClose, onSave, category }: CategoryDi
         }
     }, [category, isOpen]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.name.trim()) return;
-        onSave({
+        await onSave({
             id: category?.id,
             name: formData.name.trim(),
             description: formData.description.trim() || undefined,
@@ -91,7 +91,7 @@ export function CategoryDialog({ isOpen, onClose, onSave, category }: CategoryDi
     const isEditing = !!category;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onClose}>
+        <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
             <DialogContent className="sm:max-w-[420px] bg-card border-border p-0 overflow-hidden">
                 {/* Header */}
                 <DialogHeader className="px-5 pt-5 pb-4 border-b border-border">
