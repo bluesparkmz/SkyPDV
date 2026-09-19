@@ -307,7 +307,7 @@ export function SkyPDV() {
 
   const handleNavigate = (screen: Screen) => {
     if (screen === "finance" && !isAdmin) {
-      toast.error("Apenas administradores do terminal podem aceder Ã s FinanÃ§as.");
+      toast.error("Apenas administradores do terminal podem aceder às Finanças.");
       setIsStartOpen(false);
       return;
     }
@@ -618,7 +618,7 @@ export function SkyPDV() {
                       <BatteryCharge24Regular className="w-5 h-5" />
                     )}
                     {/* Hardware Plugin Status */}
-                    <div className="flex items-center gap-1.5" title={hardwareConnected ? "Plugin de hardware conectado" : hardwareConnecting ? "Conectando ao plugin..." : "Plugin de hardware nÃ£o conectado"}>
+                    <div className="flex items-center gap-1.5" title={hardwareConnected ? "Plugin de hardware conectado" : hardwareConnecting ? "Conectando ao plugin..." : "Plugin de hardware não conectado"}>
                       <Print24Regular
                         className={`w-5 h-5 ${hardwareConnected ? "text-emerald-500" : hardwareConnecting ? "text-yellow-500 animate-pulse" : "text-muted-foreground opacity-50"}`}
                       />
@@ -637,7 +637,7 @@ export function SkyPDV() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground">Instale o app SkyPDV</p>
-                  <p className="text-xs text-muted-foreground">Acesse mais rÃ¡pido e use em modo offline.</p>
+                  <p className="text-xs text-muted-foreground">Acesse mais rápido e use em modo offline.</p>
                 </div>
                 <div className="flex gap-2">
                   <button

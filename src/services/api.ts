@@ -1,4 +1,4 @@
-// ConfiguraÃ§Ã£o base da API
+// Configuração base da API
 const BASE_URL = "https://skypdvmz.bluesparkmz.com";
 
 export class ApiError<T = unknown> extends Error {
@@ -15,12 +15,12 @@ export class ApiError<T = unknown> extends Error {
   }
 }
 
-// FunÃ§Ã£o para obter token do localStorage
+// Função para obter token do localStorage
 const getToken = (): string | null => {
   return localStorage.getItem("skypdv_token");
 };
 
-// Headers padrÃ£o para todas as requisiÃ§Ãµes
+// Headers padrão para todas as requisições
 const getHeaders = (): HeadersInit => {
   const token = getToken();
   const headers: HeadersInit = {
@@ -207,12 +207,12 @@ export async function apiGetBlob(endpoint: string): Promise<{ blob: Blob; filena
   return { blob, filename };
 }
 
-// FunÃ§Ã£o genÃ©rica para requisiÃ§Ãµes GET
+// Função genérica para requisições GET
 export async function apiGet<T>(endpoint: string): Promise<T> {
   return request<T>(endpoint, { method: "GET" });
 }
 
-// FunÃ§Ã£o genÃ©rica para requisiÃ§Ãµes POST
+// Função genérica para requisições POST
 export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   return request<T>(endpoint, {
     method: "POST",
@@ -220,7 +220,7 @@ export async function apiPost<T>(endpoint: string, data?: unknown): Promise<T> {
   });
 }
 
-// FunÃ§Ã£o genÃ©rica para requisiÃ§Ãµes PUT
+// Função genérica para requisições PUT
 export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
   return request<T>(endpoint, {
     method: "PUT",
@@ -228,7 +228,7 @@ export async function apiPut<T>(endpoint: string, data?: unknown): Promise<T> {
   });
 }
 
-// FunÃ§Ã£o genÃ©rica para requisiÃ§Ãµes PATCH
+// Função genérica para requisições PATCH
 export async function apiPatch<T>(endpoint: string, data?: unknown): Promise<T> {
   return request<T>(endpoint, {
     method: "PATCH",
@@ -236,7 +236,7 @@ export async function apiPatch<T>(endpoint: string, data?: unknown): Promise<T> 
   });
 }
 
-// FunÃ§Ã£o genÃ©rica para requisiÃ§Ãµes DELETE
+// Função genérica para requisições DELETE
 export async function apiDelete<T>(endpoint: string): Promise<T> {
   return request<T>(endpoint, { method: "DELETE" });
 }
@@ -444,7 +444,7 @@ export const accountsApi = {
   remove: (id: number) => apiDelete<void>(`/skypdv/accounts/${id}`),
 };
 
-// FinanÃ§as
+// Finanças
 export const financeApi = {
   summary: (start_date?: string, end_date?: string, user_id?: number) => {
     const query = new URLSearchParams();
@@ -572,7 +572,7 @@ export const dashboardApi = {
   },
 };
 
-// MÃ©todos de Pagamento
+// Métodos de Pagamento
 export const paymentMethodsApi = {
   list: () => apiGet<PaymentMethod[]>("/skypdv/payment-methods"),
   create: (data: CreatePaymentMethod, isGlobal = false) =>
@@ -595,7 +595,7 @@ export const suppliersApi = {
   delete: (id: number) => apiDelete<void>(`/skypdv/suppliers/${id}`),
 };
 
-// InventÃ¡rio
+// Inventário
 export const inventoryApi = {
   getReport: () => apiGet<InventoryReport>("/skypdv/inventory"),
   getMovements: (skip = 0, limit = 100) =>

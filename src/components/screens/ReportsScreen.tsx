@@ -13,6 +13,9 @@ import {
   Home24Regular,
   DataTrending24Regular,
   Person24Regular,
+  Wrench24Regular,
+  ArrowExit24Regular,
+  Box24Regular,
 } from "@fluentui/react-icons";
 import type { DrawerProps } from "@fluentui/react-components";
 import {
@@ -29,7 +32,15 @@ import {
   useRestoreFocusTarget,
 } from "@fluentui/react-components";
 import { useSalesSummary, useSalesByDay, usePeriodicReport, useCashRegisterHistory } from "@/hooks/useReports";
-import { CashRegister, salesApi, Sale } from "@/services/api";
+import {
+  CashRegister,
+  salesApi,
+  Sale,
+  serviceOrdersApi,
+  outflowsApi,
+  PDVServiceOrder,
+  PDVOutflow,
+} from "@/services/api";
 import { CustomerName } from "@/components/CustomerName";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,6 +111,27 @@ const useStyles = makeStyles({
 
 type ReportView = "dashboard" | "daily" | "all-sales" | "cash-registers";
 
+const OUTFLOW_REASON_LABELS: Record<string, string> = {
+  consumo_interno: "Consumo interno",
+  cafetaria: "Cafetaria",
+  cozinha: "Cozinha",
+  perda: "Perda / Avaria",
+  despesa_diaria: "Despesa diária",
+  outro: "Outro",
+};
+
+function toDateKey(iso: string) {
+  try {
+    return format(parseISO(iso), "yyyy-MM-dd");
+  } catch {
+    return (iso || "").slice(0, 10);
+  }
+}
+
+function isProductOutflow(type: string | undefined | null) {
+  return String(type || "").toLowerCase().includes("product");
+}
+
 export function ReportsScreen() {
   const styles = useStyles();
   const isMobile = useIsMobile();
@@ -122,12 +154,12 @@ export function ReportsScreen() {
   const [tempPhone, setTempPhone] = useState("");
 
   useEffect(() => {
-    // Sincronizar estado inicial e mudanÃ§as de redimensionamento
-    // No desktop, o menu deve comeÃ§ar aberto. No mobile, fechado.
+    // Sincronizar estado inicial e mudanças de redimensionamento
+    // No desktop, o menu deve começar aberto. No mobile, fechado.
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
-  // Verificar se Ã© admin
+  // Verificar se é admin
   const isAdmin = useIsAdmin();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
@@ -150,7 +182,7 @@ export function ReportsScreen() {
     (u) => u.role === "cashier" && u.is_active && typeof u.user_id === "number" && Number.isFinite(u.user_id)
   );
 
-  // Buscar relatÃ³rios diÃ¡rios
+  // Buscar relatórios diários
   const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(startDate, endDate, selectedCashierId);
 
   // Buscar resumo geral
@@ -196,7 +228,147 @@ export function ReportsScreen() {
     enabled: !!selectedDate && activeView === "daily",
   });
 
-  // Calcular resumo de mÃ©todos de pagamento
+  const periodStartIso = useMemo(
+    () => startOfDay(parseISO(startDate)).toISOString(),
+    [startDate]
+  );
+  const periodEndIso = useMemo(
+    () => endOfDay(parseISO(endDate)).toISOString(),
+    [endDate]
+  );
+
+  const { data: periodServiceOrders = [], isLoading: servicesLoading } = useQuery({
+    queryKey: ["reportServiceOrders", periodStartIso, periodEndIso],
+    queryFn: () =>
+      serviceOrdersApi.list({
+        start_date: periodStartIso,
+        end_date: periodEndIso,
+        status: "completed",
+        limit: 1000,
+      }),
+  });
+
+  const { data: periodOutflows = [], isLoading: outflowsLoading } = useQuery({
+    queryKey: ["reportOutflows", periodStartIso, periodEndIso],
+    queryFn: () =>
+      outflowsApi.list({
+        start_date: periodStartIso,
+        end_date: periodEndIso,
+        limit: 1000,
+      }),
+  });
+
+  const filteredServiceOrders = useMemo(() => {
+    return periodServiceOrders.filter((order) => {
+      if (order.status && order.status !== "completed") return false;
+      if (selectedCashierId && order.created_by !== selectedCashierId) return false;
+      return true;
+    });
+  }, [periodServiceOrders, selectedCashierId]);
+
+  const filteredOutflows = useMemo(() => {
+    return periodOutflows.filter((outflow) => {
+      if (outflow.is_active === false) return false;
+      if (selectedCashierId && outflow.created_by !== selectedCashierId) return false;
+      return true;
+    });
+  }, [periodOutflows, selectedCashierId]);
+
+  const dayServiceOrders = useMemo(
+    () =>
+      selectedDate
+        ? filteredServiceOrders.filter((order) => toDateKey(order.created_at) === selectedDate)
+        : [],
+    [filteredServiceOrders, selectedDate]
+  );
+
+  const dayOutflows = useMemo(
+    () =>
+      selectedDate
+        ? filteredOutflows.filter((outflow) => toDateKey(outflow.created_at) === selectedDate)
+        : [],
+    [filteredOutflows, selectedDate]
+  );
+
+  const dailyReportDays = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        period: string;
+        sales_count: number;
+        total_revenue: string;
+        average_value: string;
+        services_count: number;
+        services_revenue: number;
+        outflows_count: number;
+      }
+    >();
+
+    dailySales.forEach((day) => {
+      const key = toDateKey(day.period);
+      map.set(key, {
+        period: key,
+        sales_count: day.sales_count || 0,
+        total_revenue: day.total_revenue || "0",
+        average_value: day.average_value || "0",
+        services_count: 0,
+        services_revenue: 0,
+        outflows_count: 0,
+      });
+    });
+
+    const ensureDay = (iso: string) => {
+      const key = toDateKey(iso);
+      if (!map.has(key)) {
+        map.set(key, {
+          period: key,
+          sales_count: 0,
+          total_revenue: "0",
+          average_value: "0",
+          services_count: 0,
+          services_revenue: 0,
+          outflows_count: 0,
+        });
+      }
+      return map.get(key)!;
+    };
+
+    filteredServiceOrders.forEach((order) => {
+      const day = ensureDay(order.created_at);
+      day.services_count += 1;
+      day.services_revenue += parseFloat(order.total || "0");
+    });
+
+    filteredOutflows.forEach((outflow) => {
+      ensureDay(outflow.created_at).outflows_count += 1;
+    });
+
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(b.period).getTime() - new Date(a.period).getTime()
+    );
+  }, [dailySales, filteredServiceOrders, filteredOutflows]);
+
+  const periodServiceTotals = useMemo(() => {
+    const total_orders = filteredServiceOrders.length;
+    const total_revenue = filteredServiceOrders.reduce(
+      (sum, order) => sum + parseFloat(order.total || "0"),
+      0
+    );
+    return { total_orders, total_revenue };
+  }, [filteredServiceOrders]);
+
+  const periodOutflowTotals = useMemo(() => {
+    const productItems = filteredOutflows.filter((o) => isProductOutflow(o.outflow_type));
+    const cashItems = filteredOutflows.filter((o) => !isProductOutflow(o.outflow_type));
+    return {
+      product_count: productItems.length,
+      cash_count: cashItems.length,
+      product_quantity: productItems.reduce((sum, o) => sum + parseFloat(o.quantity || "0"), 0),
+      cash_amount: cashItems.reduce((sum, o) => sum + parseFloat(o.amount || "0"), 0),
+    };
+  }, [filteredOutflows]);
+
+  // Calcular resumo de métodos de pagamento
   const paymentMethodsSummary = (daySales.length > 0 ? daySales : allSales).reduce((acc, sale) => {
     const method = sale.payment_method || "cash";
     if (!acc[method]) {
@@ -341,7 +513,7 @@ export function ReportsScreen() {
         setShowWhatsappDialog(true);
         return;
       }
-      // Se estiver na view diÃ¡ria e tiver uma data selecionada, exporta apenas esse dia
+      // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
       const isDailyView = activeView === "daily" && selectedDate;
       let exportStart: string | undefined = undefined;
       let exportEnd: string | undefined = undefined;
@@ -368,13 +540,13 @@ export function ReportsScreen() {
           : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId, phoneParam);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
-      // Formata o perÃ­odo para o nome do arquivo
+      // Formata o período para o nome do arquivo
       const periodStr = isDailyView
         ? format(parseISO(selectedDate!), 'dd-MM-yyyy')
         : `${format(parseISO(startDate), 'dd-MM-yyyy')}_a_${format(parseISO(endDate), 'dd-MM-yyyy')}`;
 
       const ext = type === "pdf" ? "pdf" : "xlsx";
-      const filename = `RelatÃ³rio_${todayStr}_Ref_${periodStr}.${ext}`;
+      const filename = `Relatório_${todayStr}_Ref_${periodStr}.${ext}`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -421,41 +593,37 @@ export function ReportsScreen() {
     }
   };
 
-  // Auto-selecionar hoje se nÃ£o houver seleÃ§Ã£o
+  // Auto-selecionar hoje se não houver seleção
   useEffect(() => {
-    if (!selectedDate && dailySales.length > 0 && activeView === "daily") {
-      const today = format(new Date(), 'yyyy-MM-dd');
-      const todayReport = dailySales.find(d => d.period === today);
+    if (!selectedDate && dailyReportDays.length > 0 && activeView === "daily") {
+      const today = format(new Date(), "yyyy-MM-dd");
+      const todayReport = dailyReportDays.find((d) => d.period === today);
       if (todayReport) {
         setSelectedDate(today);
-      } else if (dailySales.length > 0) {
-        // Selecionar a data mais recente (primeira apÃ³s ordenaÃ§Ã£o)
-        const sortedSales = [...dailySales].sort((a: any, b: any) => {
-          return new Date(b.period).getTime() - new Date(a.period).getTime();
-        });
-        setSelectedDate(sortedSales[0].period);
+      } else {
+        setSelectedDate(dailyReportDays[0].period);
       }
     }
-  }, [dailySales, selectedDate, activeView]);
+  }, [dailyReportDays, selectedDate, activeView]);
 
   const sidebarItems = [
     {
       id: "dashboard" as ReportView,
       label: "Dashboard",
       icon: DataTrending24Regular,
-      description: "VisÃ£o geral e resumo",
+      description: "Visão geral e resumo",
     },
     {
       id: "daily" as ReportView,
-      label: "RelatÃ³rios DiÃ¡rios",
+      label: "Relatórios Diários",
       icon: CalendarLtr24Regular,
-      description: "Vendas por dia",
+      description: "Vendas, serviços e saídas por dia",
     },
     {
       id: "all-sales" as ReportView,
       label: "Todas as Vendas",
       icon: Receipt24Regular,
-      description: "HistÃ³rico completo",
+      description: "Histórico completo",
     },
     {
       id: "cash-registers" as ReportView,
@@ -476,12 +644,9 @@ export function ReportsScreen() {
         onNavItemSelect={(_, data) => {
           const nextView = data.value as ReportView;
           setActiveView(nextView);
-          if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile apÃ³s selecionar
-          if (nextView === "daily" && !selectedDate && dailySales.length > 0) {
-            const sortedSales = [...dailySales].sort((a: any, b: any) => {
-              return new Date(b.period).getTime() - new Date(a.period).getTime();
-            });
-            setSelectedDate(sortedSales[0].period);
+          if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile após selecionar
+          if (nextView === "daily" && !selectedDate && dailyReportDays.length > 0) {
+            setSelectedDate(dailyReportDays[0].period);
           }
         }}
       >
@@ -489,7 +654,7 @@ export function ReportsScreen() {
           <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
         </NavDrawerHeader>
         <NavDrawerBody className={styles.drawerContent}>
-          <NavSectionHeader>RelatÃ³rios</NavSectionHeader>
+          <NavSectionHeader>Relatórios</NavSectionHeader>
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -535,7 +700,7 @@ export function ReportsScreen() {
 
             {!isMobile && (
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-muted-foreground uppercase">PerÃ­odo</div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase">Período</div>
                 <div className="space-y-2">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Data Inicial</label>
@@ -586,15 +751,15 @@ export function ReportsScreen() {
               )}
               <div>
                 <h1 className="text-lg md:text-xl font-bold tracking-tight">
-                  {activeView === "dashboard" && "Dashboard de RelatÃ³rios"}
-                  {activeView === "daily" && "RelatÃ³rios DiÃ¡rios"}
+                  {activeView === "dashboard" && "Dashboard de Relatórios"}
+                  {activeView === "daily" && "Relatórios Diários"}
                   {activeView === "all-sales" && "Todas as Vendas"}
                   {activeView === "cash-registers" && "Relatorio de Caixas"}
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   {activeView === "dashboard" && ""}
-                  {activeView === "daily" && "Visualize vendas por dia"}
-                  {activeView === "all-sales" && "HistÃ³rico completo de vendas"}
+                  {activeView === "daily" && "Visualize vendas, serviços e saídas por dia"}
+                  {activeView === "all-sales" && "Histórico completo de vendas"}
                   {activeView === "cash-registers" && "Caixas abertos e fechados por operador"}
                 </p>
               </div>
@@ -603,7 +768,7 @@ export function ReportsScreen() {
               <Button variant="outline" onClick={() => handleQuickFilter('today')} size="sm">Hoje</Button>
           <Button variant="outline" onClick={() => handleQuickFilter('yesterday')} size="sm">Ontem</Button>
           <Button variant="outline" onClick={() => handleQuickFilter('week')} size="sm">7 Dias</Button>
-          <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">MÃªs</Button>
+          <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
           <Button onClick={handleExportPDF} className="gap-2" variant="outline" title="Exportar Relatório PDF">
             <Print24Regular className="w-4 h-4" />
             PDF
@@ -618,24 +783,37 @@ export function ReportsScreen() {
           {/* Content based on active view */}
           <div className="flex-1 overflow-y-auto">
             {activeView === "dashboard" && (
-              <DashboardView summary={summary} summaryLoading={summaryLoading} formatCurrency={formatCurrency} />
+              <DashboardView
+                summary={summary}
+                summaryLoading={summaryLoading}
+                formatCurrency={formatCurrency}
+                serviceTotals={periodServiceTotals}
+                outflowTotals={periodOutflowTotals}
+                extrasLoading={servicesLoading || outflowsLoading}
+              />
             )}
 
             {activeView === "daily" && (
               <DailyReportsView
-                dailySales={dailySales}
-                dailyLoading={dailyLoading}
+                dailySales={dailyReportDays}
+                dailyLoading={dailyLoading || servicesLoading || outflowsLoading}
                 selectedDate={selectedDate}
                 daySummary={daySummary}
                 daySummaryLoading={daySummaryLoading}
                 daySales={daySales}
                 daySalesLoading={daySalesLoading}
+                dayServiceOrders={dayServiceOrders}
+                dayServicesLoading={servicesLoading}
+                dayOutflows={dayOutflows}
+                dayOutflowsLoading={outflowsLoading}
                 paymentMethodsSummary={paymentMethodsSummary}
+                cashierNameByUserId={cashierNameByUserId}
                 onSelectDay={handleSelectDay}
                 onViewSale={handleViewSaleDetails}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
                 formatTime={formatTime}
+                formatQuantity={formatQuantity}
                 getPaymentMethodLabel={getPaymentMethodLabel}
               />
             )}
@@ -676,13 +854,13 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Detalhes da Venda</DialogTitle>
               <DialogDescription>
-                Recibo #{selectedSale?.receipt_number || selectedSale?.id} â€¢ {selectedSale && formatTime(selectedSale.created_at)}
+                Recibo #{selectedSale?.receipt_number || selectedSale?.id} • {selectedSale && formatTime(selectedSale.created_at)}
               </DialogDescription>
             </DialogHeader>
 
             {selectedSale && (
               <div className="space-y-6 py-4">
-                {/* InformaÃ§Ãµes da Venda */}
+                {/* Informações da Venda */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
                     <p className="text-xs text-muted-foreground uppercase mb-1">Total</p>
@@ -691,7 +869,7 @@ export function ReportsScreen() {
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                    <p className="text-xs text-muted-foreground uppercase mb-1">MÃ©todo de Pagamento</p>
+                    <p className="text-xs text-muted-foreground uppercase mb-1">Método de Pagamento</p>
                     <p className="text-lg font-semibold">
                       {getPaymentMethodLabel(selectedSale.payment_method)}
                     </p>
@@ -793,8 +971,8 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Enviar para WhatsApp</DialogTitle>
               <DialogDescription>
-                Informe o nÃºmero de WhatsApp que deve receber o relatÃ³rio. VocÃª pode desativar esse envio nas
-                configuraÃ§Ãµes.
+                Informe o número de WhatsApp que deve receber o relatório. Você pode desativar esse envio nas
+                configurações.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-3">
@@ -809,7 +987,7 @@ export function ReportsScreen() {
                   checked={whatsappPrefs.enabled}
                   onChange={(e) => setWhatsappPrefs({ enabled: e.target.checked })}
                 />
-                <span className="text-sm text-muted-foreground">Ativar envio automÃ¡tico para WhatsApp</span>
+                <span className="text-sm text-muted-foreground">Ativar envio automático para WhatsApp</span>
               </div>
             </div>
             <DialogFooter className="gap-2">
@@ -856,11 +1034,17 @@ export function ReportsScreen() {
 function DashboardView({
   summary,
   summaryLoading,
-  formatCurrency
+  formatCurrency,
+  serviceTotals,
+  outflowTotals,
+  extrasLoading,
 }: {
   summary: any;
   summaryLoading: boolean;
   formatCurrency: (value: string | number) => string;
+  serviceTotals: { total_orders: number; total_revenue: number };
+  outflowTotals: { product_count: number; cash_count: number; product_quantity: number; cash_amount: number };
+  extrasLoading: boolean;
 }) {
   return (
     <div className="space-y-6">
@@ -883,7 +1067,7 @@ function DashboardView({
 
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket MÃ©dio</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket Médio</p>
             <h3 className="text-2xl font-bold mt-1">
               {summaryLoading ? "..." : formatCurrency(summary?.average_sale_value || 0)}
             </h3>
@@ -892,7 +1076,7 @@ function DashboardView({
             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
               <ChartMultiple24Regular className="w-5 h-5" />
             </div>
-            <span className="text-xs text-muted-foreground">Por transaÃ§Ã£o</span>
+            <span className="text-xs text-muted-foreground">Por transação</span>
           </div>
         </div>
 
@@ -927,10 +1111,61 @@ function DashboardView({
         </div>
       </div>
 
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="fluent-card p-4 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviços Prestados</p>
+            <h3 className="text-2xl font-bold mt-1">
+              {extrasLoading ? "..." : formatCurrency(serviceTotals?.total_revenue || 0)}
+            </h3>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Wrench24Regular className="w-5 h-5" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {serviceTotals?.total_orders || 0} ordem(ns)
+            </span>
+          </div>
+        </div>
+        <div className="fluent-card p-4 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de Dinheiro</p>
+            <h3 className="text-2xl font-bold mt-1">
+              {extrasLoading ? "..." : formatCurrency(outflowTotals?.cash_amount || 0)}
+            </h3>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
+              <ArrowExit24Regular className="w-5 h-5" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {outflowTotals?.cash_count || 0} saída(s) do caixa
+            </span>
+          </div>
+        </div>
+        <div className="fluent-card p-4 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de Produto</p>
+            <h3 className="text-2xl font-bold mt-1">
+              {extrasLoading ? "..." : outflowTotals?.product_quantity || 0}
+            </h3>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+              <Box24Regular className="w-5 h-5" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {outflowTotals?.product_count || 0} retirada(s)
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Payment Methods Summary */}
       {summary && (
         <div className="fluent-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Resumo por MÃ©todo de Pagamento</h3>
+          <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {summary.cash_sales && parseFloat(summary.cash_sales) > 0 && (
               <div className="p-3 rounded-lg bg-muted/30 border border-border">
@@ -959,6 +1194,57 @@ function DashboardView({
           </div>
         </div>
       )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="fluent-card p-4 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviços prestados</p>
+            <h3 className="text-2xl font-bold mt-1">
+              {extrasLoading ? "..." : formatCurrency(serviceTotals.total_revenue)}
+            </h3>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
+              <Wrench24Regular className="w-5 h-5" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {extrasLoading ? "..." : `${serviceTotals.total_orders} ordem(ns)`}
+            </span>
+          </div>
+        </div>
+        <div className="fluent-card p-4 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de dinheiro</p>
+            <h3 className="text-2xl font-bold mt-1">
+              {extrasLoading ? "..." : formatCurrency(outflowTotals.cash_amount)}
+            </h3>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-rose-500/10 text-rose-500">
+              <ArrowExit24Regular className="w-5 h-5" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {extrasLoading ? "..." : `${outflowTotals.cash_count} saída(s) do caixa`}
+            </span>
+          </div>
+        </div>
+        <div className="fluent-card p-4 flex flex-col justify-between">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de produto</p>
+            <h3 className="text-2xl font-bold mt-1">
+              {extrasLoading ? "..." : outflowTotals.product_quantity}
+            </h3>
+          </div>
+          <div className="mt-4 flex items-center gap-2">
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+              <Box24Regular className="w-5 h-5" />
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {extrasLoading ? "..." : `${outflowTotals.product_count} saída(s) de stock`}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -972,20 +1258,64 @@ function DailyReportsView({
   daySummaryLoading,
   daySales,
   daySalesLoading,
+  dayServiceOrders = [],
+  dayServicesLoading = false,
+  dayOutflows = [],
+  dayOutflowsLoading = false,
   paymentMethodsSummary,
+  cashierNameByUserId,
   onSelectDay,
   onViewSale,
   formatCurrency,
   formatDate,
   formatTime,
+  formatQuantity,
   getPaymentMethodLabel,
-}: any) {
+}: {
+  dailySales: Array<{
+    period: string;
+    sales_count: number;
+    total_revenue: string;
+    average_value: string;
+    services_count: number;
+    services_revenue: number;
+    outflows_count: number;
+  }>;
+  dailyLoading: boolean;
+  selectedDate: string | null;
+  daySummary: any;
+  daySummaryLoading: boolean;
+  daySales: Sale[];
+  daySalesLoading: boolean;
+  dayServiceOrders: PDVServiceOrder[];
+  dayServicesLoading: boolean;
+  dayOutflows: PDVOutflow[];
+  dayOutflowsLoading: boolean;
+  paymentMethodsSummary: Record<string, { count: number; total: number }>;
+  cashierNameByUserId: Map<number, string>;
+  onSelectDay: (date: string) => void;
+  onViewSale: (sale: Sale) => void;
+  formatCurrency: (value: string | number) => string;
+  formatDate: (dateString: string) => string;
+  formatTime: (dateString: string) => string;
+  formatQuantity: (value: string | number) => string;
+  getPaymentMethodLabel: (method: string) => string;
+}) {
+  const serviceRevenue = dayServiceOrders.reduce(
+    (sum, order) => sum + parseFloat(order.total || "0"),
+    0
+  );
+  const cashOutflows = dayOutflows.filter((o) => !isProductOutflow(o.outflow_type));
+  const productOutflows = dayOutflows.filter((o) => isProductOutflow(o.outflow_type));
+  const cashOutflowTotal = cashOutflows.reduce((sum, o) => sum + parseFloat(o.amount || "0"), 0);
+  const productOutflowQty = productOutflows.reduce((sum, o) => sum + parseFloat(o.quantity || "0"), 0);
+  const selectedDay = dailySales.find((day) => day.period === selectedDate);
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
-      {/* Lista de RelatÃ³rios DiÃ¡rios */}
+      {/* Lista de Relatórios Diários */}
       <div className="lg:col-span-1 flex flex-col overflow-hidden">
         <div className="fluent-card p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-4">RelatÃ³rios DiÃ¡rios</h2>
+          <h2 className="text-lg font-semibold mb-4">Relatórios Diários</h2>
         </div>
 
         <div className="flex-1 overflow-y-auto fluent-card p-2">
@@ -996,7 +1326,7 @@ function DailyReportsView({
           ) : dailySales.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <CalendarLtr24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-              <p className="text-sm text-muted-foreground">Nenhum relatÃ³rio encontrado</p>
+              <p className="text-sm text-muted-foreground">Nenhum relatório encontrado</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1021,10 +1351,12 @@ function DailyReportsView({
                     </Badge>
                   </div>
                   <div className="text-lg font-bold text-primary">
-                    {formatCurrency(day.total_revenue)}
+                    {formatCurrency(
+                      parseFloat(day.total_revenue || "0") + (day.services_revenue || 0)
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    Ticket mÃ©dio: {formatCurrency(day.average_value)}
+                    {day.services_count || 0} serviço(s) · {day.outflows_count || 0} saída(s)
                   </div>
                 </button>
               ))}
@@ -1040,7 +1372,7 @@ function DailyReportsView({
             <div className="text-center">
               <CalendarLtr24Regular className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-semibold mb-2">Selecione um dia</h3>
-              <p className="text-muted-foreground">Escolha um relatÃ³rio diÃ¡rio para ver os detalhes</p>
+              <p className="text-muted-foreground">Escolha um relatório diário para ver os detalhes</p>
             </div>
           </div>
         ) : (
@@ -1052,15 +1384,18 @@ function DailyReportsView({
                   <h2 className="text-xl font-bold">{formatDate(selectedDate)}</h2>
                   {daySummaryLoading ? (
                     <p className="text-sm text-muted-foreground">Carregando...</p>
-                  ) : daySummary ? (
+                  ) : (
                     <p className="text-sm text-muted-foreground">
-                      {daySummary.total_sales} vendas â€¢ Total: {formatCurrency(daySummary.total_revenue)}
+                      {daySummary?.total_sales ?? daySales.length} vendas
+                      {selectedDay ? ` • ${selectedDay.services_count} serviço(s)` : ""}
+                      {selectedDay ? ` • ${selectedDay.outflows_count} saída(s)` : ""}
+                      {daySummary ? ` • Vendas: ${formatCurrency(daySummary.total_revenue)}` : ""}
                     </p>
-                  ) : null}
+                  )}
                 </div>
               </div>
 
-              {/* Resumo de MÃ©todos de Pagamento */}
+              {/* Resumo de Métodos de Pagamento */}
               {Object.keys(paymentMethodsSummary).length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
                   {Object.entries(paymentMethodsSummary).map(([method, data]: any) => (
@@ -1069,24 +1404,25 @@ function DailyReportsView({
                         {getPaymentMethodLabel(method)}
                       </p>
                       <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                      <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
+                      <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Lista de Vendas do Dia */}
-            <div className="flex-1 overflow-y-auto fluent-card">
+            {/* Lista de Vendas, Serviços e Saídas do Dia */}
+            <div className="flex-1 overflow-y-auto space-y-4">
+              <div className="fluent-card">
               <div className="p-4 border-b border-border">
                 <h3 className="text-lg font-semibold">Vendas do Dia</h3>
               </div>
               {daySalesLoading ? (
-                <div className="flex items-center justify-center h-64">
+                <div className="flex items-center justify-center h-40">
                   <div className="text-muted-foreground">Carregando vendas...</div>
                 </div>
               ) : daySales.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
+                <div className="flex flex-col items-center justify-center h-32 text-center">
                   <Receipt24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
                   <p className="text-sm text-muted-foreground">Nenhuma venda registrada neste dia</p>
                 </div>
@@ -1096,12 +1432,12 @@ function DailyReportsView({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Hora</TableHead>
-                        <TableHead>NÂº Recibo</TableHead>
+                        <TableHead>Nº Recibo</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Items</TableHead>
                         <TableHead>Total</TableHead>
-                        <TableHead>MÃ©todo</TableHead>
-                        <TableHead className="text-right">AÃ§Ãµes</TableHead>
+                        <TableHead>Método</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1144,6 +1480,134 @@ function DailyReportsView({
                   </Table>
                 </div>
               )}
+              </div>
+
+              <div className="fluent-card">
+                <div className="p-4 border-b border-border flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Wrench24Regular className="w-5 h-5 text-indigo-500" />
+                    <h3 className="text-lg font-semibold">Serviços prestados</h3>
+                  </div>
+                  <Badge variant="outline">
+                    {dayServiceOrders.length} • {formatCurrency(serviceRevenue)}
+                  </Badge>
+                </div>
+                {dayServicesLoading ? (
+                  <div className="flex items-center justify-center h-32 text-muted-foreground">
+                    Carregando serviços...
+                  </div>
+                ) : dayServiceOrders.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-center">
+                    <Wrench24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">Nenhum serviço prestado neste dia</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Hora</TableHead>
+                          <TableHead>Serviço</TableHead>
+                          <TableHead>Cliente</TableHead>
+                          <TableHead>Qtd</TableHead>
+                          <TableHead>Método</TableHead>
+                          <TableHead>Total</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dayServiceOrders.map((order) => (
+                          <TableRow key={order.id}>
+                            <TableCell className="font-medium">{formatTime(order.created_at)}</TableCell>
+                            <TableCell>{order.service_name}</TableCell>
+                            <TableCell>{order.customer_name || "Balcão"}</TableCell>
+                            <TableCell>{formatQuantity(order.quantity || "1")}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary">{getPaymentMethodLabel(order.payment_method)}</Badge>
+                            </TableCell>
+                            <TableCell className="font-semibold text-primary">
+                              {formatCurrency(order.total)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+
+              <div className="fluent-card">
+                <div className="p-4 border-b border-border flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <ArrowExit24Regular className="w-5 h-5 text-rose-500" />
+                    <h3 className="text-lg font-semibold">Saídas do caixa</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">Dinheiro: {formatCurrency(cashOutflowTotal)}</Badge>
+                    <Badge variant="secondary">Produtos: {productOutflowQty} un.</Badge>
+                  </div>
+                </div>
+                {dayOutflowsLoading ? (
+                  <div className="flex items-center justify-center h-32 text-muted-foreground">
+                    Carregando saídas...
+                  </div>
+                ) : dayOutflows.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-32 text-center">
+                    <ArrowExit24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
+                    <p className="text-sm text-muted-foreground">Nenhuma saída registada neste dia</p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Hora</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Motivo</TableHead>
+                          <TableHead>Destino</TableHead>
+                          <TableHead>Qtd</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead>Operador</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dayOutflows.map((outflow) => {
+                          const isProduct = isProductOutflow(outflow.outflow_type);
+                          const operator =
+                            outflow.created_by_name ||
+                            (outflow.created_by
+                              ? cashierNameByUserId.get(outflow.created_by) || `#${outflow.created_by}`
+                              : "—");
+                          return (
+                            <TableRow key={outflow.id}>
+                              <TableCell className="font-medium">{formatTime(outflow.created_at)}</TableCell>
+                              <TableCell>
+                                <Badge variant={isProduct ? "secondary" : "destructive"}>
+                                  {isProduct ? "Produto" : "Dinheiro"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {isProduct
+                                  ? outflow.product_name || outflow.title || "—"
+                                  : outflow.title || "—"}
+                              </TableCell>
+                              <TableCell>
+                                {OUTFLOW_REASON_LABELS[outflow.reason] || outflow.reason || "—"}
+                              </TableCell>
+                              <TableCell>{outflow.destination || "—"}</TableCell>
+                              <TableCell>{isProduct ? formatQuantity(outflow.quantity || "0") : "—"}</TableCell>
+                              <TableCell className="font-semibold text-primary">
+                                {isProduct ? "—" : formatCurrency(outflow.amount || 0)}
+                              </TableCell>
+                              <TableCell>{operator}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
             </div>
           </>
         )}
@@ -1201,7 +1665,7 @@ function AllSalesView({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>MÃªs</TableHead>
+                    <TableHead>Mês</TableHead>
                     <TableHead>Vendas</TableHead>
                     <TableHead>Total</TableHead>
                   </TableRow>
@@ -1244,10 +1708,10 @@ function AllSalesView({
         </div>
       )}
 
-      {/* Resumo de MÃ©todos de Pagamento */}
+      {/* Resumo de Métodos de Pagamento */}
       {Object.keys(paymentMethodsSummary).length > 0 && (
         <div className="fluent-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Resumo por MÃ©todo de Pagamento</h3>
+          <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Object.entries(paymentMethodsSummary).map(([method, data]: any) => (
               <div key={method} className="p-3 rounded-lg bg-muted/30 border border-border">
@@ -1255,7 +1719,7 @@ function AllSalesView({
                   {getPaymentMethodLabel(method)}
                 </p>
                 <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
+                <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
               </div>
             ))}
           </div>
@@ -1277,7 +1741,7 @@ function AllSalesView({
         ) : sales.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <Receipt24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-            <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no perÃ­odo</p>
+            <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no período</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1285,12 +1749,12 @@ function AllSalesView({
               <TableHeader>
                 <TableRow>
                   <TableHead>Data/Hora</TableHead>
-                  <TableHead>NÂº Recibo</TableHead>
+                  <TableHead>Nº Recibo</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>MÃ©todo</TableHead>
-                  <TableHead className="text-right">AÃ§Ãµes</TableHead>
+                  <TableHead>Método</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

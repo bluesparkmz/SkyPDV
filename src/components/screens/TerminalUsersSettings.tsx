@@ -44,7 +44,7 @@ export function TerminalUsersSettings() {
   const isCurrentAdmin = (() => {
     if (!users) return false;
     const me = users.find((u) => u.user_id === currentUserId);
-    if (!me) return true; // se nÃ£o retornou nos membros, assume admin/dono
+    if (!me) return true; // se não retornou nos membros, assume admin/dono
     return (
       me.role === "admin" ||
       me.role === "manager" ||

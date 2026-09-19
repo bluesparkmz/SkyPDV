@@ -118,7 +118,7 @@ export function SalesHistoryScreen() {
     if (!uid) return false;
     if (!terminalUsers || terminalUsers.length === 0) return true; // fallback: assume dono
     const entry = terminalUsers.find((u) => u.user_id === uid);
-    if (!entry) return true; // se nÃƒÂ£o estiver na lista, provavelmente ÃƒÂ© dono
+    if (!entry) return true; // se não estiver na lista, provavelmente é dono
     return (
       entry.role === "admin" ||
       entry.role === "manager" ||
@@ -250,7 +250,7 @@ export function SalesHistoryScreen() {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err: any) {
-      toast.error(err?.message || "NÃ£o foi possÃ­vel gerar o PDF das vendas.");
+      toast.error(err?.message || "Não foi possível gerar o PDF das vendas.");
     }
   };
 
@@ -287,7 +287,7 @@ export function SalesHistoryScreen() {
             Todas
           </NavItem>
           <NavItem value="completed" icon={<CheckmarkCircle24Regular />}>
-            ConcluÃ­das
+            Concluídas
           </NavItem>
           <NavItem value="cancelled" icon={<DismissCircle24Regular />}>
             Canceladas
@@ -318,7 +318,7 @@ export function SalesHistoryScreen() {
                 <Receipt24Regular className="w-5 h-5 md:w-6 md:h-6 text-primary" />
                 <div>
                   <h1 className="text-lg md:text-2xl font-bold text-foreground">Vendas</h1>
-                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">HistÃ³rico de transaÃ§Ãµes</p>
+                  <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Histórico de transações</p>
                 </div>
               </div>
             </div>
@@ -630,7 +630,7 @@ export function SalesHistoryScreen() {
                     <TableHead className="py-3 px-4 text-xs font-semibold">Total</TableHead>
                     <TableHead className="py-3 px-4 text-xs font-semibold">Pagamento</TableHead>
                     <TableHead className="py-3 px-4 text-xs font-semibold">Status</TableHead>
-                    <TableHead className="py-3 px-4 text-xs font-semibold text-right">AÃ§Ãµes</TableHead>
+                    <TableHead className="py-3 px-4 text-xs font-semibold text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -661,7 +661,7 @@ export function SalesHistoryScreen() {
                             variant={sale.status === "completed" ? "default" : "destructive"}
                             className="text-[10px] px-2 py-0 h-5"
                           >
-                            {sale.status === "completed" ? "ConcluÃ­da" : "Cancelada"}
+                            {sale.status === "completed" ? "Concluída" : "Cancelada"}
                           </Badge>
                         </TableCell>
                         <TableCell className="h-12 py-2 px-4 text-right">
@@ -723,7 +723,7 @@ export function SalesHistoryScreen() {
                       <Badge
                         variant={selectedSale.status === "completed" ? "default" : "destructive"}
                       >
-                        {selectedSale.status === "completed" ? "ConcluÃ­da" : "Cancelada"}
+                        {selectedSale.status === "completed" ? "Concluída" : "Cancelada"}
                       </Badge>
                     </div>
                     {selectedSale.customer_name && (
@@ -741,7 +741,7 @@ export function SalesHistoryScreen() {
                       </div>
                     )}
                     <div>
-                      <p className="text-sm text-muted-foreground">MÃ©todo de Pagamento</p>
+                      <p className="text-sm text-muted-foreground">Método de Pagamento</p>
                       <p className="font-medium">{getPaymentMethodLabel(selectedSale.payment_method)}</p>
                     </div>
                     <div>
@@ -801,7 +801,7 @@ export function SalesHistoryScreen() {
 
                   {selectedSale.notes && (
                     <div className="border-t border-border pt-4">
-                      <p className="text-sm text-muted-foreground">ObservaÃ§Ãµes</p>
+                      <p className="text-sm text-muted-foreground">Observações</p>
                       <p className="font-medium">{selectedSale.notes}</p>
                     </div>
                   )}
@@ -821,7 +821,7 @@ export function SalesHistoryScreen() {
               <DialogHeader>
                 <DialogTitle>Cancelar Venda</DialogTitle>
                 <DialogDescription>
-                  Tem certeza que deseja cancelar esta venda? Esta aÃ§Ã£o nÃ£o pode ser desfeita.
+                  Tem certeza que deseja cancelar esta venda? Esta ação não pode ser desfeita.
                 </DialogDescription>
               </DialogHeader>
               {selectedSale && (
@@ -834,7 +834,7 @@ export function SalesHistoryScreen() {
                     <span className="font-medium">Total:</span> {formatCurrency(selectedSale.total)}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    O estoque serÃ¡ estornado e o valor serÃ¡ deduzido do caixa.
+                    O estoque será estornado e o valor será deduzido do caixa.
                   </p>
                 </div>
               )}
