@@ -50,6 +50,72 @@ async function parseErrorBody(response: Response): Promise<unknown> {
   }
 }
 
+export function translateApiError(message: string): string {
+  if (!message) return "Ocorreu um erro inesperado.";
+  const msg = message.trim();
+
+  const exactMap: Record<string, string> = {
+    "Cash register is closed. Please open register first.": "O caixa está fechado. Por favor, abra o caixa primeiro.",
+    "You already have an open cash register": "Já tem um caixa aberto para o seu utilizador.",
+    "No open cash register found": "Nenhum caixa aberto foi encontrado.",
+    "Only the operator who opened the cash register can close it": "Apenas o operador que abriu o caixa tem permissão para fechá-lo.",
+    "Use your own open cash register to register sales.": "Utilize o seu próprio caixa aberto para registar operações.",
+    "Amount paid cannot be lower than total for cash sales": "O valor pago não pode ser inferior ao valor total da venda.",
+    "Amount paid cannot be lower than total for cash payments": "O valor pago não pode ser inferior ao valor total.",
+    "Amount paid cannot be lower than total": "O valor pago não pode ser inferior ao valor total.",
+    "Terminal suspended due to unpaid subscription. Please make a payment to reactivate.": "Terminal suspenso por mensalidade pendente. Por favor, regularize o pagamento para desbloquear.",
+    "Terminal suspended due to unpaid subscription.": "Terminal suspenso por mensalidade pendente.",
+    "Terminal not found": "Terminal não encontrado.",
+    "Service not found": "Serviço não encontrado.",
+    "Service is inactive": "O serviço selecionado está inactivo.",
+    "Quantity must be greater than zero": "A quantidade deve ser superior a zero.",
+    "Invalid payment method": "Método de pagamento inválido.",
+    "Invalid change status": "Estado de troco inválido.",
+    "Product not found": "Produto não encontrado.",
+    "Not authenticated": "Sessão expirada. Por favor, inicie sessão novamente.",
+    "Could not validate credentials": "Não foi possível validar as credenciais. Faça login novamente.",
+    "Unauthorized": "Acesso não autorizado.",
+    "Forbidden": "Acesso negado.",
+    "Internal Server Error": "Erro interno do servidor. Tente novamente mais tarde.",
+    "Failed to fetch": "Falha na ligação ao servidor. Verifique a sua ligação à internet.",
+  };
+
+  if (exactMap[msg]) {
+    return exactMap[msg];
+  }
+
+  // Traduções por padrão / expressões
+  if (/cash register is closed/i.test(msg)) {
+    return "O caixa está fechado. Por favor, abra o caixa primeiro.";
+  }
+  if (/already have an open cash register/i.test(msg)) {
+    return "Já possui um caixa aberto no momento.";
+  }
+  if (/no open cash register/i.test(msg)) {
+    return "Nenhum caixa aberto encontrado.";
+  }
+  if (/only the operator who opened/i.test(msg)) {
+    return "Apenas o operador que abriu o caixa tem permissão para fechá-lo.";
+  }
+  if (/use your own open cash register/i.test(msg)) {
+    return "Utilize o seu próprio caixa aberto para registar operações.";
+  }
+  if (/amount paid cannot be lower/i.test(msg)) {
+    return "O valor entregue não pode ser inferior ao total a pagar.";
+  }
+  if (/suspended due to unpaid subscription/i.test(msg)) {
+    return "Terminal suspenso por mensalidade pendente. Regularize para desbloquear.";
+  }
+  if (/insufficient stock for/i.test(msg)) {
+    return msg.replace(/insufficient stock for/i, "Estoque insuficiente para").replace(/available:/i, "Disponível:");
+  }
+  if (/does not allow decimal quantity/i.test(msg)) {
+    return msg.replace(/does not allow decimal quantity/i, "não permite quantidade fracionada/decimal.");
+  }
+
+  return message;
+}
+
 async function request<T>(endpoint: string, init: RequestInit): Promise<T> {
   const response = await fetch(`${BASE_URL}${endpoint}`, {
     ...init,
@@ -58,10 +124,11 @@ async function request<T>(endpoint: string, init: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const data = await parseErrorBody(response);
-    const message =
+    const rawMessage =
       typeof data === "object" && data && "detail" in (data as any)
         ? String((data as any).detail)
-        : `API Error: ${response.status} ${response.statusText}`;
+        : `Erro na API: ${response.status} ${response.statusText}`;
+    const message = translateApiError(rawMessage);
     throw new ApiError(message, response.status, response.statusText, data);
   }
 
@@ -96,10 +163,11 @@ export async function apiUploadFile<T = { url: string }>(endpoint: string, file:
 
   if (!response.ok) {
     const data = await parseErrorBody(response);
-    const message =
+    const rawMessage =
       typeof data === "object" && data && "detail" in (data as any)
         ? String((data as any).detail)
-        : `API Error: ${response.status} ${response.statusText}`;
+        : `Erro na API: ${response.status} ${response.statusText}`;
+    const message = translateApiError(rawMessage);
     throw new ApiError(message, response.status, response.statusText, data);
   }
 
@@ -124,10 +192,11 @@ export async function apiGetBlob(endpoint: string): Promise<{ blob: Blob; filena
 
   if (!response.ok) {
     const data = await parseErrorBody(response);
-    const message =
+    const rawMessage =
       typeof data === "object" && data && "detail" in (data as any)
         ? String((data as any).detail)
-        : `API Error: ${response.status} ${response.statusText}`;
+        : `Erro na API: ${response.status} ${response.statusText}`;
+    const message = translateApiError(rawMessage);
     throw new ApiError(message, response.status, response.statusText, data);
   }
 

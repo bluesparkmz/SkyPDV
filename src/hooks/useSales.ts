@@ -27,8 +27,8 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       toast.success("Venda registrada com sucesso!");
     },
-    onError: (error) => {
-      toast.error(`Erro ao registrar venda: ${error.message}`);
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao registrar venda.");
     },
   });
 }

@@ -19,8 +19,8 @@ export function useOpenCashRegister() {
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
       toast.success("Caixa aberto com sucesso!");
     },
-    onError: (error) => {
-      toast.error(`Erro ao abrir caixa: ${error.message}`);
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao abrir caixa.");
     },
   });
 }
@@ -35,8 +35,8 @@ export function useCloseCashRegister() {
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       toast.success("Caixa fechado com sucesso!");
     },
-    onError: (error) => {
-      toast.error(`Erro ao fechar caixa: ${error.message}`);
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao fechar caixa.");
     },
   });
 }

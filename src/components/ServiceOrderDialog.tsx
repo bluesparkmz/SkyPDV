@@ -11,6 +11,7 @@ import {
 } from "@fluentui/react-icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CreatePDVServiceOrder, PDVService } from "@/services/api";
+import { LOCAL_PAYMENT_METHODS, getPaymentMethodLabel, mapToApiPaymentMethod } from "@/lib/paymentMethods";
 
 interface ServiceOrderDialogProps {
   isOpen: boolean;
@@ -34,7 +35,7 @@ export function ServiceOrderDialog({
   const [discountAmount, setDiscountAmount] = useState("0");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "mpesa" | "skywallet" | "mixed">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -92,15 +93,23 @@ export function ServiceOrderDialog({
     try {
       setLoading(true);
       setError(null);
+      const apiPaymentMethod = mapToApiPaymentMethod(paymentMethod);
+      const methodLabel = getPaymentMethodLabel(paymentMethod);
+      const combinedNotes = notes.trim()
+        ? `${notes.trim()} (Método: ${methodLabel})`
+        : paymentMethod !== "cash"
+        ? `Método: ${methodLabel}`
+        : undefined;
+
       await onSubmit({
         service_id: Number(selectedServiceId),
         quantity: numQty,
         discount_amount: numDiscount > 0 ? numDiscount : undefined,
         customer_name: customerName.trim() || undefined,
         customer_phone: customerPhone.trim() || undefined,
-        payment_method: paymentMethod,
+        payment_method: apiPaymentMethod,
         amount_paid: numPaid,
-        notes: notes.trim() || undefined,
+        notes: combinedNotes,
       });
       onSuccess();
       onClose();
@@ -238,22 +247,16 @@ export function ServiceOrderDialog({
               <Payment24Regular className="w-4 h-4 text-primary" />
               Método de Pagamento <span className="text-destructive">*</span>
             </label>
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                { id: "cash", label: "Dinheiro" },
-                { id: "card", label: "Cartão / POS" },
-                { id: "mpesa", label: "M-Pesa" },
-                { id: "skywallet", label: "SkyWallet" },
-                { id: "mixed", label: "Misto" },
-              ].map((m) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {LOCAL_PAYMENT_METHODS.map((m) => (
                 <button
-                  key={m.id}
+                  key={m.value}
                   type="button"
-                  onClick={() => setPaymentMethod(m.id as any)}
-                  className={`px-2.5 py-1.5 rounded-md text-xs font-medium border transition-colors ${
-                    paymentMethod === m.id
-                      ? "bg-primary text-primary-foreground border-primary"
-                      : "bg-background hover:bg-muted text-foreground border-input"
+                  onClick={() => setPaymentMethod(m.value)}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-center ${
+                    paymentMethod === m.value
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm ring-2 ring-primary/20"
+                      : "bg-card hover:bg-muted text-foreground border-input"
                   }`}
                 >
                   {m.label}
