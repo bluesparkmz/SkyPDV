@@ -243,8 +243,8 @@ function CartContent({
         </div>
 
         {!isCashRegisterOpen && items.length > 0 && (
-          <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 flex items-center gap-2 text-sm text-warning">
-            <Warning24Regular className="w-5 h-5" />
+          <div className="p-3 rounded-lg bg-destructive/10 border-2 border-destructive flex items-center gap-2 text-sm text-destructive font-bold shadow-sm">
+            <Warning24Regular className="w-5 h-5 flex-shrink-0 text-destructive" />
             <span>Abra o caixa para realizar vendas</span>
           </div>
         )}

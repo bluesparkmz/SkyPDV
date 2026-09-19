@@ -1,0 +1,31 @@
+{
+  "$schema": "https://neutralino.js.org/schemas/neutralino.config.json",
+  "applicationId": "com.bluesparkmz.skypdv",
+  "version": "1.0.0",
+  "defaultMode": "window",
+  "port": 0,
+  "documentRoot": "/dist/",
+  "url": "/",
+  "enableServer": true,
+  "enableNativeAPI": true,
+  "tokenSecurity": "one-time",
+  "modes": {
+    "window": {
+      "title": "SkyPDV",
+      "width": 1200,
+      "height": 800,
+      "minWidth": 900,
+      "minHeight": 600,
+      "center": true,
+      "resizable": true,
+      "fullscreen": false
+    }
+  },
+  "cli": {
+    "binaryName": "SkyPDV",
+    "resources": [
+      "/dist/"
+    ],
+    "binaryVersion": "nightly"
+  }
+}
