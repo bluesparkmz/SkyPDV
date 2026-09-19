@@ -1417,5 +1417,13 @@ export const serviceOrdersApi = {
     return apiGet<PDVServiceSummary>(`/skypdv/service-orders/summary${qs ? `?${qs}` : ""}`);
   },
   get: (id: number) => apiGet<PDVServiceOrder>(`/skypdv/service-orders/${id}`),
+  downloadPdf: (period?: "today" | "week" | "month" | "all", startDate?: string, endDate?: string) => {
+    const query = new URLSearchParams();
+    if (period) query.append("period", period);
+    if (startDate) query.append("start_date", startDate);
+    if (endDate) query.append("end_date", endDate);
+    const qs = query.toString();
+    return apiGetBlob(`/skypdv/reports/service-orders.pdf${qs ? `?${qs}` : ""}`);
+  },
 };
 

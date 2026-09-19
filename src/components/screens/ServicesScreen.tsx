@@ -143,6 +143,8 @@ export function ServicesScreen() {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
+  const [exportingPdf, setExportingPdf] = useState(false);
+
   // ------------------------------------------------------------------
   // Data loading
   // ------------------------------------------------------------------
@@ -151,7 +153,7 @@ export function ServicesScreen() {
       setLoading(true);
       const [fetchedServices, fetchedOrders] = await Promise.all([
         servicesApi.list(),
-        serviceOrdersApi.list({ limit: 1000 }),
+        serviceOrdersApi.list({ limit: 500 }),
       ]);
       setServices(fetchedServices || []);
       setOrders(fetchedOrders || []);
@@ -226,8 +228,38 @@ export function ServicesScreen() {
   };
 
   // ------------------------------------------------------------------
-  // Print
+  // PDF Export (ReportLab backend with HTML print fallback)
   // ------------------------------------------------------------------
+  const handleExportPdf = async () => {
+    if (!period) return;
+    try {
+      setExportingPdf(true);
+      const { blob, filename } = await serviceOrdersApi.downloadPdf(period);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || `servicos_${period}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      try {
+        window.open(url, "_blank");
+      } catch {
+        // Pop-up blocked is fine since file downloaded
+      }
+
+      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
+      toast.success("Relatório PDF gerado com sucesso!");
+    } catch (err: any) {
+      console.warn("ReportLab PDF falhou, a usar impressão nativa:", err);
+      toast.info("A gerar impressão padrão...");
+      handlePrint();
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const handlePrint = () => {
     if (!period) return;
     const rows = filteredOrders
@@ -393,16 +425,18 @@ export function ServicesScreen() {
                     <span className="hidden sm:inline">Actualizar</span>
                   </button>
 
-                  {/* Print — only visible on orders views */}
+                  {/* Print / PDF — only visible on orders views */}
                   {isOrdersView && (
                     <button
-                      onClick={handlePrint}
-                      disabled={filteredOrders.length === 0}
+                      onClick={handleExportPdf}
+                      disabled={filteredOrders.length === 0 || exportingPdf}
                       className="fluent-button justify-center gap-2 px-3 disabled:opacity-50"
-                      title="Imprimir lista"
+                      title="Imprimir / Exportar relatório PDF (ReportLab)"
                     >
-                      <Print24Regular className="h-5 w-5" />
-                      <span className="hidden sm:inline">Imprimir</span>
+                      <Print24Regular className={`h-5 w-5 ${exportingPdf ? "animate-spin" : ""}`} />
+                      <span className="hidden sm:inline">
+                        {exportingPdf ? "A gerar PDF..." : "Imprimir PDF"}
+                      </span>
                     </button>
                   )}
 
