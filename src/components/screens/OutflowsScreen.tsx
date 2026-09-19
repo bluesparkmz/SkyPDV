@@ -30,9 +30,7 @@ const REASON_LABELS: Record<string, string> = {
   cafetaria: "Cafetaria",
   cozinha: "Cozinha",
   perda: "Perda / Avaria",
-  sangria: "Sangria",
-  compra: "Compra",
-  pagamento: "Pagamento",
+  despesa_diaria: "Despesa diária",
   outro: "Outro",
 };
 
@@ -164,7 +162,7 @@ export function OutflowsScreen() {
               <span className="text-[11px] font-medium text-green-600 dark:text-green-400">Dinheiro Hoje</span>
             </div>
             <p className="text-lg font-bold text-foreground">{fmt(summary?.cash_amount)} MT</p>
-            <p className="text-xs text-muted-foreground">{summary?.cash_count ?? 0} sangria(s)</p>
+            <p className="text-xs text-muted-foreground">{summary?.cash_count ?? 0} saída(s)</p>
           </div>
         </div>
 

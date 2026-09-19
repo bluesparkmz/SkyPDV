@@ -18,9 +18,7 @@ const PRODUCT_REASONS = [
 ];
 
 const CASH_REASONS = [
-  { value: "sangria", label: "Sangria (Levantamento de Caixa)" },
-  { value: "compra", label: "Compra para a Loja" },
-  { value: "pagamento", label: "Pagamento de Fornecedor / Despesa" },
+  { value: "despesa_diaria", label: "Despesa Diária" },
   { value: "outro", label: "Outro" },
 ];
 
