@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Add24Regular,
   ArrowClockwise24Regular,
+  ArrowDownload24Regular,
   CalendarDay24Regular,
   CalendarWeekNumbers24Regular,
   CalendarMonth24Regular,
@@ -9,7 +10,6 @@ import {
   Delete24Regular,
   Edit24Regular,
   Money24Regular,
-  Print24Regular,
   Receipt24Regular,
   Search24Regular,
   Wrench24Regular,
@@ -124,7 +124,6 @@ export function ServicesScreen() {
   const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
   const [isNavOpen, setIsNavOpen] = useState(false);
   const restoreFocusTargetAttributes = useRestoreFocusTarget();
-  const printRef = useRef<HTMLDivElement>(null);
 
   // Default view = today (priority)
   const [activeView, setActiveView] = useState<ServiceView>("orders-today");
@@ -228,9 +227,9 @@ export function ServicesScreen() {
   };
 
   // ------------------------------------------------------------------
-  // PDF Export (ReportLab backend with HTML print fallback)
+  // Download PDF (ReportLab)
   // ------------------------------------------------------------------
-  const handleExportPdf = async () => {
+  const handleDownloadPdf = async () => {
     if (!period) return;
     try {
       setExportingPdf(true);
@@ -242,78 +241,15 @@ export function ServicesScreen() {
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-
-      try {
-        window.open(url, "_blank");
-      } catch {
-        // Pop-up blocked is fine since file downloaded
-      }
-
-      setTimeout(() => window.URL.revokeObjectURL(url), 60000);
-      toast.success("Relatório PDF gerado com sucesso!");
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      toast.success("PDF descarregado com sucesso!");
     } catch (err: any) {
-      console.warn("ReportLab PDF falhou, a usar impressão nativa:", err);
-      toast.info("A gerar impressão padrão...");
-      handlePrint();
+      toast.error(err?.message || "Erro ao descarregar PDF.");
     } finally {
       setExportingPdf(false);
     }
   };
 
-  const handlePrint = () => {
-    if (!period) return;
-    const rows = filteredOrders
-      .map(
-        (o) =>
-          `<tr>
-            <td>${o.receipt_number || `#${o.id}`}</td>
-            <td>${new Date(o.created_at).toLocaleString("pt-MZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
-            <td>${o.service_name}</td>
-            <td>${o.quantity}</td>
-            <td>${o.customer_name || "Balcão"}</td>
-            <td>${getPaymentMethodLabel(o.payment_method)}</td>
-            <td style="text-align:right;font-weight:bold">${parseFloat(o.total).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT</td>
-          </tr>`
-      )
-      .join("");
-
-    const totalFormatted = summary.total_revenue.toLocaleString("pt-MZ", { minimumFractionDigits: 2 });
-
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
-      <title>Serviços Prestados — ${periodLabel(period)}</title>
-      <style>
-        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
-        h1 { font-size: 18px; margin-bottom: 4px; }
-        p.sub { color: #666; margin-bottom: 20px; font-size: 11px; }
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #f3f4f6; padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
-        td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
-        .total-row td { font-weight: bold; background: #f9fafb; }
-        @media print { body { padding: 0; } }
-      </style>
-    </head><body>
-      <h1>Serviços Prestados</h1>
-      <p class="sub">Período: ${periodLabel(period)} · Total: ${filteredOrders.length} registos · Receita: ${totalFormatted} MT</p>
-      <table>
-        <thead><tr>
-          <th>Recibo</th><th>Data / Hora</th><th>Serviço</th><th>Qtd</th><th>Cliente</th><th>Pagamento</th><th style="text-align:right">Total</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-        <tfoot><tr class="total-row">
-          <td colspan="6">TOTAL</td>
-          <td style="text-align:right">${totalFormatted} MT</td>
-        </tr></tfoot>
-      </table>
-    </body></html>`;
-
-    const win = window.open("", "_blank");
-    if (!win) { toast.error("Não foi possível abrir a janela de impressão."); return; }
-    win.document.write(html);
-    win.document.close();
-    win.focus();
-    win.print();
-    win.close();
-  };
 
   // ------------------------------------------------------------------
   // Catalog filter
@@ -425,17 +361,17 @@ export function ServicesScreen() {
                     <span className="hidden sm:inline">Actualizar</span>
                   </button>
 
-                  {/* Print / PDF — only visible on orders views */}
+                  {/* Download PDF — only visible on orders views */}
                   {isOrdersView && (
                     <button
-                      onClick={handleExportPdf}
+                      onClick={handleDownloadPdf}
                       disabled={filteredOrders.length === 0 || exportingPdf}
                       className="fluent-button justify-center gap-2 px-3 disabled:opacity-50"
-                      title="Imprimir / Exportar relatório PDF (ReportLab)"
+                      title="Descarregar relatório em PDF (ReportLab)"
                     >
-                      <Print24Regular className={`h-5 w-5 ${exportingPdf ? "animate-spin" : ""}`} />
+                      <ArrowDownload24Regular className={`h-5 w-5 ${exportingPdf ? "animate-spin" : ""}`} />
                       <span className="hidden sm:inline">
-                        {exportingPdf ? "A gerar PDF..." : "Imprimir PDF"}
+                        {exportingPdf ? "A gerar PDF..." : "Download PDF"}
                       </span>
                     </button>
                   )}
@@ -466,7 +402,7 @@ export function ServicesScreen() {
             </div>
 
             {/* ── Tab content ──────────────────────────────────────── */}
-            <div className="windows-scrollbar flex-1 overflow-auto p-3 md:p-6" ref={printRef}>
+            <div className="windows-scrollbar flex-1 overflow-auto p-3 md:p-6">
               {isOrdersView && period ? (
                 <>
                   {/* Summary cards — computed from current period */}
