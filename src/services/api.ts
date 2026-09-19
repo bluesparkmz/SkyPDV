@@ -72,6 +72,8 @@ export function translateApiError(message: string): string {
     "Invalid payment method": "Método de pagamento inválido.",
     "Invalid change status": "Estado de troco inválido.",
     "Product not found": "Produto não encontrado.",
+    "Stock cannot be negative": "O estoque não pode ficar negativo.",
+    "Estoque insuficiente para esta saida.": "Estoque insuficiente para esta saída.",
     "Not authenticated": "Sessão expirada. Por favor, inicie sessão novamente.",
     "Could not validate credentials": "Não foi possível validar as credenciais. Faça login novamente.",
     "Unauthorized": "Acesso não autorizado.",
@@ -329,6 +331,28 @@ export const cashRegisterApi = {
     const queryString = query.toString();
     return apiGet<CashRegister[]>(`/skypdv/cash-register/history${queryString ? `?${queryString}` : ""}`);
   },
+};
+
+export const outflowsApi = {
+  list: (params?: { outflow_type?: "product" | "cash"; start_date?: string; end_date?: string; skip?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.outflow_type) query.append("outflow_type", params.outflow_type);
+    if (params?.start_date) query.append("start_date", params.start_date);
+    if (params?.end_date) query.append("end_date", params.end_date);
+    if (typeof params?.skip === "number") query.append("skip", String(params.skip));
+    if (typeof params?.limit === "number") query.append("limit", String(params.limit));
+    const qs = query.toString();
+    return apiGet<PDVOutflow[]>(`/skypdv/outflows${qs ? `?${qs}` : ""}`);
+  },
+  summary: (start_date?: string, end_date?: string) => {
+    const query = new URLSearchParams();
+    if (start_date) query.append("start_date", start_date);
+    if (end_date) query.append("end_date", end_date);
+    const qs = query.toString();
+    return apiGet<PDVOutflowSummary>(`/skypdv/outflows/summary${qs ? `?${qs}` : ""}`);
+  },
+  create: (data: CreatePDVOutflow) => apiPost<PDVOutflow>("/skypdv/outflows", data),
+  cancel: (id: number) => apiPost<{ message: string }>(`/skypdv/outflows/${id}/cancel`),
 };
 
 // Vendas
@@ -806,6 +830,7 @@ export interface CashRegister {
   total_mpesa: string;
   total_sales: string;
   total_refunds: string;
+  total_withdrawals?: string;
   sales_count: number;
   refunds_count: number;
   status: "open" | "closed";
@@ -820,6 +845,49 @@ export interface OpenCashRegister {
 export interface CloseCashRegister {
   closing_amount: string;
   notes?: string;
+}
+
+export type OutflowType = "product" | "cash";
+
+export interface PDVOutflow {
+  id: number;
+  terminal_id: number;
+  outflow_type: OutflowType | string;
+  reason: string;
+  destination: string | null;
+  title: string;
+  notes: string | null;
+  product_id: number | null;
+  product_name?: string | null;
+  storage_location: string | null;
+  quantity: string | null;
+  amount: string | null;
+  cash_register_id: number | null;
+  expense_id: number | null;
+  stock_movement_id: number | null;
+  created_by: number | null;
+  created_by_name?: string | null;
+  created_at: string;
+  is_active: boolean;
+}
+
+export interface CreatePDVOutflow {
+  outflow_type: OutflowType;
+  reason: string;
+  destination?: string;
+  title?: string;
+  notes?: string;
+  product_id?: number;
+  storage_location?: "balcao" | "congelado" | "armazem";
+  quantity?: string;
+  amount?: string;
+}
+
+export interface PDVOutflowSummary {
+  product_count: number;
+  cash_count: number;
+  product_quantity: string;
+  cash_amount: string;
 }
 
 export interface DashboardStats {
