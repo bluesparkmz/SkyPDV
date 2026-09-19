@@ -1230,3 +1230,123 @@ export interface Account {
   items: AccountItem[];
 }
 
+// ==========================================
+// Serviços (Services)
+// ==========================================
+
+export interface PDVService {
+  id: number;
+  terminal_id: number;
+  name: string;
+  price: string;
+  is_active: boolean;
+  created_by?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePDVService {
+  name: string;
+  price: number;
+}
+
+export interface UpdatePDVService {
+  name?: string;
+  price?: number;
+  is_active?: boolean;
+}
+
+export interface PDVServiceOrder {
+  id: number;
+  terminal_id: number;
+  cash_register_id?: number | null;
+  service_id?: number | null;
+  service_name: string;
+  service_price: string;
+  quantity: string;
+  discount_amount: string;
+  subtotal: string;
+  total: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  payment_method: string;
+  amount_paid: string;
+  change_amount: string;
+  notes?: string | null;
+  receipt_number?: string | null;
+  status: string;
+  created_by?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreatePDVServiceOrder {
+  service_id: number;
+  quantity?: number;
+  discount_amount?: number;
+  customer_name?: string;
+  customer_phone?: string;
+  payment_method: "cash" | "card" | "mpesa" | "skywallet" | "mixed";
+  amount_paid?: number;
+  notes?: string;
+}
+
+export interface PDVServiceSummary {
+  period_start?: string | null;
+  period_end?: string | null;
+  total_orders: number;
+  total_revenue: string;
+  total_discounts: string;
+  average_order_value: string;
+  cash_revenue: string;
+  card_revenue: string;
+  mpesa_revenue: string;
+  skywallet_revenue: string;
+  mixed_revenue: string;
+}
+
+export const servicesApi = {
+  list: (params?: { search?: string; is_active?: boolean; skip?: number; limit?: number }) => {
+    const query = new URLSearchParams();
+    if (params?.search) query.append("search", params.search);
+    if (params?.is_active !== undefined) query.append("is_active", String(params.is_active));
+    if (params?.skip) query.append("skip", String(params.skip));
+    if (params?.limit) query.append("limit", String(params.limit));
+    const qs = query.toString();
+    return apiGet<PDVService[]>(`/skypdv/services${qs ? `?${qs}` : ""}`);
+  },
+  create: (data: CreatePDVService) => apiPost<PDVService>("/skypdv/services", data),
+  update: (id: number, data: UpdatePDVService) => apiPut<PDVService>(`/skypdv/services/${id}`, data),
+  delete: (id: number) => apiDelete<{ ok: boolean; message: string }>(`/skypdv/services/${id}`),
+};
+
+export const serviceOrdersApi = {
+  create: (data: CreatePDVServiceOrder) => apiPost<PDVServiceOrder>("/skypdv/service-orders", data),
+  list: (params?: {
+    skip?: number;
+    limit?: number;
+    start_date?: string;
+    end_date?: string;
+    service_id?: number;
+    status?: string;
+  }) => {
+    const query = new URLSearchParams();
+    if (params?.skip) query.append("skip", String(params.skip));
+    if (params?.limit) query.append("limit", String(params.limit));
+    if (params?.start_date) query.append("start_date", params.start_date);
+    if (params?.end_date) query.append("end_date", params.end_date);
+    if (params?.service_id) query.append("service_id", String(params.service_id));
+    if (params?.status) query.append("status", params.status);
+    const qs = query.toString();
+    return apiGet<PDVServiceOrder[]>(`/skypdv/service-orders${qs ? `?${qs}` : ""}`);
+  },
+  getSummary: (params?: { start_date?: string; end_date?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.start_date) query.append("start_date", params.start_date);
+    if (params?.end_date) query.append("end_date", params.end_date);
+    const qs = query.toString();
+    return apiGet<PDVServiceSummary>(`/skypdv/service-orders/summary${qs ? `?${qs}` : ""}`);
+  },
+  get: (id: number) => apiGet<PDVServiceOrder>(`/skypdv/service-orders/${id}`),
+};
+

@@ -14,6 +14,7 @@ import {
   DocumentText24Regular,
   Tag24Regular,
   DataTrending24Regular,
+  Wrench24Regular,
 } from "@fluentui/react-icons";
 import { Screen } from "@/types/screen";
 
@@ -28,6 +29,7 @@ const taskbarApps: { screen: Screen; icon: React.FC<React.SVGProps<SVGSVGElement
   { screen: "pdv", icon: Desktop24Regular, title: "SkyPDV" },
   { screen: "overview", icon: DataTrending24Regular, title: "Visão Geral" },
   { screen: "products", icon: Box24Regular, title: "Produtos" },
+  { screen: "services", icon: Wrench24Regular, title: "Serviços" },
   { screen: "categories", icon: Tag24Regular, title: "Categorias" },
   { screen: "stock", icon: ClipboardTaskListLtr24Regular, title: "Estoque" },
   { screen: "tables", icon: Table24Regular, title: "Mesas" },

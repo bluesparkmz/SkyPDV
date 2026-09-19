@@ -29,6 +29,7 @@ import { SalesHistoryScreen } from "./screens/SalesHistoryScreen";
 import { FastfoodAdminScreen } from "./screens/FastfoodAdminScreen";
 import { FinanceScreen } from "./screens/FinanceScreen";
 import { InvoicesScreen } from "./screens/InvoicesScreen";
+import { ServicesScreen } from "./screens/ServicesScreen";
 import { useProducts } from "@/hooks/useProducts";
 import { useCashRegister } from "@/hooks/useCashRegister";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -435,6 +436,8 @@ export function SkyPDV() {
         return isAdmin ? <FinanceScreen /> : <OverviewScreen />;
       case "invoices":
         return <InvoicesScreen />;
+      case "services":
+        return <ServicesScreen />;
       case "pdv":
       default:
         return (
