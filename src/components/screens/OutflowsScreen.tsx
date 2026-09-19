@@ -1,29 +1,59 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
+  Add24Regular,
+  ArrowClockwise24Regular,
   ArrowExit24Regular,
   Box24Regular,
-  Money24Regular,
-  Add24Regular,
+  CalendarDay24Regular,
+  CalendarMonth24Regular,
+  CalendarMultiple24Regular,
+  CalendarWeekNumbers24Regular,
   Dismiss24Regular,
-  CalendarLtr24Regular,
+  Food24Regular,
+  Money24Regular,
+  Receipt24Regular,
   Search24Regular,
   Warning24Regular,
-  CheckmarkCircle24Regular,
 } from "@fluentui/react-icons";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { outflowsApi, productsApi, CreatePDVOutflow, PDVOutflow } from "@/services/api";
-import { OutflowDialog } from "@/components/OutflowDialog";
+import type { DrawerProps } from "@fluentui/react-components";
+import {
+  Hamburger,
+  NavDrawer,
+  NavDrawerBody,
+  NavDrawerHeader,
+  NavItem,
+  NavSectionHeader,
+  makeStyles,
+  tokens,
+  useRestoreFocusTarget,
+} from "@fluentui/react-components";
 import { toast } from "sonner";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-const fmt = (n: string | number | null | undefined, decimals = 2) => {
-  const v = parseFloat(String(n ?? 0));
-  return isNaN(v) ? "0.00" : v.toFixed(decimals);
-};
+import { useIsMobile } from "@/hooks/use-mobile";
+import { OutflowDialog } from "@/components/OutflowDialog";
+import {
+  outflowsApi,
+  productsApi,
+  CreatePDVOutflow,
+  PDVOutflow,
+  Product,
+} from "@/services/api";
 
-const fmtDate = (iso: string) => {
-  const d = new Date(iso);
-  return d.toLocaleDateString("pt-MZ", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-};
+// -------------------------------------------------------------------
+// Types & Dictionaries
+// -------------------------------------------------------------------
+type OutflowView =
+  | "period-today"
+  | "period-week"
+  | "period-month"
+  | "period-all"
+  | "type-product"
+  | "type-cash"
+  | "reason-cafetaria"
+  | "reason-cozinha";
+
+type PeriodFilter = "today" | "week" | "month" | "all";
 
 const REASON_LABELS: Record<string, string> = {
   consumo_interno: "Consumo interno",
@@ -34,35 +64,94 @@ const REASON_LABELS: Record<string, string> = {
   outro: "Outro",
 };
 
-type TabType = "all" | "product" | "cash";
+// -------------------------------------------------------------------
+// Helpers
+// -------------------------------------------------------------------
+function getStartOf(period: PeriodFilter): Date | null {
+  const now = new Date();
+  if (period === "today") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (period === "week") {
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+    return new Date(now.getFullYear(), now.getMonth(), diff);
+  }
+  if (period === "month") {
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  return null;
+}
 
+function periodLabel(period: PeriodFilter): string {
+  if (period === "today") return "Hoje";
+  if (period === "week") return "Esta Semana";
+  if (period === "month") return "Este Mês";
+  return "Todos os Registos";
+}
+
+const fmt = (n: string | number | null | undefined, decimals = 2) => {
+  const v = parseFloat(String(n ?? 0));
+  return isNaN(v) ? "0.00" : v.toFixed(decimals);
+};
+
+// -------------------------------------------------------------------
+// Styles
+// -------------------------------------------------------------------
+const useStyles = makeStyles({
+  root: {
+    overflow: "hidden",
+    display: "flex",
+    flex: 1,
+    minHeight: 0,
+  },
+  nav: {
+    minWidth: "220px",
+  },
+  content: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+  },
+  drawerContent: {
+    display: "flex",
+    flexDirection: "column",
+    gap: tokens.spacingVerticalS,
+    height: "100%",
+  },
+});
+
+// -------------------------------------------------------------------
+// Component
+// -------------------------------------------------------------------
 export function OutflowsScreen() {
+  const styles = useStyles();
+  const isMobile = useIsMobile();
+  const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
+  const [isNavOpen, setIsNavOpen] = useState(false);
+  const restoreFocusTargetAttributes = useRestoreFocusTarget();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<TabType>("all");
+
+  const [activeView, setActiveView] = useState<OutflowView>("period-today");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedReason, setSelectedReason] = useState<string>("all");
+  const [selectedLocation, setSelectedLocation] = useState<string>("all");
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const [cancelConfirm, setCancelConfirm] = useState<number | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<number | null>(null);
 
-  // Today dates
-  const todayStart = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  }, []);
-  const todayEnd = useMemo(() => {
-    const d = new Date();
-    d.setHours(23, 59, 59, 999);
-    return d.toISOString();
-  }, []);
+  useEffect(() => {
+    setIsNavOpen(!isMobile);
+  }, [isMobile]);
 
-  const { data: outflows = [], isLoading } = useQuery({
+  // Data fetching
+  const {
+    data: outflows = [],
+    isLoading: loadingOutflows,
+    refetch,
+  } = useQuery({
     queryKey: ["outflows"],
-    queryFn: () => outflowsApi.list({ limit: 200 }),
-  });
-
-  const { data: summary } = useQuery({
-    queryKey: ["outflows-summary-today"],
-    queryFn: () => outflowsApi.summary(todayStart, todayEnd),
+    queryFn: () => outflowsApi.list({ limit: 500 }),
   });
 
   const { data: products = [] } = useQuery({
@@ -70,6 +159,7 @@ export function OutflowsScreen() {
     queryFn: () => productsApi.list({ limit: 500 }),
   });
 
+  // Mutations
   const createMutation = useMutation({
     mutationFn: (data: CreatePDVOutflow) => outflowsApi.create(data),
     onSuccess: () => {
@@ -77,10 +167,10 @@ export function OutflowsScreen() {
       queryClient.invalidateQueries({ queryKey: ["outflows-summary-today"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
-      toast.success("Saida registada com sucesso!");
+      toast.success("Saída registada com sucesso!");
     },
     onError: (err: any) => {
-      toast.error(err?.message || "Erro ao registar saida.");
+      toast.error(err?.message || "Erro ao registar saída.");
     },
   });
 
@@ -91,136 +181,553 @@ export function OutflowsScreen() {
       queryClient.invalidateQueries({ queryKey: ["outflows-summary-today"] });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
-      setCancelConfirm(null);
-      toast.success("Saida cancelada.");
+      setCancelConfirmId(null);
+      toast.success("Saída cancelada e valores/stock revertidos!");
     },
     onError: (err: any) => {
-      toast.error(err?.message || "Erro ao cancelar saida.");
+      toast.error(err?.message || "Erro ao cancelar saída.");
     },
   });
 
-  const filtered = useMemo(() => {
+  // ------------------------------------------------------------------
+  // Filter logic based on activeView, search, and dropdowns
+  // ------------------------------------------------------------------
+  const filteredOutflows = useMemo(() => {
     let list = outflows;
-    if (activeTab !== "all") {
-      list = list.filter((o) => o.outflow_type === activeTab);
+
+    // View-based period filter
+    if (activeView === "period-today") {
+      const start = getStartOf("today");
+      if (start) list = list.filter((o) => new Date(o.created_at) >= start);
+    } else if (activeView === "period-week") {
+      const start = getStartOf("week");
+      if (start) list = list.filter((o) => new Date(o.created_at) >= start);
+    } else if (activeView === "period-month") {
+      const start = getStartOf("month");
+      if (start) list = list.filter((o) => new Date(o.created_at) >= start);
+    } else if (activeView === "type-product") {
+      list = list.filter((o) => o.outflow_type === "product");
+    } else if (activeView === "type-cash") {
+      list = list.filter((o) => o.outflow_type === "cash");
+    } else if (activeView === "reason-cafetaria") {
+      list = list.filter((o) => o.reason === "cafetaria");
+    } else if (activeView === "reason-cozinha") {
+      list = list.filter((o) => o.reason === "cozinha");
     }
-    if (search.trim()) {
-      const q = search.toLowerCase();
+
+    // Reason filter
+    if (selectedReason !== "all") {
+      list = list.filter((o) => o.reason === selectedReason);
+    }
+
+    // Location filter
+    if (selectedLocation !== "all") {
+      list = list.filter((o) => o.storage_location === selectedLocation);
+    }
+
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
       list = list.filter(
         (o) =>
           o.title?.toLowerCase().includes(q) ||
+          o.product_name?.toLowerCase().includes(q) ||
           o.reason?.toLowerCase().includes(q) ||
           o.destination?.toLowerCase().includes(q) ||
-          o.product_name?.toLowerCase().includes(q)
+          o.created_by_name?.toLowerCase().includes(q) ||
+          o.notes?.toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [outflows, activeTab, search]);
 
-  const tabs: { id: TabType; label: string; icon: React.FC<any>; color: string }[] = [
-    { id: "all", label: "Todas", icon: ArrowExit24Regular, color: "text-orange-500" },
-    { id: "product", label: "Produtos", icon: Box24Regular, color: "text-blue-500" },
-    { id: "cash", label: "Dinheiro", icon: Money24Regular, color: "text-green-500" },
-  ];
+    return list;
+  }, [outflows, activeView, selectedReason, selectedLocation, searchQuery]);
+
+  // ------------------------------------------------------------------
+  // KPI Metrics computed from current filtered view
+  // ------------------------------------------------------------------
+  const metrics = useMemo(() => {
+    const productItems = filteredOutflows.filter((o) => o.outflow_type === "product");
+    const cashItems = filteredOutflows.filter((o) => o.outflow_type === "cash");
+
+    const totalProductQty = productItems.reduce(
+      (acc, o) => acc + parseFloat(String(o.quantity || 0)),
+      0
+    );
+    const totalCashAmount = cashItems.reduce(
+      (acc, o) => acc + parseFloat(String(o.amount || 0)),
+      0
+    );
+
+    return {
+      productCount: productItems.length,
+      productQty: totalProductQty,
+      cashCount: cashItems.length,
+      cashAmount: totalCashAmount,
+      totalCount: filteredOutflows.length,
+    };
+  }, [filteredOutflows]);
+
+  const viewTitle = useMemo(() => {
+    switch (activeView) {
+      case "period-today":
+        return "Hoje";
+      case "period-week":
+        return "Esta Semana";
+      case "period-month":
+        return "Este Mês";
+      case "period-all":
+        return "Todos os Registos";
+      case "type-product":
+        return "Saídas de Produtos";
+      case "type-cash":
+        return "Despesas de Caixa";
+      case "reason-cafetaria":
+        return "Saídas para Cafetaria";
+      case "reason-cozinha":
+        return "Saídas para Cozinha";
+      default:
+        return "Gestão de Saídas";
+    }
+  }, [activeView]);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
-      {/* Header */}
-      <div className="shrink-0 px-4 pt-4 pb-3 border-b border-border">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-orange-500/15 flex items-center justify-center">
-              <ArrowExit24Regular className="w-5 h-5 text-orange-500" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-foreground">Saidas</h1>
-              <p className="text-xs text-muted-foreground">Gestao de retiradas e sangrias</p>
-            </div>
-          </div>
-          <button
-            onClick={() => setDialogOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-xs font-semibold transition-colors"
-          >
-            <Add24Regular className="w-4 h-4" />
-            Nova Saida
-          </button>
-        </div>
-
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 gap-2 mb-3">
-          <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Box24Regular className="w-4 h-4 text-blue-500" />
-              <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400">Produtos Hoje</span>
-            </div>
-            <p className="text-lg font-bold text-foreground">{summary?.product_count ?? 0}</p>
-            <p className="text-xs text-muted-foreground">{fmt(summary?.product_quantity, 0)} un. retiradas</p>
-          </div>
-          <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-3">
-            <div className="flex items-center gap-1.5 mb-1">
-              <Money24Regular className="w-4 h-4 text-green-500" />
-              <span className="text-[11px] font-medium text-green-600 dark:text-green-400">Dinheiro Hoje</span>
-            </div>
-            <p className="text-lg font-bold text-foreground">{fmt(summary?.cash_amount)} MT</p>
-            <p className="text-xs text-muted-foreground">{summary?.cash_count ?? 0} saída(s)</p>
-          </div>
-        </div>
-
-        {/* Tabs + Search */}
-        <div className="flex items-center gap-2">
-          <div className="flex gap-1 bg-secondary rounded-lg p-1">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setActiveTab(t.id)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${activeTab === t.id ? "bg-background shadow-sm text-foreground" : "text-muted-foreground hover:text-foreground"}`}
-              >
-                <t.icon className={`w-3.5 h-3.5 ${activeTab === t.id ? t.color : ""}`} />
-                {t.label}
-              </button>
-            ))}
-          </div>
-          <div className="flex-1 relative">
-            <Search24Regular className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Pesquisar..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-8 pr-3 py-2 rounded-lg bg-secondary border border-border text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"
+    <>
+      <div className={styles.root}>
+        {/* ── Sidebar ────────────────────────────────────────────── */}
+        <NavDrawer
+          defaultSelectedValue="period-today"
+          open={isNavOpen}
+          type={drawerType}
+          className={styles.nav}
+          onOpenChange={(_, data) => setIsNavOpen(data.open)}
+          selectedValue={activeView}
+        >
+          <NavDrawerHeader>
+            <Hamburger
+              {...restoreFocusTargetAttributes}
+              onClick={() => setIsNavOpen(!isNavOpen)}
             />
+          </NavDrawerHeader>
+          <NavDrawerBody>
+            <div className={styles.drawerContent}>
+              {/* Period filters */}
+              <NavSectionHeader>Saídas por Período</NavSectionHeader>
+              <NavItem
+                icon={<CalendarDay24Regular />}
+                value="period-today"
+                onClick={() => setActiveView("period-today")}
+              >
+                Hoje
+              </NavItem>
+              <NavItem
+                icon={<CalendarWeekNumbers24Regular />}
+                value="period-week"
+                onClick={() => setActiveView("period-week")}
+              >
+                Esta Semana
+              </NavItem>
+              <NavItem
+                icon={<CalendarMonth24Regular />}
+                value="period-month"
+                onClick={() => setActiveView("period-month")}
+              >
+                Este Mês
+              </NavItem>
+              <NavItem
+                icon={<CalendarMultiple24Regular />}
+                value="period-all"
+                onClick={() => setActiveView("period-all")}
+              >
+                Todos ({outflows.length})
+              </NavItem>
+
+              {/* Type filters */}
+              <NavSectionHeader>Por Tipo</NavSectionHeader>
+              <NavItem
+                icon={<Box24Regular />}
+                value="type-product"
+                onClick={() => setActiveView("type-product")}
+              >
+                Produtos ({outflows.filter((o) => o.outflow_type === "product").length})
+              </NavItem>
+              <NavItem
+                icon={<Money24Regular />}
+                value="type-cash"
+                onClick={() => setActiveView("type-cash")}
+              >
+                Dinheiro ({outflows.filter((o) => o.outflow_type === "cash").length})
+              </NavItem>
+
+              {/* Quick destination filters */}
+              <NavSectionHeader>Destinos Frequentes</NavSectionHeader>
+              <NavItem
+                icon={<Food24Regular />}
+                value="reason-cafetaria"
+                onClick={() => setActiveView("reason-cafetaria")}
+              >
+                Cafetaria ({outflows.filter((o) => o.reason === "cafetaria").length})
+              </NavItem>
+              <NavItem
+                icon={<Food24Regular />}
+                value="reason-cozinha"
+                onClick={() => setActiveView("reason-cozinha")}
+              >
+                Cozinha ({outflows.filter((o) => o.reason === "cozinha").length})
+              </NavItem>
+            </div>
+          </NavDrawerBody>
+        </NavDrawer>
+
+        {/* ── Main content ───────────────────────────────────────── */}
+        <div className={styles.content}>
+          <div className="flex h-full flex-1 flex-col overflow-hidden">
+            {/* Header */}
+            <div className="border-b border-border bg-background/80 px-3 py-3 backdrop-blur-md md:px-6 md:py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <button
+                    className="fluent-button px-2 md:hidden"
+                    onClick={() => setIsNavOpen(true)}
+                    aria-label="Abrir menu de saídas"
+                  >
+                    <Hamburger />
+                  </button>
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-500 text-white md:h-10 md:w-10">
+                    <ArrowExit24Regular className="h-5 w-5 md:h-6 md:w-6" />
+                  </div>
+                  <div>
+                    <h1 className="text-lg font-bold text-foreground md:text-2xl">
+                      Gestão de Saídas
+                    </h1>
+                    <p className="hidden text-xs text-muted-foreground sm:block md:text-sm">
+                      A mostrar: {viewTitle}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => refetch()}
+                    disabled={loadingOutflows}
+                    className="fluent-button justify-center gap-2 px-3"
+                    title="Actualizar dados"
+                  >
+                    <ArrowClockwise24Regular
+                      className={`h-5 w-5 ${loadingOutflows ? "animate-spin" : ""}`}
+                    />
+                    <span className="hidden sm:inline">Actualizar</span>
+                  </button>
+
+                  <button
+                    onClick={() => setDialogOpen(true)}
+                    className="fluent-button bg-orange-500 hover:bg-orange-600 text-white justify-center gap-2 px-3 font-semibold transition-colors"
+                  >
+                    <Add24Regular className="h-5 w-5" />
+                    <span className="hidden sm:inline">Nova Saída</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* ── Body content ─────────────────────────────────────── */}
+            <div className="windows-scrollbar flex-1 overflow-auto p-3 md:p-6">
+              {/* Summary / KPI Cards */}
+              <div className="mb-6 grid gap-3 md:grid-cols-3">
+                {/* Card 1: Produtos */}
+                <div className="fluent-card p-4 flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                    <Box24Regular className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground md:text-sm">Produtos Retirados</p>
+                    <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
+                      {fmt(metrics.productQty, 0)} un.
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {metrics.productCount} {metrics.productCount === 1 ? "saída" : "saídas"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card 2: Dinheiro */}
+                <div className="fluent-card p-4 flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <Money24Regular className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground md:text-sm">Despesas de Caixa</p>
+                    <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
+                      {metrics.cashAmount.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {metrics.cashCount} {metrics.cashCount === 1 ? "saída" : "saídas"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Card 3: Total Geral */}
+                <div className="fluent-card p-4 flex items-center gap-3">
+                  <div className="p-3 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                    <Receipt24Regular className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground md:text-sm">Total de Registos</p>
+                    <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
+                      {metrics.totalCount}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Filtro activo: {viewTitle}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Table with Filters ──────────────────────────────── */}
+              <div className="fluent-card overflow-hidden">
+                {/* Table Toolbar / Filters */}
+                <div className="border-b border-border p-3 md:p-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <ArrowExit24Regular className="h-4 w-4 text-orange-500" />
+                      Registos — {viewTitle}
+                    </h3>
+                    <span className="rounded-full px-2 py-0.5 text-xs bg-muted text-muted-foreground font-medium">
+                      {filteredOutflows.length} {filteredOutflows.length === 1 ? "item" : "itens"}
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    {/* Search */}
+                    <div className="relative min-w-[180px] sm:w-56">
+                      <Search24Regular className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <input
+                        type="text"
+                        placeholder="Pesquisar saídas..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-secondary border border-border text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"
+                      />
+                    </div>
+
+                    {/* Filter by Reason */}
+                    <select
+                      value={selectedReason}
+                      onChange={(e) => setSelectedReason(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"
+                    >
+                      <option value="all">Todos os motivos</option>
+                      <option value="consumo_interno">Consumo interno</option>
+                      <option value="cafetaria">Cafetaria</option>
+                      <option value="cozinha">Cozinha</option>
+                      <option value="perda">Perda / Avaria</option>
+                      <option value="despesa_diaria">Despesa diária</option>
+                      <option value="outro">Outro</option>
+                    </select>
+
+                    {/* Filter by Stock Location */}
+                    <select
+                      value={selectedLocation}
+                      onChange={(e) => setSelectedLocation(e.target.value)}
+                      className="px-2.5 py-1.5 rounded-lg bg-secondary border border-border text-xs focus:outline-none focus:ring-1 focus:ring-orange-400"
+                    >
+                      <option value="all">Todos os locais</option>
+                      <option value="balcao">Balcão</option>
+                      <option value="armazem">Armazém</option>
+                      <option value="congelado">Congelado</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Table Content */}
+                {loadingOutflows ? (
+                  <div className="flex h-48 items-center justify-center text-muted-foreground">
+                    <p className="text-sm">A carregar registos de saídas...</p>
+                  </div>
+                ) : filteredOutflows.length === 0 ? (
+                  <div className="p-12 text-center text-muted-foreground space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center mx-auto text-orange-500">
+                      <ArrowExit24Regular className="h-6 w-6" />
+                    </div>
+                    <p className="text-sm font-medium">Nenhuma saída registada para este filtro.</p>
+                    <button
+                      onClick={() => setDialogOpen(true)}
+                      className="fluent-button bg-orange-500 hover:bg-orange-600 text-white inline-flex gap-2 px-4 font-semibold text-xs transition-colors"
+                    >
+                      <Add24Regular className="h-4 w-4" />
+                      Registar Nova Saída
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-secondary/50">
+                        <tr>
+                          <th className="p-3 text-left text-xs font-semibold text-foreground">
+                            ID / Tipo
+                          </th>
+                          <th className="p-3 text-left text-xs font-semibold text-foreground">
+                            Data / Hora
+                          </th>
+                          <th className="p-3 text-left text-xs font-semibold text-foreground">
+                            Motivo
+                          </th>
+                          <th className="p-3 text-left text-xs font-semibold text-foreground">
+                            Item / Descrição
+                          </th>
+                          <th className="p-3 text-left text-xs font-semibold text-foreground">
+                            Destino / Local
+                          </th>
+                          <th className="p-3 text-left text-xs font-semibold text-foreground">
+                            Operador
+                          </th>
+                          <th className="p-3 text-right text-xs font-semibold text-foreground">
+                            Qtd / Valor
+                          </th>
+                          <th className="p-3 text-center text-xs font-semibold text-foreground">
+                            Ação
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredOutflows.map((outflow) => {
+                          const isProduct = outflow.outflow_type === "product";
+                          return (
+                            <tr
+                              key={outflow.id}
+                              className="border-t border-border transition-colors hover:bg-secondary/30 group"
+                            >
+                              {/* ID / Tipo */}
+                              <td className="p-3 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-semibold text-[11px] ${
+                                    isProduct
+                                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+                                      : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                  }`}
+                                >
+                                  {isProduct ? (
+                                    <Box24Regular className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <Money24Regular className="w-3.5 h-3.5" />
+                                  )}
+                                  #{outflow.id}
+                                </span>
+                              </td>
+
+                              {/* Data / Hora */}
+                              <td className="p-3 text-xs text-muted-foreground whitespace-nowrap">
+                                {new Date(outflow.created_at).toLocaleString("pt-MZ", {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </td>
+
+                              {/* Motivo */}
+                              <td className="p-3">
+                                <span className="rounded-full px-2.5 py-0.5 text-[11px] font-semibold bg-muted text-foreground border border-border">
+                                  {REASON_LABELS[outflow.reason] || outflow.reason}
+                                </span>
+                              </td>
+
+                              {/* Item / Descrição */}
+                              <td className="p-3">
+                                <div className="text-xs font-medium text-foreground">
+                                  {outflow.product_name || outflow.title}
+                                </div>
+                                {outflow.notes && (
+                                  <div className="text-[11px] text-muted-foreground truncate max-w-xs">
+                                    {outflow.notes}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Destino / Local */}
+                              <td className="p-3 text-xs text-muted-foreground">
+                                {outflow.destination ? (
+                                  <span className="font-medium text-foreground/90">
+                                    {outflow.destination}
+                                  </span>
+                                ) : (
+                                  <span className="italic opacity-60">—</span>
+                                )}
+                                {outflow.storage_location && (
+                                  <div className="text-[10px] opacity-70 uppercase tracking-wide">
+                                    Local: {outflow.storage_location}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Operador */}
+                              <td className="p-3 text-xs text-muted-foreground">
+                                {outflow.created_by_name || "Operador"}
+                              </td>
+
+                              {/* Qtd / Valor */}
+                              <td className="p-3 text-right text-xs font-bold whitespace-nowrap">
+                                {isProduct ? (
+                                  <span className="text-blue-600 dark:text-blue-400">
+                                    {fmt(outflow.quantity, 0)} un.
+                                  </span>
+                                ) : (
+                                  <span className="text-emerald-600 dark:text-emerald-400">
+                                    {parseFloat(String(outflow.amount || 0)).toLocaleString(
+                                      "pt-MZ",
+                                      {
+                                        minimumFractionDigits: 2,
+                                      }
+                                    )}{" "}
+                                    MT
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* Ação */}
+                              <td className="p-3 text-center">
+                                <button
+                                  onClick={() => setCancelConfirmId(outflow.id)}
+                                  className="fluent-button text-destructive hover:bg-destructive/10 border-transparent px-2 py-1 text-[11px] opacity-75 group-hover:opacity-100 transition-all"
+                                  title="Anular saída e reverter valores/estoque"
+                                >
+                                  <Dismiss24Regular className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline ml-1">Anular</span>
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+
+                      {/* Total Row */}
+                      <tfoot>
+                        <tr className="border-t-2 border-border bg-secondary/30 text-xs font-bold">
+                          <td colSpan={6} className="p-3 text-foreground">
+                            TOTAL ({filteredOutflows.length} registos)
+                          </td>
+                          <td className="p-3 text-right text-foreground">
+                            <div>{fmt(metrics.productQty, 0)} un.</div>
+                            <div className="text-emerald-600 dark:text-emerald-400">
+                              {metrics.cashAmount.toLocaleString("pt-MZ", {
+                                minimumFractionDigits: 2,
+                              })}{" "}
+                              MT
+                            </div>
+                          </td>
+                          <td></td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2 windows-scrollbar">
-        {isLoading && (
-          <div className="flex items-center justify-center py-16">
-            <span className="inline-block w-6 h-6 border-2 border-orange-400/30 border-t-orange-400 rounded-full animate-spin" />
-          </div>
-        )}
-
-        {!isLoading && filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <div className="w-14 h-14 rounded-full bg-orange-500/10 flex items-center justify-center mb-3">
-              <ArrowExit24Regular className="w-7 h-7 text-orange-400" />
-            </div>
-            <p className="text-sm font-medium text-muted-foreground">Nenhuma saida registada</p>
-            <p className="text-xs text-muted-foreground/60 mt-1">Clique em "Nova Saida" para comecar</p>
-          </div>
-        )}
-
-        {filtered.map((outflow) => (
-          <OutflowCard
-            key={outflow.id}
-            outflow={outflow}
-            onCancel={(id) => setCancelConfirm(id)}
-          />
-        ))}
-      </div>
-
-      {/* OutflowDialog */}
+      {/* ── Dialogs ────────────────────────────────────────────── */}
       <OutflowDialog
         isOpen={dialogOpen}
         onClose={() => setDialogOpen(false)}
@@ -228,94 +735,40 @@ export function OutflowsScreen() {
         products={products}
       />
 
-      {/* Cancel confirmation */}
-      {cancelConfirm !== null && (
+      {/* Cancel Confirmation Dialog */}
+      {cancelConfirmId !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-          <div className="bg-background border border-border rounded-xl p-5 max-w-sm w-full mx-4 shadow-xl">
+          <div className="bg-background border border-border rounded-xl p-5 max-w-sm w-full mx-4 shadow-2xl">
             <div className="flex items-start gap-3 mb-4">
               <div className="w-9 h-9 rounded-lg bg-destructive/10 flex items-center justify-center shrink-0 mt-0.5">
                 <Warning24Regular className="w-5 h-5 text-destructive" />
               </div>
               <div>
-                <h3 className="text-sm font-semibold">Cancelar saida?</h3>
+                <h3 className="text-sm font-semibold text-foreground">Anular esta saída?</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Esta acao ira reverter o stock ou o levantamento de caixa. Nao pode ser desfeita.
+                  Esta ação reverterá automaticamente o stock de volta ao armazém/balcão ou
+                  restaurará o saldo no caixa aberto.
                 </p>
               </div>
             </div>
             <div className="flex gap-2">
               <button
-                onClick={() => setCancelConfirm(null)}
-                className="flex-1 py-2 rounded-lg bg-secondary text-sm font-medium hover:bg-secondary/80 transition-colors"
+                onClick={() => setCancelConfirmId(null)}
+                className="flex-1 py-2 rounded-lg bg-secondary text-xs font-semibold hover:bg-secondary/80 transition-colors text-foreground"
               >
                 Voltar
               </button>
               <button
-                onClick={() => cancelMutation.mutate(cancelConfirm)}
+                onClick={() => cancelMutation.mutate(cancelConfirmId)}
                 disabled={cancelMutation.isPending}
-                className="flex-1 py-2 rounded-lg bg-destructive text-white text-sm font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-60"
+                className="flex-1 py-2 rounded-lg bg-destructive text-white text-xs font-semibold hover:bg-destructive/90 transition-colors disabled:opacity-60"
               >
-                {cancelMutation.isPending ? "A cancelar..." : "Cancelar Saida"}
+                {cancelMutation.isPending ? "A anular..." : "Sim, Anular Saída"}
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function OutflowCard({ outflow, onCancel }: { outflow: PDVOutflow; onCancel: (id: number) => void }) {
-  const isProduct = outflow.outflow_type === "product";
-
-  return (
-    <div className="bg-card border border-border rounded-xl p-3.5 flex items-start gap-3 group hover:border-orange-300/50 transition-colors">
-      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${isProduct ? "bg-blue-500/10" : "bg-green-500/10"}`}>
-        {isProduct
-          ? <Box24Regular className="w-5 h-5 text-blue-500" />
-          : <Money24Regular className="w-5 h-5 text-green-500" />}
-      </div>
-
-      <div className="flex-1 min-w-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{outflow.title}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              <span className="font-medium text-foreground/80">{REASON_LABELS[outflow.reason] || outflow.reason}</span>
-              {outflow.destination ? ` → ${outflow.destination}` : ""}
-              {outflow.notes ? ` • ${outflow.notes}` : ""}
-            </p>
-          </div>
-          <div className="text-right shrink-0">
-            {isProduct ? (
-              <p className="text-sm font-bold text-blue-500">{fmt(outflow.quantity, 0)} un.</p>
-            ) : (
-              <p className="text-sm font-bold text-green-600">{fmt(outflow.amount)} MT</p>
-            )}
-          </div>
-        </div>
-
-        {outflow.product_name && (
-          <div className="mt-1 flex items-center gap-1">
-            <Box24Regular className="w-3 h-3 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{outflow.product_name}</span>
-          </div>
-        )}
-
-        <div className="mt-2 flex items-center justify-between">
-          <div className="flex items-center gap-1 text-muted-foreground/70">
-            <CalendarLtr24Regular className="w-3 h-3" />
-            <span className="text-[10px]">{fmtDate(outflow.created_at)}</span>
-          </div>
-          <button
-            onClick={() => onCancel(outflow.id)}
-            className="opacity-0 group-hover:opacity-100 flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-destructive hover:bg-destructive/10 transition-all"
-          >
-            <Dismiss24Regular className="w-3 h-3" />
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+    </>
   );
 }
