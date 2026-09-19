@@ -19,6 +19,7 @@ import { CashRegisterDialog } from "./CashRegisterDialog";
 import { OverviewScreen } from "./screens/OverviewScreen";
 import { ProductsScreen } from "./screens/ProductsScreen";
 import { StockScreen } from "./screens/StockScreen";
+import { OutflowsScreen } from "./screens/OutflowsScreen";
 import { ReportsScreen } from "./screens/ReportsScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TerminalSetup } from "./TerminalSetup";
@@ -418,6 +419,8 @@ export function SkyPDV() {
         return <ProductsScreen />;
       case "stock":
         return <StockScreen />;
+      case "outflows":
+        return <OutflowsScreen />;
       case "reports":
         return <ReportsScreen />;
       case "settings":
