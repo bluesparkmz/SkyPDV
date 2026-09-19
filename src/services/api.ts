@@ -353,6 +353,14 @@ export const outflowsApi = {
   },
   create: (data: CreatePDVOutflow) => apiPost<PDVOutflow>("/skypdv/outflows", data),
   cancel: (id: number) => apiPost<{ message: string }>(`/skypdv/outflows/${id}/cancel`),
+  downloadPdf: (params?: { outflow_type?: "product" | "cash"; start_date?: string; end_date?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.outflow_type) query.append("outflow_type", params.outflow_type);
+    if (params?.start_date) query.append("start_date", params.start_date);
+    if (params?.end_date) query.append("end_date", params.end_date);
+    const qs = query.toString();
+    return apiGetBlob(`/skypdv/outflows/report.pdf${qs ? `?${qs}` : ""}`);
+  },
 };
 
 // Vendas

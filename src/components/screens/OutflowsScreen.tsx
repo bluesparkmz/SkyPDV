@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Add24Regular,
-  ArrowClockwise24Regular,
+  ArrowDownload24Regular,
   ArrowExit24Regular,
   Box24Regular,
   CalendarDay24Regular,
@@ -139,6 +139,57 @@ export function OutflowsScreen() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cancelConfirmId, setCancelConfirmId] = useState<number | null>(null);
+  const [isPdfLoading, setIsPdfLoading] = useState(false);
+
+  // Derive date range from the active view for PDF export
+  const handlePrintPdf = async () => {
+    try {
+      setIsPdfLoading(true);
+      const now = new Date();
+      let startDate: string | undefined;
+      let endDate: string | undefined;
+      let outflowType: "product" | "cash" | undefined;
+
+      if (activeView === "period-today") {
+        const s = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        startDate = s.toISOString();
+        endDate = now.toISOString();
+      } else if (activeView === "period-week") {
+        const day = now.getDay();
+        const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+        const s = new Date(now.getFullYear(), now.getMonth(), diff);
+        startDate = s.toISOString();
+        endDate = now.toISOString();
+      } else if (activeView === "period-month") {
+        const s = new Date(now.getFullYear(), now.getMonth(), 1);
+        startDate = s.toISOString();
+        endDate = now.toISOString();
+      } else if (activeView === "type-product") {
+        outflowType = "product";
+      } else if (activeView === "type-cash") {
+        outflowType = "cash";
+      }
+      // period-all, reason-* → no date filter (all records)
+
+      const { blob, filename } = await outflowsApi.downloadPdf({
+        outflow_type: outflowType,
+        start_date: startDate,
+        end_date: endDate,
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename || "saidas.pdf";
+      a.target = "_blank";
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err: any) {
+      const { toast } = await import("sonner");
+      toast.error(err?.message || "Erro ao gerar PDF.");
+    } finally {
+      setIsPdfLoading(false);
+    }
+  };
 
   useEffect(() => {
     setIsNavOpen(!isMobile);
@@ -407,15 +458,15 @@ export function OutflowsScreen() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => refetch()}
-                    disabled={loadingOutflows}
-                    className="fluent-button justify-center gap-2 px-3"
-                    title="Actualizar dados"
+                    onClick={handlePrintPdf}
+                    disabled={isPdfLoading}
+                    className="fluent-button justify-center gap-2 px-3 border-orange-400 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 transition-colors"
+                    title="Imprimir PDF das saídas actuais"
                   >
-                    <ArrowClockwise24Regular
-                      className={`h-5 w-5 ${loadingOutflows ? "animate-spin" : ""}`}
+                    <ArrowDownload24Regular
+                      className={`h-5 w-5 ${isPdfLoading ? "animate-pulse" : ""}`}
                     />
-                    <span className="hidden sm:inline">Actualizar</span>
+                    <span className="hidden sm:inline">{isPdfLoading ? "A gerar..." : "Imprimir PDF"}</span>
                   </button>
 
                   <button
