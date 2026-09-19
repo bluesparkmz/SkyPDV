@@ -604,18 +604,14 @@ export function ReportsScreen() {
           <Button variant="outline" onClick={() => handleQuickFilter('yesterday')} size="sm">Ontem</Button>
           <Button variant="outline" onClick={() => handleQuickFilter('week')} size="sm">7 Dias</Button>
           <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">MÃªs</Button>
-          {(selectedDate || activeView === "all-sales") && (
-            <>
-              <Button onClick={handleExportPDF} className="gap-2" variant="outline">
-                <Print24Regular className="w-4 h-4" />
-                PDF
-              </Button>
-              <Button onClick={() => handleExport("excel")} className="gap-2" variant="outline">
-                <Document24Regular className="w-4 h-4" />
-                Excel
-              </Button>
-            </>
-          )}
+          <Button onClick={handleExportPDF} className="gap-2" variant="outline" title="Exportar Relatório PDF">
+            <Print24Regular className="w-4 h-4" />
+            PDF
+          </Button>
+          <Button onClick={() => handleExport("excel")} className="gap-2" variant="outline" title="Exportar Relatório Excel">
+            <Document24Regular className="w-4 h-4" />
+            Excel
+          </Button>
         </div>
       </div>
 
