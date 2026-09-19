@@ -8,10 +8,12 @@ import {
   Warning24Regular,
   Building24Regular,
   Cart24Filled,
+  ArrowExit24Regular,
 } from "@fluentui/react-icons";
 import { useState } from "react";
 import { SaleDialog } from "./SaleDialog";
 import { ReserveBillDialog } from "./ReserveBillDialog";
+import { CartOutflowDialog } from "./CartOutflowDialog";
 import { toast } from "sonner";
 import { ProductImage } from "./ProductImage";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
@@ -66,6 +68,7 @@ function CartContent({
   canSell?: boolean;
 }) {
   const [saleDialogOpen, setSaleDialogOpen] = useState(false);
+  const [outflowDialogOpen, setOutflowDialogOpen] = useState(false);
   const [reserveDialogOpen, setReserveDialogOpen] = useState(false);
   const [clearCartDialogOpen, setClearCartDialogOpen] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -270,18 +273,28 @@ function CartContent({
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={handleFinalizeSale}
-            disabled={!isCashRegisterOpen}
-            className="fluent-button fluent-button-primary py-2 font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-xs text-white"
+            disabled={!isCashRegisterOpen || items.length === 0}
+            className="fluent-button fluent-button-primary py-2.5 font-semibold disabled:opacity-50 disabled:cursor-not-allowed text-xs text-white"
           >
             Finalizar Venda
           </button>
           <button
-            onClick={() => setClearCartDialogOpen(true)}
-            className="fluent-button bg-destructive/10 text-destructive hover:bg-destructive/20 py-2 transition-colors text-xs font-medium border border-destructive/20"
+            onClick={() => setOutflowDialogOpen(true)}
+            disabled={items.length === 0}
+            className="fluent-button bg-orange-500 hover:bg-orange-600 text-white py-2.5 font-semibold transition-colors text-xs flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Limpar Carrinho
+            <ArrowExit24Regular className="w-4 h-4" />
+            Registar Saída
           </button>
         </div>
+
+        <button
+          onClick={() => setClearCartDialogOpen(true)}
+          disabled={items.length === 0}
+          className="w-full fluent-button bg-destructive/10 text-destructive hover:bg-destructive/20 py-1.5 transition-colors text-xs font-medium border border-destructive/20 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Limpar Carrinho
+        </button>
 
         <AlertDialog open={clearCartDialogOpen} onOpenChange={setClearCartDialogOpen}>
           <AlertDialogContent className="sm:left-auto sm:right-6 sm:top-auto sm:bottom-24 sm:w-[380px] sm:translate-x-0 sm:translate-y-0">
@@ -321,6 +334,16 @@ function CartContent({
       <ReserveBillDialog
         open={reserveDialogOpen}
         onOpenChange={setReserveDialogOpen}
+        items={items}
+        onSuccess={() => {
+          onClear();
+          onSaleComplete?.();
+        }}
+      />
+
+      <CartOutflowDialog
+        open={outflowDialogOpen}
+        onOpenChange={setOutflowDialogOpen}
         items={items}
         onSuccess={() => {
           onClear();
