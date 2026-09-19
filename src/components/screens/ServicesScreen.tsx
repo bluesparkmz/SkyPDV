@@ -1,10 +1,15 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Add24Regular,
   ArrowClockwise24Regular,
+  CalendarDay24Regular,
+  CalendarWeekNumbers24Regular,
+  CalendarMonth24Regular,
+  CalendarMultiple24Regular,
   Delete24Regular,
   Edit24Regular,
   Money24Regular,
+  Print24Regular,
   Receipt24Regular,
   Search24Regular,
   Wrench24Regular,
@@ -37,8 +42,56 @@ import {
   servicesApi,
 } from "@/services/api";
 
-type ServiceView = "orders" | "catalog";
+// -------------------------------------------------------------------
+// Types
+// -------------------------------------------------------------------
+type ServiceView = "orders-today" | "orders-week" | "orders-month" | "orders-all" | "catalog";
 
+type PeriodFilter = "today" | "week" | "month" | "all";
+
+// -------------------------------------------------------------------
+// Helpers
+// -------------------------------------------------------------------
+function getStartOf(period: PeriodFilter): Date | null {
+  const now = new Date();
+  if (period === "today") {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  }
+  if (period === "week") {
+    const day = now.getDay(); // 0=Sun
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Monday
+    return new Date(now.getFullYear(), now.getMonth(), diff);
+  }
+  if (period === "month") {
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  return null;
+}
+
+function filterOrdersByPeriod(orders: PDVServiceOrder[], period: PeriodFilter): PDVServiceOrder[] {
+  const start = getStartOf(period);
+  if (!start) return orders;
+  return orders.filter((o) => new Date(o.created_at) >= start);
+}
+
+function viewToPeriod(view: ServiceView): PeriodFilter | null {
+  if (view === "orders-today") return "today";
+  if (view === "orders-week") return "week";
+  if (view === "orders-month") return "month";
+  if (view === "orders-all") return "all";
+  return null;
+}
+
+function periodLabel(period: PeriodFilter): string {
+  if (period === "today") return "Hoje";
+  if (period === "week") return "Esta Semana";
+  if (period === "month") return "Este Mês";
+  return "Todos os Registos";
+}
+
+// -------------------------------------------------------------------
+// Styles
+// -------------------------------------------------------------------
 const useStyles = makeStyles({
   root: {
     overflow: "hidden",
@@ -62,24 +115,27 @@ const useStyles = makeStyles({
   },
 });
 
+// -------------------------------------------------------------------
+// Component
+// -------------------------------------------------------------------
 export function ServicesScreen() {
   const styles = useStyles();
   const isMobile = useIsMobile();
   const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
   const [isNavOpen, setIsNavOpen] = useState(false);
   const restoreFocusTargetAttributes = useRestoreFocusTarget();
+  const printRef = useRef<HTMLDivElement>(null);
 
-  const [activeView, setActiveView] = useState<ServiceView>("orders");
+  // Default view = today (priority)
+  const [activeView, setActiveView] = useState<ServiceView>("orders-today");
   const [services, setServices] = useState<PDVService[]>([]);
   const [orders, setOrders] = useState<PDVServiceOrder[]>([]);
-  const [summary, setSummary] = useState<PDVServiceSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchCatalog, setSearchCatalog] = useState("");
 
-  // Dialogs state
+  // Dialogs
   const [isServiceDialogOpen, setIsServiceDialogOpen] = useState(false);
   const [editingService, setEditingService] = useState<PDVService | null>(null);
-
   const [isOrderDialogOpen, setIsOrderDialogOpen] = useState(false);
   const [orderInitialServiceId, setOrderInitialServiceId] = useState<number | null>(null);
 
@@ -87,18 +143,18 @@ export function ServicesScreen() {
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
-  // Carregar dados
+  // ------------------------------------------------------------------
+  // Data loading
+  // ------------------------------------------------------------------
   const loadData = async () => {
     try {
       setLoading(true);
-      const [fetchedServices, fetchedOrders, fetchedSummary] = await Promise.all([
+      const [fetchedServices, fetchedOrders] = await Promise.all([
         servicesApi.list(),
-        serviceOrdersApi.list({ limit: 100 }),
-        serviceOrdersApi.getSummary().catch(() => null),
+        serviceOrdersApi.list({ limit: 1000 }),
       ]);
       setServices(fetchedServices || []);
       setOrders(fetchedOrders || []);
-      setSummary(fetchedSummary);
     } catch (err: any) {
       toast.error(err?.message || "Erro ao carregar serviços.");
     } finally {
@@ -110,7 +166,26 @@ export function ServicesScreen() {
     loadData();
   }, []);
 
-  // Handlers para Serviço (Catálogo)
+  // ------------------------------------------------------------------
+  // Filtered orders based on active period
+  // ------------------------------------------------------------------
+  const period = viewToPeriod(activeView);
+  const filteredOrders = useMemo(() => {
+    if (!period) return [];
+    return filterOrdersByPeriod(orders, period);
+  }, [orders, period]);
+
+  // Summary computed from filtered orders
+  const summary = useMemo(() => {
+    const total_revenue = filteredOrders.reduce((acc, o) => acc + parseFloat(o.total), 0);
+    const total_orders = filteredOrders.length;
+    const average_order_value = total_orders > 0 ? total_revenue / total_orders : 0;
+    return { total_revenue, total_orders, average_order_value };
+  }, [filteredOrders]);
+
+  // ------------------------------------------------------------------
+  // Handlers
+  // ------------------------------------------------------------------
   const handleSaveService = async (data: { name: string; price: number }) => {
     try {
       if (editingService) {
@@ -139,7 +214,6 @@ export function ServicesScreen() {
     }
   };
 
-  // Handler para Registar Serviço Prestado
   const handleCreateOrder = async (data: CreatePDVServiceOrder) => {
     try {
       await serviceOrdersApi.create(data);
@@ -151,16 +225,82 @@ export function ServicesScreen() {
     }
   };
 
-  // Filtrar serviços no catálogo
+  // ------------------------------------------------------------------
+  // Print
+  // ------------------------------------------------------------------
+  const handlePrint = () => {
+    if (!period) return;
+    const rows = filteredOrders
+      .map(
+        (o) =>
+          `<tr>
+            <td>${o.receipt_number || `#${o.id}`}</td>
+            <td>${new Date(o.created_at).toLocaleString("pt-MZ", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</td>
+            <td>${o.service_name}</td>
+            <td>${o.quantity}</td>
+            <td>${o.customer_name || "Balcão"}</td>
+            <td>${getPaymentMethodLabel(o.payment_method)}</td>
+            <td style="text-align:right;font-weight:bold">${parseFloat(o.total).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT</td>
+          </tr>`
+      )
+      .join("");
+
+    const totalFormatted = summary.total_revenue.toLocaleString("pt-MZ", { minimumFractionDigits: 2 });
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"/>
+      <title>Serviços Prestados — ${periodLabel(period)}</title>
+      <style>
+        body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
+        h1 { font-size: 18px; margin-bottom: 4px; }
+        p.sub { color: #666; margin-bottom: 20px; font-size: 11px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f3f4f6; padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #e5e7eb; }
+        td { padding: 7px 10px; border-bottom: 1px solid #e5e7eb; }
+        .total-row td { font-weight: bold; background: #f9fafb; }
+        @media print { body { padding: 0; } }
+      </style>
+    </head><body>
+      <h1>Serviços Prestados</h1>
+      <p class="sub">Período: ${periodLabel(period)} · Total: ${filteredOrders.length} registos · Receita: ${totalFormatted} MT</p>
+      <table>
+        <thead><tr>
+          <th>Recibo</th><th>Data / Hora</th><th>Serviço</th><th>Qtd</th><th>Cliente</th><th>Pagamento</th><th style="text-align:right">Total</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr class="total-row">
+          <td colspan="6">TOTAL</td>
+          <td style="text-align:right">${totalFormatted} MT</td>
+        </tr></tfoot>
+      </table>
+    </body></html>`;
+
+    const win = window.open("", "_blank");
+    if (!win) { toast.error("Não foi possível abrir a janela de impressão."); return; }
+    win.document.write(html);
+    win.document.close();
+    win.focus();
+    win.print();
+    win.close();
+  };
+
+  // ------------------------------------------------------------------
+  // Catalog filter
+  // ------------------------------------------------------------------
   const filteredServices = services.filter((s) =>
     s.name.toLowerCase().includes(searchCatalog.toLowerCase())
   );
 
+  const isOrdersView = activeView !== "catalog";
+
+  // ------------------------------------------------------------------
+  // Render
+  // ------------------------------------------------------------------
   return (
     <>
       <div className={styles.root}>
+        {/* ── Sidebar ────────────────────────────────────────────── */}
         <NavDrawer
-          defaultSelectedValue={activeView}
+          defaultSelectedValue="orders-today"
           open={isNavOpen}
           type={drawerType}
           className={styles.nav}
@@ -172,14 +312,39 @@ export function ServicesScreen() {
           </NavDrawerHeader>
           <NavDrawerBody>
             <div className={styles.drawerContent}>
-              <NavSectionHeader>Serviços</NavSectionHeader>
+              {/* Period filters */}
+              <NavSectionHeader>Prestações por Período</NavSectionHeader>
               <NavItem
-                icon={<Receipt24Regular />}
-                value="orders"
-                onClick={() => setActiveView("orders")}
+                icon={<CalendarDay24Regular />}
+                value="orders-today"
+                onClick={() => setActiveView("orders-today")}
               >
-                Prestações & Receita
+                Hoje
               </NavItem>
+              <NavItem
+                icon={<CalendarWeekNumbers24Regular />}
+                value="orders-week"
+                onClick={() => setActiveView("orders-week")}
+              >
+                Esta Semana
+              </NavItem>
+              <NavItem
+                icon={<CalendarMonth24Regular />}
+                value="orders-month"
+                onClick={() => setActiveView("orders-month")}
+              >
+                Este Mês
+              </NavItem>
+              <NavItem
+                icon={<CalendarMultiple24Regular />}
+                value="orders-all"
+                onClick={() => setActiveView("orders-all")}
+              >
+                Todos ({orders.length})
+              </NavItem>
+
+              {/* Catalog */}
+              <NavSectionHeader>Configuração</NavSectionHeader>
               <NavItem
                 icon={<Wrench24Regular />}
                 value="catalog"
@@ -191,6 +356,7 @@ export function ServicesScreen() {
           </NavDrawerBody>
         </NavDrawer>
 
+        {/* ── Main content ───────────────────────────────────────── */}
         <div className={styles.content}>
           <div className="flex h-full flex-1 flex-col overflow-hidden">
             {/* Header */}
@@ -210,7 +376,9 @@ export function ServicesScreen() {
                   <div>
                     <h1 className="text-lg font-bold text-foreground md:text-2xl">Serviços</h1>
                     <p className="hidden text-xs text-muted-foreground sm:block md:text-sm">
-                      Catálogo de serviços e registo de prestações com crédito no caixa.
+                      {isOrdersView && period
+                        ? `A mostrar prestações: ${periodLabel(period)}`
+                        : "Catálogo de serviços configurados"}
                     </p>
                   </div>
                 </div>
@@ -224,6 +392,20 @@ export function ServicesScreen() {
                     <ArrowClockwise24Regular className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
                     <span className="hidden sm:inline">Actualizar</span>
                   </button>
+
+                  {/* Print — only visible on orders views */}
+                  {isOrdersView && (
+                    <button
+                      onClick={handlePrint}
+                      disabled={filteredOrders.length === 0}
+                      className="fluent-button justify-center gap-2 px-3 disabled:opacity-50"
+                      title="Imprimir lista"
+                    >
+                      <Print24Regular className="h-5 w-5" />
+                      <span className="hidden sm:inline">Imprimir</span>
+                    </button>
+                  )}
+
                   <button
                     onClick={() => {
                       setEditingService(null);
@@ -249,23 +431,22 @@ export function ServicesScreen() {
               </div>
             </div>
 
-            {/* Content */}
-            <div className="windows-scrollbar flex-1 overflow-auto p-3 md:p-6">
-              {activeView === "orders" ? (
+            {/* ── Tab content ──────────────────────────────────────── */}
+            <div className="windows-scrollbar flex-1 overflow-auto p-3 md:p-6" ref={printRef}>
+              {isOrdersView && period ? (
                 <>
-                  {/* Summary cards */}
+                  {/* Summary cards — computed from current period */}
                   <div className="mb-6 grid gap-3 md:grid-cols-3">
                     <div className="fluent-card p-4 flex items-center gap-3">
                       <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                         <Money24Regular className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground md:text-sm">Receita Total</p>
+                        <p className="text-xs text-muted-foreground md:text-sm">
+                          Receita — {periodLabel(period)}
+                        </p>
                         <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
-                          {summary
-                            ? parseFloat(summary.total_revenue).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })
-                            : "0,00"}{" "}
-                          MT
+                          {summary.total_revenue.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT
                         </p>
                       </div>
                     </div>
@@ -275,9 +456,9 @@ export function ServicesScreen() {
                         <Receipt24Regular className="h-6 w-6" />
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground md:text-sm">Serviços Prestados</p>
+                        <p className="text-xs text-muted-foreground md:text-sm">Prestações</p>
                         <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
-                          {summary ? summary.total_orders : orders.length}
+                          {summary.total_orders}
                         </p>
                       </div>
                     </div>
@@ -289,10 +470,7 @@ export function ServicesScreen() {
                       <div>
                         <p className="text-xs text-muted-foreground md:text-sm">Preço Médio</p>
                         <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
-                          {summary
-                            ? parseFloat(summary.average_order_value).toLocaleString("pt-MZ", { minimumFractionDigits: 2 })
-                            : "0,00"}{" "}
-                          MT
+                          {summary.average_order_value.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT
                         </p>
                       </div>
                     </div>
@@ -303,28 +481,30 @@ export function ServicesScreen() {
                     <div className="border-b border-border px-4 py-3 flex items-center justify-between">
                       <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                         <Receipt24Regular className="h-4 w-4 text-primary" />
-                        Histórico de Prestações de Serviços
+                        Prestações de Serviços — {periodLabel(period)}
                       </h3>
-                      <span className="text-xs text-muted-foreground">{orders.length} registos</span>
+                      <span className="text-xs text-muted-foreground">{filteredOrders.length} registos</span>
                     </div>
 
                     {loading ? (
                       <div className="flex h-48 items-center justify-center text-muted-foreground">
                         <p className="text-sm">A carregar...</p>
                       </div>
-                    ) : orders.length === 0 ? (
+                    ) : filteredOrders.length === 0 ? (
                       <div className="p-12 text-center text-muted-foreground space-y-3">
                         <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
                           <Receipt24Regular className="h-6 w-6" />
                         </div>
-                        <p className="text-sm font-medium">Ainda não foi registado nenhum serviço prestado.</p>
+                        <p className="text-sm font-medium">
+                          Nenhuma prestação registada para este período.
+                        </p>
                         <button
                           onClick={() => setIsOrderDialogOpen(true)}
                           disabled={services.filter((s) => s.is_active).length === 0}
                           className="fluent-button fluent-button-primary inline-flex gap-2 px-4"
                         >
                           <Receipt24Regular className="h-4 w-4" />
-                          Registar o Primeiro Serviço
+                          Registar Agora
                         </button>
                       </div>
                     ) : (
@@ -342,7 +522,7 @@ export function ServicesScreen() {
                             </tr>
                           </thead>
                           <tbody>
-                            {orders.map((ord) => (
+                            {filteredOrders.map((ord) => (
                               <tr
                                 key={ord.id}
                                 className="border-t border-border transition-colors hover:bg-secondary/30"
@@ -389,6 +569,17 @@ export function ServicesScreen() {
                               </tr>
                             ))}
                           </tbody>
+                          {/* Total row */}
+                          <tfoot>
+                            <tr className="border-t-2 border-border bg-secondary/30">
+                              <td colSpan={6} className="p-4 text-sm font-bold text-foreground">
+                                TOTAL
+                              </td>
+                              <td className="p-4 text-right text-sm font-bold text-emerald-600 dark:text-emerald-400">
+                                {summary.total_revenue.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT
+                              </td>
+                            </tr>
+                          </tfoot>
                         </table>
                       </div>
                     )}
@@ -396,7 +587,7 @@ export function ServicesScreen() {
                 </>
               ) : (
                 <>
-                  {/* Catalog search bar */}
+                  {/* Catalog search */}
                   <div className="mb-4 flex flex-col items-stretch gap-2 md:mb-6 md:gap-3 sm:flex-row sm:items-center">
                     <div className="relative flex-1">
                       <Search24Regular className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground md:h-5 md:w-5" />
