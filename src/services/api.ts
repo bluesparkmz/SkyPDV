@@ -310,6 +310,8 @@ export const productsApi = {
 export const categoriesApi = {
   list: () => apiGet<string[]>("/skypdv/categories"),
   listFull: () => apiGet<Category[]>("/skypdv/categories-list"),
+  downloadProductsPdf: () => apiGetBlob("/skypdv/categories/products.pdf"),
+  downloadProductsCsv: () => apiGetBlob("/skypdv/categories/products.csv"),
   create: (data: CreateCategory, isGlobal = false) =>
     apiPost<Category>(`/skypdv/categories-list?is_global=${isGlobal}`, data),
   adopt: (id: number) => apiPost<Category>(`/skypdv/categories-list/${id}/adopt`),

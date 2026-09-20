@@ -7,8 +7,9 @@ import {
     Globe24Regular,
     Copy24Regular,
     Search24Regular,
+    Print24Regular,
 } from "@fluentui/react-icons";
-import { Category } from "@/services/api";
+import { Category, categoriesApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
 import { CategoryDialog } from "@/components/CategoryDialog";
 import {
@@ -42,6 +43,7 @@ export function CategoriesScreen() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+    const [isPrinting, setIsPrinting] = useState(false);
 
     const { data: categories = [], isLoading } = useCategoriesList();
     const createCategory = useCreateCategory();
@@ -76,6 +78,23 @@ export function CategoriesScreen() {
         }
     };
 
+    const handlePrint = async () => {
+        try {
+            setIsPrinting(true);
+            const { blob, filename } = await categoriesApi.downloadProductsPdf();
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename || "produtos_por_categoria.pdf";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+        } finally {
+            setIsPrinting(false);
+        }
+    };
+
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
             {/* Fixed Header */}
@@ -90,16 +109,28 @@ export function CategoriesScreen() {
                             <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Gerencie os departamentos de produtos</p>
                         </div>
                     </div>
-                    <Button
-                        onClick={() => {
-                            setSelectedCategory(null);
-                            setIsDialogOpen(true);
-                        }}
-                        className="gap-2 px-3 h-9 md:h-10"
-                    >
-                        <Add24Regular className="w-5 h-5" />
-                        <span className="hidden sm:inline">Nova Categoria</span>
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={handlePrint}
+                            disabled={isPrinting}
+                            className="gap-2 px-3 h-9 md:h-10"
+                            title="Imprimir produtos por categoria"
+                        >
+                            <Print24Regular className="w-5 h-5" />
+                            <span className="hidden sm:inline">{isPrinting ? "A gerar..." : "Imprimir"}</span>
+                        </Button>
+                        <Button
+                            onClick={() => {
+                                setSelectedCategory(null);
+                                setIsDialogOpen(true);
+                            }}
+                            className="gap-2 px-3 h-9 md:h-10"
+                        >
+                            <Add24Regular className="w-5 h-5" />
+                            <span className="hidden sm:inline">Nova Categoria</span>
+                        </Button>
+                    </div>
                 </div>
             </div>
 
