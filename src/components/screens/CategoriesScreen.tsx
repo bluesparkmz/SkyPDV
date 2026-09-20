@@ -78,14 +78,14 @@ export function CategoriesScreen() {
         }
     };
 
-    const handlePrint = async () => {
+    const handlePrint = async (categoryName?: string) => {
         try {
             setIsPrinting(true);
-            const { blob, filename } = await categoriesApi.downloadProductsPdf();
+            const { blob, filename } = await categoriesApi.downloadProductsPdf(categoryName);
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
             anchor.href = url;
-            anchor.download = filename || "produtos_por_categoria.pdf";
+            anchor.download = filename || "produtos_categoria.pdf";
             document.body.appendChild(anchor);
             anchor.click();
             anchor.remove();
@@ -112,13 +112,13 @@ export function CategoriesScreen() {
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
-                            onClick={handlePrint}
+                            onClick={() => handlePrint()}
                             disabled={isPrinting}
                             className="gap-2 px-3 h-9 md:h-10"
                             title="Imprimir produtos por categoria"
                         >
                             <Print24Regular className="w-5 h-5" />
-                            <span className="hidden sm:inline">{isPrinting ? "A gerar..." : "Imprimir"}</span>
+                            <span>{isPrinting ? "A gerar..." : "Imprimir Tudo"}</span>
                         </Button>
                         <Button
                             onClick={() => {
@@ -224,6 +224,14 @@ export function CategoriesScreen() {
                                         </button>
                                     ) : (
                                         <>
+                                            <button
+                                                onClick={() => handlePrint(category.name)}
+                                                disabled={isPrinting}
+                                                className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                                                title={`Imprimir produtos de ${category.name}`}
+                                            >
+                                                <Print24Regular className="w-4 h-4" />
+                                            </button>
                                             <button
                                                 onClick={() => {
                                                     setSelectedCategory(category);
