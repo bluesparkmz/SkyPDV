@@ -1144,6 +1144,7 @@ export interface Category {
   color: string | null;
   is_active: boolean;
   product_count?: number;
+  products_total_value?: string;
   created_at: string;
   updated_at: string;
 }
@@ -1503,4 +1504,3 @@ export const serviceOrdersApi = {
     return apiGetBlob(`/skypdv/reports/service-orders.pdf${qs ? `?${qs}` : ""}`);
   },
 };
-

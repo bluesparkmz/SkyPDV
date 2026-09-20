@@ -29,6 +29,14 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const formatMoney = (value: string | number | null | undefined) => {
+    const amount = Number(value || 0);
+    return `${amount.toLocaleString("pt-MZ", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    })} MT`;
+};
+
 export function CategoriesScreen() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -164,6 +172,9 @@ export function CategoriesScreen() {
                                     <h3 className="font-semibold text-lg">{category.name}</h3>
                                     <p className="text-xs text-muted-foreground mt-1">
                                         {category.product_count || 0} produto{(category.product_count || 0) === 1 ? "" : "s"}
+                                    </p>
+                                    <p className="text-sm font-semibold text-primary mt-1">
+                                        {formatMoney(category.products_total_value)} disponivel
                                     </p>
                                     {category.description && (
                                         <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{category.description}</p>
