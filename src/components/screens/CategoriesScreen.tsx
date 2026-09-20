@@ -8,6 +8,7 @@ import {
     Copy24Regular,
     Search24Regular,
     Print24Regular,
+    ArrowDownload24Regular,
 } from "@fluentui/react-icons";
 import { Category, categoriesApi } from "@/services/api";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,7 @@ export function CategoriesScreen() {
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
     const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
-    const [isPrinting, setIsPrinting] = useState(false);
+    const [isExporting, setIsExporting] = useState(false);
 
     const { data: categories = [], isLoading } = useCategoriesList();
     const createCategory = useCreateCategory();
@@ -78,20 +79,22 @@ export function CategoriesScreen() {
         }
     };
 
-    const handlePrint = async (categoryName?: string) => {
+    const handleExport = async (format: "pdf" | "csv", categoryName?: string) => {
         try {
-            setIsPrinting(true);
-            const { blob, filename } = await categoriesApi.downloadProductsPdf(categoryName);
+            setIsExporting(true);
+            const { blob, filename } = format === "pdf"
+                ? await categoriesApi.downloadProductsPdf(categoryName)
+                : await categoriesApi.downloadProductsCsv(categoryName);
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
             anchor.href = url;
-            anchor.download = filename || "produtos_categoria.pdf";
+            anchor.download = filename || `produtos_categoria.${format}`;
             document.body.appendChild(anchor);
             anchor.click();
             anchor.remove();
             URL.revokeObjectURL(url);
         } finally {
-            setIsPrinting(false);
+            setIsExporting(false);
         }
     };
 
@@ -112,13 +115,23 @@ export function CategoriesScreen() {
                     <div className="flex items-center gap-2">
                         <Button
                             variant="outline"
-                            onClick={() => handlePrint()}
-                            disabled={isPrinting}
+                            onClick={() => handleExport("pdf")}
+                            disabled={isExporting}
                             className="gap-2 px-3 h-9 md:h-10"
                             title="Imprimir produtos por categoria"
                         >
                             <Print24Regular className="w-5 h-5" />
-                            <span>{isPrinting ? "A gerar..." : "Imprimir Tudo"}</span>
+                            <span>{isExporting ? "A gerar..." : "Imprimir Tudo"}</span>
+                        </Button>
+                        <Button
+                            variant="outline"
+                            onClick={() => handleExport("csv")}
+                            disabled={isExporting}
+                            className="gap-2 px-3 h-9 md:h-10"
+                            title="Exportar produtos por categoria em CSV"
+                        >
+                            <ArrowDownload24Regular className="w-5 h-5" />
+                            <span>Exportar CSV</span>
                         </Button>
                         <Button
                             onClick={() => {
@@ -212,7 +225,7 @@ export function CategoriesScreen() {
                                     )}
                                 </div>
 
-                                <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+                                <div className="flex justify-end gap-2 mt-4 pt-4 border-t border-border">
                                     {category.is_global && !category.terminal_id ? (
                                         <button
                                             onClick={() => handleAdopt(category)}
@@ -225,12 +238,20 @@ export function CategoriesScreen() {
                                     ) : (
                                         <>
                                             <button
-                                                onClick={() => handlePrint(category.name)}
-                                                disabled={isPrinting}
+                                                onClick={() => handleExport("pdf", category.name)}
+                                                disabled={isExporting}
                                                 className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
                                                 title={`Imprimir produtos de ${category.name}`}
                                             >
                                                 <Print24Regular className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleExport("csv", category.name)}
+                                                disabled={isExporting}
+                                                className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+                                                title={`Exportar produtos de ${category.name} em CSV`}
+                                            >
+                                                <ArrowDownload24Regular className="w-4 h-4" />
                                             </button>
                                             <button
                                                 onClick={() => {
