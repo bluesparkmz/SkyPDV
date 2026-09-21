@@ -23,8 +23,7 @@ import {
   useRestoreFocusTarget,
 } from "@fluentui/react-components";
 import { useSales, useVoidSale } from "@/hooks/useSales";
-import { CategorySalesReportItem, dashboardApi, productsApi, Sale } from "@/services/api";
-import { useCategories } from "@/hooks/useCategories";
+import { CategorySalesReportItem, categoriesApi, dashboardApi, productsApi, Sale } from "@/services/api";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { CustomerName } from "@/components/CustomerName";
 import { Button } from "@/components/ui/button";
@@ -94,7 +93,12 @@ export function SalesHistoryScreen() {
   }, [isMobile]);
 
   const { user: authUser } = useAuth();
-  const { data: categories = [] } = useCategories();
+  // The report must also offer categories that exist on products but were not
+  // created in the separate category-management screen.
+  const { data: categories = [] } = useQuery({
+    queryKey: ["report-product-categories"],
+    queryFn: categoriesApi.list,
+  });
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
     const map = new Map<number, string>();
