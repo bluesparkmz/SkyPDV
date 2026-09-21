@@ -8,6 +8,7 @@ export const LOCAL_PAYMENT_METHODS: PaymentMethodOption[] = [
   { value: "emola", label: "E-mola" },
   { value: "mpesa", label: "Mpesa" },
   { value: "bci_pos", label: "BCI-POS" },
+  { value: "pos_absa", label: "POS-ABSA" },
   { value: "bim_pos", label: "BIM-POS" },
   { value: "mozabanco", label: "MozaBanco" },
   { value: "standerback", label: "StanderBack" },
@@ -29,6 +30,9 @@ export const PAYMENT_METHOD_LABELS: Record<string, string> = {
   bci_pos: "BCI-POS",
   "BCI-POS": "BCI-POS",
   "bci-pos": "BCI-POS",
+  pos_absa: "POS-ABSA",
+  "POS-ABSA": "POS-ABSA",
+  "pos-absa": "POS-ABSA",
   card: "BCI-POS",
   bim_pos: "BIM-POS",
   "BIM-POS": "BIM-POS",
@@ -64,6 +68,8 @@ export function mapToApiPaymentMethod(method: string): "cash" | "card" | "skywal
       return "mpesa";
     case "bci_pos":
     case "BCI-POS":
+    case "pos_absa":
+    case "POS-ABSA":
     case "bim_pos":
     case "BIM-POS":
     case "mozabanco":
