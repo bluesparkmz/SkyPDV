@@ -388,8 +388,18 @@ export function ReportsScreen() {
   }, [filteredOutflows]);
 
   // Calcular resumo de métodos de pagamento
-  const paymentMethodsSummary = (daySales.length > 0 ? daySales : allSales).reduce((acc, sale) => {
+  const getSalePaymentMethodLabel = (sale: Sale) => {
+    const savedLabel = String(sale.notes || "").match(/M[eé]todo\s*:\s*([^\n)]+)/i)?.[1]?.trim();
+    if (savedLabel) return savedLabel;
     const method = sale.payment_method || "cash";
+    const labels: Record<string, string> = {
+      cash: "Dinheiro", skywallet: "E-Mola", emola: "E-Mola", mpesa: "M-Pesa", card: "BCI-POS", mixed: "Misto",
+    };
+    return labels[method] || method;
+  };
+
+  const paymentMethodsSummary = (daySales.length > 0 ? daySales : allSales).reduce((acc, sale) => {
+    const method = getSalePaymentMethodLabel(sale);
     if (!acc[method]) {
       acc[method] = { count: 0, total: 0 };
     }
@@ -401,7 +411,7 @@ export function ReportsScreen() {
   // Dashboard is scoped to the selected period, not to the currently selected day.
   // Build this from the actual sales so custom methods (for example ABSA) appear too.
   const periodPaymentMethodsSummary = allSales.reduce((acc, sale) => {
-    const method = sale.payment_method || "cash";
+    const method = getSalePaymentMethodLabel(sale);
     if (!acc[method]) acc[method] = { count: 0, total: 0 };
     acc[method].count += 1;
     acc[method].total += parseFloat(sale.total || "0");
@@ -878,7 +888,6 @@ export function ReportsScreen() {
                 outflowTotals={periodOutflowTotals}
                 extrasLoading={servicesLoading || outflowsLoading}
                 paymentMethodsSummary={periodPaymentMethodsSummary}
-                getPaymentMethodLabel={getPaymentMethodLabel}
               />
             )}
 
@@ -1140,7 +1149,6 @@ function DashboardView({
   outflowTotals,
   extrasLoading,
   paymentMethodsSummary,
-  getPaymentMethodLabel,
 }: {
   summary: any;
   summaryLoading: boolean;
@@ -1149,7 +1157,6 @@ function DashboardView({
   outflowTotals: { product_count: number; cash_count: number; product_quantity: number; cash_amount: number };
   extrasLoading: boolean;
   paymentMethodsSummary: Record<string, { count: number; total: number }>;
-  getPaymentMethodLabel: (method: string) => string;
 }) {
   return (
     <div className="space-y-6">
@@ -1274,7 +1281,7 @@ function DashboardView({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(paymentMethodsSummary).map(([method, data]) => (
               <div key={method} className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">{getPaymentMethodLabel(method)}</p>
+                <p className="text-xs text-muted-foreground uppercase mb-1">{method}</p>
                 <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
                 <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
               </div>
