@@ -73,7 +73,9 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   }, [changeAmount, changeStatus]);
 
   const formatReceipt = (_saleData: CreateSale, receiptNumber?: string): string => {
-    const date = new Date().toLocaleString('pt-MZ');
+    const date = new Date().toLocaleString("pt-MZ", {
+      timeZone: "Africa/Maputo",
+    });
     const paidAmount = parseFloat(amountPaid || "0");
     const safePaidAmount = Number.isFinite(paidAmount) ? paidAmount : total;
     const printedChange = Math.max(safePaidAmount - total, 0);

@@ -9,6 +9,11 @@ const IVA_RATE = 0.16;
 const formatMoney = (value: string | number | null | undefined): string =>
   `${Number(value || 0).toFixed(2)} MT`;
 
+const formatMozambiqueDateTime = (value?: string): string =>
+  (value ? new Date(value) : new Date()).toLocaleString("pt-MZ", {
+    timeZone: "Africa/Maputo",
+  });
+
 /** Recibo de venda em espera / pendente (impressão via plugin WS). */
 export function formatParkedSaleReceipt(
   items: CartItem[],
@@ -17,9 +22,7 @@ export function formatParkedSaleReceipt(
   const total = items.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const subtotal = total / (1 + IVA_RATE);
   const ivaAmount = total - subtotal;
-  const date = opts.createdAt
-    ? new Date(opts.createdAt).toLocaleString("pt-MZ")
-    : new Date().toLocaleString("pt-MZ");
+  const date = formatMozambiqueDateTime(opts.createdAt);
 
   const lines: string[] = [];
   lines.push("=".repeat(42));
@@ -73,9 +76,7 @@ export function formatAccountReceipt(
     ? opts.amountPaid
     : null;
   const changeAmount = paidAmount !== null ? Math.max(paidAmount - total, 0) : null;
-  const printedAt = opts?.printedAt
-    ? new Date(opts.printedAt).toLocaleString("pt-MZ")
-    : new Date().toLocaleString("pt-MZ");
+  const printedAt = formatMozambiqueDateTime(opts?.printedAt);
 
   const lines: string[] = [];
   lines.push("=".repeat(42));
@@ -92,10 +93,10 @@ export function formatAccountReceipt(
   if (account.opened_by_name) lines.push(`Caixa abertura: ${account.opened_by_name}`);
   if (account.closed_by_name) lines.push(`Caixa fechamento: ${account.closed_by_name}`);
   if (account.created_at) {
-    lines.push(`Aberta em: ${new Date(account.created_at).toLocaleString("pt-MZ")}`);
+    lines.push(`Aberta em: ${formatMozambiqueDateTime(account.created_at)}`);
   }
   if (account.closed_at) {
-    lines.push(`Fechada em: ${new Date(account.closed_at).toLocaleString("pt-MZ")}`);
+    lines.push(`Fechada em: ${formatMozambiqueDateTime(account.closed_at)}`);
   }
   if (opts?.paymentMethod) {
     lines.push(`Pagamento: ${getPaymentMethodLabel(opts.paymentMethod)}`);
@@ -134,9 +135,7 @@ export function formatKitchenTicket(
   opts?: { terminal?: Terminal | null; printedAt?: string; ticketNumber?: number }
 ): string {
   const establishmentName = opts?.terminal?.name?.trim() || "ESTABELECIMENTO";
-  const printedAt = opts?.printedAt
-    ? new Date(opts.printedAt).toLocaleString("pt-MZ")
-    : new Date().toLocaleString("pt-MZ");
+  const printedAt = formatMozambiqueDateTime(opts?.printedAt);
 
   const lines: string[] = [];
   lines.push("=".repeat(42));
@@ -175,9 +174,7 @@ export function formatAccountItemsReceipt(
   const companyContacts = String(receiptSettings.receipt_contacts || opts?.terminal?.phone || "").trim();
   const companyAddress = String(receiptSettings.receipt_address || opts?.terminal?.address || "").trim();
   const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
-  const printedAt = opts?.printedAt
-    ? new Date(opts.printedAt).toLocaleString("pt-MZ")
-    : new Date().toLocaleString("pt-MZ");
+  const printedAt = formatMozambiqueDateTime(opts?.printedAt);
   const total = Number(account.current_balance || 0);
   const subtotal = total / (1 + IVA_RATE);
   const ivaAmount = total - subtotal;

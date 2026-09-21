@@ -108,7 +108,7 @@ function formatOutflowsThermalReceipt(
   lines.push("      RELATORIO DE SAIDAS");
   lines.push("=".repeat(42));
   lines.push(`Filtro: ${title}`);
-  lines.push(`Emitido: ${new Date().toLocaleString("pt-MZ")}`);
+  lines.push(`Emitido: ${new Date().toLocaleString("pt-MZ", { timeZone: "Africa/Maputo" })}`);
   lines.push("-".repeat(42));
 
   if (outflows.length === 0) {
@@ -117,6 +117,7 @@ function formatOutflowsThermalReceipt(
 
   outflows.forEach((outflow) => {
     const date = new Date(outflow.created_at).toLocaleString("pt-MZ", {
+      timeZone: "Africa/Maputo",
       day: "2-digit",
       month: "2-digit",
       hour: "2-digit",

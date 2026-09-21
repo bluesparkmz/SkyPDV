@@ -23,9 +23,18 @@
   },
   "cli": {
     "binaryName": "SkyPDV",
-    "resources": [
-      "/dist/"
-    ],
-    "binaryVersion": "nightly"
+    "resourcesPath": "/dist/",
+    "distributionPath": "/release/",
+    "frontendLibrary": {
+      "patchFile": "/index.html",
+      "devUrl": "http://localhost:8080"
+    },
+    "hostProject": {
+      "projectPath": "/",
+      "devCommand": "npm run dev",
+      "buildCommand": "npm run build",
+      "buildPath": "/dist/"
+    },
+    "binaryVersion": "6.9.0"
   }
 }
