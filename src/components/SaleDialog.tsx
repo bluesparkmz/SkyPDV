@@ -25,6 +25,7 @@ import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { LOCAL_PAYMENT_METHODS, getPaymentMethodLabel, mapToApiPaymentMethod } from "@/lib/paymentMethods";
+import { formatSaleReceipt } from "@/lib/receiptFormat";
 
 interface SaleDialogProps {
   open: boolean;
@@ -72,64 +73,6 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     }
   }, [changeAmount, changeStatus]);
 
-  const formatReceipt = (_saleData: CreateSale, receiptNumber?: string): string => {
-    const date = new Date().toLocaleString("pt-MZ", {
-      timeZone: "Africa/Maputo",
-    });
-    const paidAmount = parseFloat(amountPaid || "0");
-    const safePaidAmount = Number.isFinite(paidAmount) ? paidAmount : total;
-    const printedChange = Math.max(safePaidAmount - total, 0);
-    const receiptSettings = (terminal?.settings as Record<string, unknown> | null) || {};
-    const companyName =
-      String(receiptSettings.receipt_company_name || terminal?.name || "SKYPDV - SISTEMA DE VENDAS").trim();
-    const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
-    const companyContacts = String(receiptSettings.receipt_contacts || terminal?.phone || "").trim();
-    const companyAddress = String(receiptSettings.receipt_address || terminal?.address || "").trim();
-    const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
-
-    const lines: string[] = [];
-    
-    lines.push('='.repeat(42));
-    lines.push(`        ${companyName.toUpperCase()}`);
-    lines.push('='.repeat(42));
-    if (companyNuit) lines.push(`NUIT: ${companyNuit}`);
-    if (companyContacts) lines.push(`Contacto: ${companyContacts}`);
-    if (companyAddress) lines.push(`Endereco: ${companyAddress}`);
-    lines.push(`Data: ${date}`);
-    if (receiptNumber) {
-      lines.push(`Recibo: #${receiptNumber}`);
-    }
-    lines.push('-'.repeat(42));
-    
-    lines.push('-'.repeat(42));
-    lines.push('PRODUTOS:');
-    lines.push('-'.repeat(42));
-    
-    items.forEach(item => {
-      const itemTotal = (item.price * item.quantity).toFixed(2);
-      lines.push(`${item.name}`);
-      const qtyLabel = item.allow_decimal_quantity ? `${item.quantity}Kg` : `${item.quantity}x`;
-      lines.push(`  ${qtyLabel} ${item.price.toFixed(2)} MT = ${itemTotal} MT`);
-    });
-    
-    lines.push('-'.repeat(42));
-    lines.push(`Subtotal: ${calculatedSubtotal.toFixed(2)} MT`);
-    lines.push(`IVA (16%): ${taxAmount.toFixed(2)} MT`);
-    lines.push('='.repeat(42));
-    lines.push(`TOTAL: ${total.toFixed(2)} MT`);
-    lines.push('='.repeat(42));
-    lines.push(`Pagamento: ${getPaymentMethodLabel(paymentMethod)}`);
-    lines.push(`Valor Pago: ${safePaidAmount.toFixed(2)} MT`);
-    lines.push(`Troco: ${printedChange.toFixed(2)} MT`);
-    lines.push('='.repeat(42));
-    lines.push(`        ${footerMessage.toUpperCase()}`);
-    lines.push('='.repeat(42));
-    lines.push('');
-    lines.push('');
-    
-    return lines.join('\n');
-  };
-
   const handleSubmit = async () => {
     if (!amountPaid || !isAmountSufficient) {
       return;
@@ -153,7 +96,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
 
       // Recibo via plugin local (WebSocket) — tenta conectar se necessário
       try {
-        const receiptContent = formatReceipt(saleData, sale.receipt_number || sale.id.toString());
+        const receiptContent = formatSaleReceipt(sale, { terminal });
         const printResult = await printReceipt(receiptContent);
         if (printResult && !printResult.success) {
           toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, {
