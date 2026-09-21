@@ -100,7 +100,7 @@ const fmt = (n: string | number | null | undefined, decimals = 2) => {
 function formatOutflowsThermalReceipt(
   outflows: PDVOutflow[],
   title: string,
-  metrics: { productQty: number; productValue: number; cashAmount: number; totalCount: number },
+  metrics: { productKg: number; productUnits: number; productValue: number; cashAmount: number; totalCount: number },
   productsById: Map<number, Product>
 ): string {
   const lines: string[] = [];
@@ -144,7 +144,8 @@ function formatOutflowsThermalReceipt(
   });
 
   lines.push(`Registos: ${metrics.totalCount}`);
-  lines.push(`Quantidade de produtos: ${fmt(metrics.productQty, 3)}`);
+  if (metrics.productKg > 0) lines.push(`Produtos por peso: ${fmt(metrics.productKg, 3)} Kg`);
+  if (metrics.productUnits > 0) lines.push(`Produtos por unidade: ${fmt(metrics.productUnits, 0)} un.`);
   lines.push(`Valor dos produtos: ${fmt(metrics.productValue)} MT`);
   lines.push(`Despesas de caixa: ${fmt(metrics.cashAmount)} MT`);
   lines.push("=".repeat(42));
@@ -364,10 +365,14 @@ export function OutflowsScreen() {
     const productItems = filteredOutflows.filter((o) => o.outflow_type === "product");
     const cashItems = filteredOutflows.filter((o) => o.outflow_type === "cash");
 
-    const totalProductQty = productItems.reduce(
-      (acc, o) => acc + parseFloat(String(o.quantity || 0)),
-      0
-    );
+    const totalProductKg = productItems.reduce((acc, outflow) => {
+      const product = outflow.product_id ? productsById.get(outflow.product_id) : undefined;
+      return product?.allow_decimal_quantity ? acc + Number(outflow.quantity || 0) : acc;
+    }, 0);
+    const totalProductUnits = productItems.reduce((acc, outflow) => {
+      const product = outflow.product_id ? productsById.get(outflow.product_id) : undefined;
+      return product?.allow_decimal_quantity ? acc : acc + Number(outflow.quantity || 0);
+    }, 0);
     const totalCashAmount = cashItems.reduce(
       (acc, o) => acc + parseFloat(String(o.amount || 0)),
       0
@@ -379,7 +384,8 @@ export function OutflowsScreen() {
 
     return {
       productCount: productItems.length,
-      productQty: totalProductQty,
+      productKg: totalProductKg,
+      productUnits: totalProductUnits,
       productValue: totalProductValue,
       cashCount: cashItems.length,
       cashAmount: totalCashAmount,
@@ -861,7 +867,8 @@ export function OutflowsScreen() {
                             TOTAL ({filteredOutflows.length} registos)
                           </td>
                           <td className="p-3 text-right text-foreground">
-                            <div>{fmt(metrics.productQty, 3)} qtd.</div>
+                            {metrics.productKg > 0 && <div>{fmt(metrics.productKg, 3)} Kg</div>}
+                            {metrics.productUnits > 0 && <div>{fmt(metrics.productUnits, 0)} un.</div>}
                             <div className="text-blue-600 dark:text-blue-400">
                               Produtos: {metrics.productValue.toLocaleString("pt-MZ", {
                                 minimumFractionDigits: 2,
