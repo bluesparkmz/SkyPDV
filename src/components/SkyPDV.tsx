@@ -159,9 +159,7 @@ export function SkyPDV() {
     return products.filter((product) => {
       const matchesCategory = activeCategory === "all" || product.category === activeCategory;
       const matchesSearch = !searchQuery || product.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const balcaoStock = product.inventory?.quantity ? parseFloat(product.inventory.quantity) : 0;
-      const canSellWithoutStock = product.track_stock === false;
-      return matchesCategory && matchesSearch && product.is_active && (canSellWithoutStock || balcaoStock > 0);
+      return matchesCategory && matchesSearch && product.is_active;
     });
   }, [products, activeCategory, searchQuery]);
 
@@ -762,6 +760,5 @@ export function SkyPDV() {
     </div>
   );
 }
-
 
 

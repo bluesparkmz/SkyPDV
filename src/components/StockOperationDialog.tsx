@@ -131,7 +131,9 @@ export function StockOperationDialog({
       return;
     }
 
-    if (quantityNumber <= 0) {
+    const hasQuantity = quantity.trim() !== "" && Number.isFinite(Number(quantity));
+    const acceptsZero = isAbsoluteCount;
+    if (!hasQuantity || quantityNumber < 0 || (!acceptsZero && quantityNumber === 0)) {
       toast.error("Informe uma quantidade valida");
       return;
     }
@@ -272,6 +274,9 @@ export function StockOperationDialog({
             <div className="grid gap-2">
               <Label>{isAbsoluteCount ? "Estoque real contado" : "Quantidade"}</Label>
               <Input
+                type="number"
+                min="0"
+                step={selectedProduct?.allow_decimal_quantity ? "0.001" : "1"}
                 value={quantity}
                 onChange={(event) => setQuantity(event.target.value.replace(",", "."))}
                 inputMode="decimal"
