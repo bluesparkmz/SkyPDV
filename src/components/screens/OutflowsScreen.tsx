@@ -100,7 +100,8 @@ const fmt = (n: string | number | null | undefined, decimals = 2) => {
 function formatOutflowsThermalReceipt(
   outflows: PDVOutflow[],
   title: string,
-  metrics: { productQty: number; cashAmount: number; totalCount: number }
+  metrics: { productQty: number; productValue: number; cashAmount: number; totalCount: number },
+  productsById: Map<number, Product>
 ): string {
   const lines: string[] = [];
   lines.push("=".repeat(42));
@@ -122,6 +123,7 @@ function formatOutflowsThermalReceipt(
       minute: "2-digit",
     });
     const isProduct = outflow.outflow_type === "product";
+    const product = outflow.product_id ? productsById.get(outflow.product_id) : undefined;
     const description = isProduct
       ? outflow.product_name || outflow.title || "Produto"
       : outflow.title || "Saida de caixa";
@@ -130,7 +132,11 @@ function formatOutflowsThermalReceipt(
     lines.push(description);
     lines.push(`Motivo: ${reason}`);
     if (isProduct) {
-      lines.push(`Quantidade: ${fmt(outflow.quantity, 3)} un.`);
+      const quantity = Number(outflow.quantity || 0);
+      const isKg = Boolean(product?.allow_decimal_quantity);
+      const productValue = quantity * Number(product?.price || 0);
+      lines.push(`Quantidade: ${fmt(quantity, isKg ? 3 : 0)} ${isKg ? "Kg" : "un."}`);
+      lines.push(`Valor: ${fmt(productValue)} MT`);
     } else {
       lines.push(`Valor: ${fmt(outflow.amount)} MT`);
     }
@@ -138,7 +144,8 @@ function formatOutflowsThermalReceipt(
   });
 
   lines.push(`Registos: ${metrics.totalCount}`);
-  lines.push(`Produtos retirados: ${fmt(metrics.productQty, 3)} un.`);
+  lines.push(`Quantidade de produtos: ${fmt(metrics.productQty, 3)}`);
+  lines.push(`Valor dos produtos: ${fmt(metrics.productValue)} MT`);
   lines.push(`Despesas de caixa: ${fmt(metrics.cashAmount)} MT`);
   lines.push("=".repeat(42));
   lines.push("");
@@ -262,6 +269,11 @@ export function OutflowsScreen() {
     queryFn: () => productsApi.list({ limit: 500 }),
   });
 
+  const productsById = useMemo(
+    () => new Map(products.map((product) => [product.id, product])),
+    [products]
+  );
+
   // Mutations
   const createMutation = useMutation({
     mutationFn: (data: CreatePDVOutflow) => outflowsApi.create(data),
@@ -360,15 +372,20 @@ export function OutflowsScreen() {
       (acc, o) => acc + parseFloat(String(o.amount || 0)),
       0
     );
+    const totalProductValue = productItems.reduce((acc, outflow) => {
+      const product = outflow.product_id ? productsById.get(outflow.product_id) : undefined;
+      return acc + Number(outflow.quantity || 0) * Number(product?.price || 0);
+    }, 0);
 
     return {
       productCount: productItems.length,
       productQty: totalProductQty,
+      productValue: totalProductValue,
       cashCount: cashItems.length,
       cashAmount: totalCashAmount,
       totalCount: filteredOutflows.length,
     };
-  }, [filteredOutflows]);
+  }, [filteredOutflows, productsById]);
 
   const viewTitle = useMemo(() => {
     switch (activeView) {
@@ -396,7 +413,7 @@ export function OutflowsScreen() {
   const handlePrintThermal = async () => {
     try {
       setIsThermalPrinting(true);
-      const content = formatOutflowsThermalReceipt(filteredOutflows, viewTitle, metrics);
+      const content = formatOutflowsThermalReceipt(filteredOutflows, viewTitle, metrics, productsById);
       const result = await printReceipt(content);
       if (!result.success) {
         toast.error(`Falha na impressão: ${result.error || "Nenhuma impressora configurada"}`);
@@ -571,7 +588,7 @@ export function OutflowsScreen() {
                   <div>
                     <p className="text-xs text-muted-foreground md:text-sm">Produtos Retirados</p>
                     <p className="mt-1 text-xl font-bold text-foreground md:text-2xl">
-                      {fmt(metrics.productQty, 0)} un.
+                      {metrics.productValue.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT
                     </p>
                     <p className="text-[11px] text-muted-foreground">
                       {metrics.productCount} {metrics.productCount === 1 ? "saída" : "saídas"}
@@ -721,6 +738,10 @@ export function OutflowsScreen() {
                       <tbody>
                         {filteredOutflows.map((outflow) => {
                           const isProduct = outflow.outflow_type === "product";
+                          const product = outflow.product_id ? productsById.get(outflow.product_id) : undefined;
+                          const quantity = Number(outflow.quantity || 0);
+                          const isKg = Boolean(product?.allow_decimal_quantity);
+                          const productValue = quantity * Number(product?.price || 0);
                           return (
                             <tr
                               key={outflow.id}
@@ -799,7 +820,10 @@ export function OutflowsScreen() {
                               <td className="p-3 text-right text-xs font-bold whitespace-nowrap">
                                 {isProduct ? (
                                   <span className="text-blue-600 dark:text-blue-400">
-                                    {fmt(outflow.quantity, 0)} un.
+                                    {fmt(quantity, isKg ? 3 : 0)} {isKg ? "Kg" : "un."}
+                                    <span className="block text-[10px] text-muted-foreground">
+                                      {productValue.toLocaleString("pt-MZ", { minimumFractionDigits: 2 })} MT
+                                    </span>
                                   </span>
                                 ) : (
                                   <span className="text-emerald-600 dark:text-emerald-400">
@@ -837,7 +861,12 @@ export function OutflowsScreen() {
                             TOTAL ({filteredOutflows.length} registos)
                           </td>
                           <td className="p-3 text-right text-foreground">
-                            <div>{fmt(metrics.productQty, 0)} un.</div>
+                            <div>{fmt(metrics.productQty, 3)} qtd.</div>
+                            <div className="text-blue-600 dark:text-blue-400">
+                              Produtos: {metrics.productValue.toLocaleString("pt-MZ", {
+                                minimumFractionDigits: 2,
+                              })} MT
+                            </div>
                             <div className="text-emerald-600 dark:text-emerald-400">
                               {metrics.cashAmount.toLocaleString("pt-MZ", {
                                 minimumFractionDigits: 2,
