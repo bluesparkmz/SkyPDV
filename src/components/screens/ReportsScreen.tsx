@@ -143,8 +143,9 @@ export function ReportsScreen() {
   const [isNavOpen, setIsNavOpen] = useState(false);
   const restoreFocusTargetAttributes = useRestoreFocusTarget();
 
-  const [activeView, setActiveView] = useState<ReportView>("dashboard");
-  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const todayKey = format(new Date(), "yyyy-MM-dd");
+  const [activeView, setActiveView] = useState<ReportView>("daily");
+  const [selectedDate, setSelectedDate] = useState<string | null>(todayKey);
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isSaleDetailOpen, setIsSaleDetailOpen] = useState(false);
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -353,10 +354,18 @@ export function ReportsScreen() {
       ensureDay(outflow.created_at).outflows_count += 1;
     });
 
+    const today = format(new Date(), "yyyy-MM-dd");
+    if (today >= startDate && today <= endDate) {
+      ensureDay(`${today}T12:00:00`);
+    }
+    if (selectedDate && selectedDate >= startDate && selectedDate <= endDate) {
+      ensureDay(`${selectedDate}T12:00:00`);
+    }
+
     return Array.from(map.values()).sort(
       (a, b) => new Date(b.period).getTime() - new Date(a.period).getTime()
     );
-  }, [dailySales, filteredServiceOrders, filteredOutflows]);
+  }, [dailySales, filteredServiceOrders, filteredOutflows, startDate, endDate, selectedDate]);
 
   const periodServiceTotals = useMemo(() => {
     const total_orders = filteredServiceOrders.length;
@@ -623,28 +632,22 @@ export function ReportsScreen() {
       setEndDate(format(end, 'yyyy-MM-dd'));
       setSelectedDate(format(start, 'yyyy-MM-dd'));
       setActiveView("daily");
-    } else if (period === 'week') {
+    } else if (period === "week") {
       start.setDate(end.getDate() - 7);
-      setStartDate(format(start, 'yyyy-MM-dd'));
-      setEndDate(format(end, 'yyyy-MM-dd'));
-    } else if (period === 'month') {
-      setStartDate(format(startOfMonth(start), 'yyyy-MM-dd'));
-      setEndDate(format(endOfMonth(end), 'yyyy-MM-dd'));
+      setStartDate(format(start, "yyyy-MM-dd"));
+      setEndDate(format(end, "yyyy-MM-dd"));
+      setActiveView("daily");
+    } else if (period === "month") {
+      setStartDate(format(startOfMonth(start), "yyyy-MM-dd"));
+      setEndDate(format(endOfMonth(end), "yyyy-MM-dd"));
+      setActiveView("daily");
     }
   };
 
-  // Auto-selecionar hoje se não houver seleção
   useEffect(() => {
-    if (!selectedDate && dailyReportDays.length > 0 && activeView === "daily") {
-      const today = format(new Date(), "yyyy-MM-dd");
-      const todayReport = dailyReportDays.find((d) => d.period === today);
-      if (todayReport) {
-        setSelectedDate(today);
-      } else {
-        setSelectedDate(dailyReportDays[0].period);
-      }
-    }
-  }, [dailyReportDays, selectedDate, activeView]);
+    if (activeView !== "daily" || selectedDate) return;
+    setSelectedDate(format(new Date(), "yyyy-MM-dd"));
+  }, [activeView, selectedDate]);
 
   const sidebarItems = [
     {
@@ -685,8 +688,8 @@ export function ReportsScreen() {
           const nextView = data.value as ReportView;
           setActiveView(nextView);
           if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile após selecionar
-          if (nextView === "daily" && !selectedDate && dailyReportDays.length > 0) {
-            setSelectedDate(dailyReportDays[0].period);
+          if (nextView === "daily" && !selectedDate) {
+            setSelectedDate(format(new Date(), "yyyy-MM-dd"));
           }
         }}
       >
@@ -804,21 +807,55 @@ export function ReportsScreen() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={() => handleQuickFilter('today')} size="sm">Hoje</Button>
-          <Button variant="outline" onClick={() => handleQuickFilter('yesterday')} size="sm">Ontem</Button>
-          <Button variant="outline" onClick={() => handleQuickFilter('week')} size="sm">7 Dias</Button>
-          <Button variant="outline" onClick={() => handleQuickFilter('month')} size="sm">Mês</Button>
-          <Button onClick={handleExportPDF} className="gap-2" variant="outline" title="Exportar Relatório PDF">
-            <Print24Regular className="w-4 h-4" />
-            PDF
-          </Button>
-          <Button onClick={() => handleExport("excel")} className="gap-2" variant="outline" title="Exportar Relatório Excel">
-            <Document24Regular className="w-4 h-4" />
-            Excel
-          </Button>
-        </div>
-      </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {(activeView === "daily" || activeView === "all-sales") && (
+                <>
+                  <Input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="h-8 w-[138px] text-xs"
+                    aria-label="Data inicial"
+                  />
+                  <span className="text-muted-foreground text-xs">até</span>
+                  <Input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="h-8 w-[138px] text-xs"
+                    aria-label="Data final"
+                  />
+                  <div className="hidden sm:block w-px h-6 bg-border mx-1" />
+                </>
+              )}
+              <Button variant="outline" onClick={() => handleQuickFilter("today")} size="sm">
+                Hoje
+              </Button>
+              <Button variant="outline" onClick={() => handleQuickFilter("yesterday")} size="sm">
+                Ontem
+              </Button>
+              <Button variant="outline" onClick={() => handleQuickFilter("week")} size="sm">
+                7 Dias
+              </Button>
+              <Button variant="outline" onClick={() => handleQuickFilter("month")} size="sm">
+                Mês
+              </Button>
+              <div className="hidden sm:block w-px h-6 bg-border mx-1" />
+              <Button onClick={handleExportPDF} className="gap-2" variant="outline" title="Exportar Relatório PDF">
+                <Print24Regular className="w-4 h-4" />
+                PDF
+              </Button>
+              <Button
+                onClick={() => handleExport("excel")}
+                className="gap-2"
+                variant="outline"
+                title="Exportar Relatório Excel"
+              >
+                <Document24Regular className="w-4 h-4" />
+                Excel
+              </Button>
+            </div>
+          </div>
 
           {/* Content based on active view */}
           <div className="flex-1 overflow-y-auto">
@@ -852,6 +889,8 @@ export function ReportsScreen() {
                 onViewSale={handleViewSaleDetails}
                 onReprintReceipt={handleReprintReceipt}
                 reprintingSaleId={reprintingSaleId}
+                startDate={startDate}
+                endDate={endDate}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
                 formatTime={formatTime}
@@ -1318,6 +1357,8 @@ function DailyReportsView({
   onViewSale,
   onReprintReceipt,
   reprintingSaleId,
+  startDate,
+  endDate,
   formatCurrency,
   formatDate,
   formatTime,
@@ -1349,6 +1390,8 @@ function DailyReportsView({
   onViewSale: (sale: Sale) => void;
   onReprintReceipt: (sale: Sale) => void;
   reprintingSaleId: number | null;
+  startDate: string;
+  endDate: string;
   formatCurrency: (value: string | number) => string;
   formatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
@@ -1366,13 +1409,13 @@ function DailyReportsView({
   const selectedDay = dailySales.find((day) => day.period === selectedDate);
   return (
     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-4 overflow-hidden">
-      {/* Lista de Relatórios Diários */}
       <div className="lg:col-span-1 flex flex-col overflow-hidden">
-        <div className="fluent-card p-4 mb-4">
-          <h2 className="text-lg font-semibold mb-4">Relatórios Diários</h2>
-        </div>
-
         <div className="flex-1 overflow-y-auto fluent-card p-2">
+          <p className="text-xs text-muted-foreground px-2 pt-2 pb-3 border-b border-border mb-2">
+            {format(parseISO(startDate), "dd/MM/yyyy", { locale: ptBR })}
+            {" – "}
+            {format(parseISO(endDate), "dd/MM/yyyy", { locale: ptBR })}
+          </p>
           {dailyLoading ? (
             <div className="flex items-center justify-center h-32">
               <div className="text-muted-foreground">Carregando...</div>
