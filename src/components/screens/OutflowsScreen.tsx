@@ -11,6 +11,7 @@ import {
   Dismiss24Regular,
   Food24Regular,
   Money24Regular,
+  Print24Regular,
   Receipt24Regular,
   Search24Regular,
   Warning24Regular,
@@ -31,6 +32,7 @@ import { toast } from "sonner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { OutflowDialog } from "@/components/OutflowDialog";
 import {
   outflowsApi,
@@ -95,6 +97,54 @@ const fmt = (n: string | number | null | undefined, decimals = 2) => {
   return isNaN(v) ? "0.00" : v.toFixed(decimals);
 };
 
+function formatOutflowsThermalReceipt(
+  outflows: PDVOutflow[],
+  title: string,
+  metrics: { productQty: number; cashAmount: number; totalCount: number }
+): string {
+  const lines: string[] = [];
+  lines.push("=".repeat(42));
+  lines.push("      RELATORIO DE SAIDAS");
+  lines.push("=".repeat(42));
+  lines.push(`Filtro: ${title}`);
+  lines.push(`Emitido: ${new Date().toLocaleString("pt-MZ")}`);
+  lines.push("-".repeat(42));
+
+  if (outflows.length === 0) {
+    lines.push("Sem saidas neste filtro.");
+  }
+
+  outflows.forEach((outflow) => {
+    const date = new Date(outflow.created_at).toLocaleString("pt-MZ", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const isProduct = outflow.outflow_type === "product";
+    const description = isProduct
+      ? outflow.product_name || outflow.title || "Produto"
+      : outflow.title || "Saida de caixa";
+    const reason = REASON_LABELS[outflow.reason] || outflow.reason || "Outro";
+    lines.push(`${date} - ${isProduct ? "PRODUTO" : "CAIXA"}`);
+    lines.push(description);
+    lines.push(`Motivo: ${reason}`);
+    if (isProduct) {
+      lines.push(`Quantidade: ${fmt(outflow.quantity, 3)} un.`);
+    } else {
+      lines.push(`Valor: ${fmt(outflow.amount)} MT`);
+    }
+    lines.push("-".repeat(42));
+  });
+
+  lines.push(`Registos: ${metrics.totalCount}`);
+  lines.push(`Produtos retirados: ${fmt(metrics.productQty, 3)} un.`);
+  lines.push(`Despesas de caixa: ${fmt(metrics.cashAmount)} MT`);
+  lines.push("=".repeat(42));
+  lines.push("");
+  return lines.join("\n");
+}
+
 // -------------------------------------------------------------------
 // Styles
 // -------------------------------------------------------------------
@@ -140,6 +190,8 @@ export function OutflowsScreen() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [cancelConfirmId, setCancelConfirmId] = useState<number | null>(null);
   const [isPdfLoading, setIsPdfLoading] = useState(false);
+  const [isThermalPrinting, setIsThermalPrinting] = useState(false);
+  const { printReceipt } = useHardwarePlugin();
 
   // Derive date range from the active view for PDF export
   const handlePrintPdf = async () => {
@@ -341,6 +393,23 @@ export function OutflowsScreen() {
     }
   }, [activeView]);
 
+  const handlePrintThermal = async () => {
+    try {
+      setIsThermalPrinting(true);
+      const content = formatOutflowsThermalReceipt(filteredOutflows, viewTitle, metrics);
+      const result = await printReceipt(content);
+      if (!result.success) {
+        toast.error(`Falha na impressão: ${result.error || "Nenhuma impressora configurada"}`);
+        return;
+      }
+      toast.success("Relatório enviado para a impressora térmica.");
+    } catch (error: any) {
+      toast.error(`Erro ao imprimir: ${error?.message || error}`);
+    } finally {
+      setIsThermalPrinting(false);
+    }
+  };
+
   return (
     <>
       <div className={styles.root}>
@@ -467,6 +536,16 @@ export function OutflowsScreen() {
                       className={`h-5 w-5 ${isPdfLoading ? "animate-pulse" : ""}`}
                     />
                     <span className="hidden sm:inline">{isPdfLoading ? "A gerar..." : "Imprimir PDF"}</span>
+                  </button>
+
+                  <button
+                    onClick={handlePrintThermal}
+                    disabled={isThermalPrinting}
+                    className="fluent-button justify-center gap-2 px-3 border-orange-400 text-orange-600 dark:text-orange-400 hover:bg-orange-500/10 transition-colors"
+                    title="Imprimir relatório em texto na impressora térmica"
+                  >
+                    <Print24Regular className={`h-5 w-5 ${isThermalPrinting ? "animate-pulse" : ""}`} />
+                    <span className="hidden sm:inline">{isThermalPrinting ? "A imprimir..." : "Imprimir térmico"}</span>
                   </button>
 
                   <button
