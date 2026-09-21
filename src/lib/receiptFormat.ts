@@ -6,6 +6,9 @@ export { getPaymentMethodLabel };
 
 const IVA_RATE = 0.16;
 
+const formatMoney = (value: string | number | null | undefined): string =>
+  `${Number(value || 0).toFixed(2)} MT`;
+
 /** Recibo de venda em espera / pendente (impressão via plugin WS). */
 export function formatParkedSaleReceipt(
   items: CartItem[],

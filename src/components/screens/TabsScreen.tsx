@@ -222,9 +222,15 @@ export function TabsScreen() {
         account.status === "open"
           ? formatAccountItemsReceipt(account, { terminal })
           : formatAccountReceipt(account, { terminal, paymentMethod });
-      await printReceipt(receiptContent);
-    } catch (error) {
+      const printResult = await printReceipt(receiptContent);
+      if (printResult && !printResult.success) {
+        toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, { duration: 6000 });
+      } else if (printResult?.success) {
+        toast.success("Conta enviada para impressão.");
+      }
+    } catch (error: any) {
       console.error("Erro ao imprimir conta:", error);
+      toast.error(`Erro ao comunicar com impressora: ${error?.message || error}`, { duration: 6000 });
     }
   };
 
