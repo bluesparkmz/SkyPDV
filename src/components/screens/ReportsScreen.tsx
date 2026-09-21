@@ -40,7 +40,11 @@ import {
   outflowsApi,
   PDVServiceOrder,
   PDVOutflow,
+  terminalApi,
 } from "@/services/api";
+import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
+import { formatSaleReceipt } from "@/lib/receiptFormat";
+import { toast } from "sonner";
 import { CustomerName } from "@/components/CustomerName";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -152,6 +156,12 @@ export function ReportsScreen() {
   const [pendingExportType, setPendingExportType] = useState<"pdf" | "excel" | null>(null);
   const [pendingProductScope, setPendingProductScope] = useState<"all" | "beverages">("all");
   const [tempPhone, setTempPhone] = useState("");
+  const [reprintingSaleId, setReprintingSaleId] = useState<number | null>(null);
+  const { printReceipt } = useHardwarePlugin();
+  const { data: terminal } = useQuery({
+    queryKey: ["terminal"],
+    queryFn: terminalApi.get,
+  });
 
   useEffect(() => {
     // Sincronizar estado inicial e mudanças de redimensionamento
@@ -501,6 +511,36 @@ export function ReportsScreen() {
     setIsSaleDetailOpen(true);
   };
 
+  const handleReprintReceipt = async (sale: Sale) => {
+    if (sale.status === "cancelled") {
+      toast.error("Não é possível reimprimir uma venda cancelada.");
+      return;
+    }
+
+    setReprintingSaleId(sale.id);
+    try {
+      let fullSale = sale;
+      if (!sale.items?.length) {
+        fullSale = await salesApi.get(sale.id);
+      }
+
+      const receiptContent = formatSaleReceipt(fullSale, { terminal });
+      const printResult = await printReceipt(receiptContent);
+      if (printResult && !printResult.success) {
+        toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, {
+          duration: 6000,
+        });
+      } else if (printResult?.success) {
+        toast.success("Recibo reimpresso com sucesso!");
+      }
+    } catch (error: any) {
+      console.error("Erro ao reimprimir recibo:", error);
+      toast.error(`Erro ao reimprimir recibo: ${error?.message || error}`, { duration: 6000 });
+    } finally {
+      setReprintingSaleId(null);
+    }
+  };
+
   const handleExport = async (
     type: "pdf" | "excel",
     opts?: { skipPhoneCheck?: boolean; productScope?: "all" | "beverages" }
@@ -810,6 +850,8 @@ export function ReportsScreen() {
                 cashierNameByUserId={cashierNameByUserId}
                 onSelectDay={handleSelectDay}
                 onViewSale={handleViewSaleDetails}
+                onReprintReceipt={handleReprintReceipt}
+                reprintingSaleId={reprintingSaleId}
                 formatCurrency={formatCurrency}
                 formatDate={formatDate}
                 formatTime={formatTime}
@@ -827,6 +869,8 @@ export function ReportsScreen() {
                 monthlyTotals={monthlyTotals}
                 yearlyTotals={yearlyTotals}
                 onViewSale={handleViewSaleDetails}
+                onReprintReceipt={handleReprintReceipt}
+                reprintingSaleId={reprintingSaleId}
                 formatCurrency={formatCurrency}
                 formatTime={formatTime}
                 getPaymentMethodLabel={getPaymentMethodLabel}
@@ -958,10 +1002,16 @@ export function ReportsScreen() {
               <Button variant="outline" onClick={() => setIsSaleDetailOpen(false)}>
                 Fechar
               </Button>
-              <Button onClick={handleExportPDF} className="gap-2">
-                <Print24Regular className="w-4 h-4" />
-                Imprimir
-              </Button>
+              {selectedSale && selectedSale.status !== "cancelled" && (
+                <Button
+                  onClick={() => handleReprintReceipt(selectedSale)}
+                  disabled={reprintingSaleId === selectedSale.id}
+                  className="gap-2"
+                >
+                  <Print24Regular className="w-4 h-4" />
+                  {reprintingSaleId === selectedSale.id ? "A imprimir..." : "Reimprimir Recibo"}
+                </Button>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1266,6 +1316,8 @@ function DailyReportsView({
   cashierNameByUserId,
   onSelectDay,
   onViewSale,
+  onReprintReceipt,
+  reprintingSaleId,
   formatCurrency,
   formatDate,
   formatTime,
@@ -1295,6 +1347,8 @@ function DailyReportsView({
   cashierNameByUserId: Map<number, string>;
   onSelectDay: (date: string) => void;
   onViewSale: (sale: Sale) => void;
+  onReprintReceipt: (sale: Sale) => void;
+  reprintingSaleId: number | null;
   formatCurrency: (value: string | number) => string;
   formatDate: (dateString: string) => string;
   formatTime: (dateString: string) => string;
@@ -1464,15 +1518,30 @@ function DailyReportsView({
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onViewSale(sale)}
-                              className="gap-2"
-                            >
-                              <Eye24Regular className="w-4 h-4" />
-                              Ver
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => onViewSale(sale)}
+                                className="gap-2"
+                              >
+                                <Eye24Regular className="w-4 h-4" />
+                                Ver
+                              </Button>
+                              {sale.status !== "cancelled" && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => onReprintReceipt(sale)}
+                                  disabled={reprintingSaleId === sale.id}
+                                  className="gap-2"
+                                  title="Reimprimir recibo térmico"
+                                >
+                                  <Print24Regular className="w-4 h-4" />
+                                  {reprintingSaleId === sale.id ? "..." : "Reimprimir"}
+                                </Button>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -1625,6 +1694,8 @@ function AllSalesView({
   monthlyTotals,
   yearlyTotals,
   onViewSale,
+  onReprintReceipt,
+  reprintingSaleId,
   formatCurrency,
   formatTime,
   getPaymentMethodLabel,
@@ -1781,15 +1852,30 @@ function AllSalesView({
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onViewSale(sale)}
-                        className="gap-2"
-                      >
-                        <Eye24Regular className="w-4 h-4" />
-                        Ver
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onViewSale(sale)}
+                          className="gap-2"
+                        >
+                          <Eye24Regular className="w-4 h-4" />
+                          Ver
+                        </Button>
+                        {sale.status !== "cancelled" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onReprintReceipt(sale)}
+                            disabled={reprintingSaleId === sale.id}
+                            className="gap-2"
+                            title="Reimprimir recibo térmico"
+                          >
+                            <Print24Regular className="w-4 h-4" />
+                            {reprintingSaleId === sale.id ? "..." : "Reimprimir"}
+                          </Button>
+                        )}
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

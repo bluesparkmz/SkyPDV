@@ -1,4 +1,4 @@
-import type { Account, Terminal } from "@/services/api";
+import type { Account, Sale, Terminal } from "@/services/api";
 import type { CartItem } from "@/types/product";
 import { getPaymentMethodLabel } from "@/lib/paymentMethods";
 
@@ -48,6 +48,79 @@ export function formatParkedSaleReceipt(
   lines.push("Apresente este comprovativo para finalizar.");
   lines.push("=".repeat(42));
   lines.push("");
+  return lines.join("\n");
+}
+
+/** Recibo térmico de venda concluída (POS) — mesmo layout da finalização no caixa. */
+export function formatSaleReceipt(
+  sale: Sale,
+  opts?: { terminal?: Terminal | null; printedAt?: string }
+): string {
+  const receiptSettings = (opts?.terminal?.settings as Record<string, unknown> | null) || {};
+  const companyName = String(
+    receiptSettings.receipt_company_name || opts?.terminal?.name || "SKYPDV - SISTEMA DE VENDAS"
+  ).trim();
+  const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
+  const companyContacts = String(receiptSettings.receipt_contacts || opts?.terminal?.phone || "").trim();
+  const companyAddress = String(receiptSettings.receipt_address || opts?.terminal?.address || "").trim();
+  const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
+
+  const date = opts?.printedAt
+    ? new Date(opts.printedAt).toLocaleString("pt-MZ")
+    : sale.created_at
+      ? new Date(sale.created_at).toLocaleString("pt-MZ")
+      : new Date().toLocaleString("pt-MZ");
+
+  const total = Number(sale.total || 0);
+  const subtotal = sale.subtotal ? Number(sale.subtotal) : total / (1 + IVA_RATE);
+  const taxAmount = sale.tax_amount ? Number(sale.tax_amount) : total - subtotal;
+  const paidAmount = Number(sale.amount_paid || total);
+  const changeAmount =
+    sale.change_amount !== undefined && sale.change_amount !== null
+      ? Number(sale.change_amount)
+      : Math.max(paidAmount - total, 0);
+  const receiptNumber = sale.receipt_number || String(sale.id);
+
+  const lines: string[] = [];
+
+  lines.push("=".repeat(42));
+  lines.push(`        ${companyName.toUpperCase()}`);
+  lines.push("=".repeat(42));
+  if (companyNuit) lines.push(`NUIT: ${companyNuit}`);
+  if (companyContacts) lines.push(`Contacto: ${companyContacts}`);
+  if (companyAddress) lines.push(`Endereco: ${companyAddress}`);
+  lines.push(`Data: ${date}`);
+  lines.push(`Recibo: #${receiptNumber}`);
+  lines.push("-".repeat(42));
+  lines.push("-".repeat(42));
+  lines.push("PRODUTOS:");
+  lines.push("-".repeat(42));
+
+  (sale.items || []).forEach((item) => {
+    const qty = Number(item.quantity);
+    const isKg = !Number.isInteger(qty);
+    const qtyLabel = isKg ? `${parseFloat(qty.toFixed(3))}Kg` : `${qty}x`;
+    const unitPrice = Number(item.unit_price);
+    const itemTotal = Number(item.subtotal || unitPrice * qty);
+    lines.push(item.product_name);
+    lines.push(`  ${qtyLabel} ${unitPrice.toFixed(2)} MT = ${itemTotal.toFixed(2)} MT`);
+  });
+
+  lines.push("-".repeat(42));
+  lines.push(`Subtotal: ${subtotal.toFixed(2)} MT`);
+  lines.push(`IVA (16%): ${taxAmount.toFixed(2)} MT`);
+  lines.push("=".repeat(42));
+  lines.push(`TOTAL: ${total.toFixed(2)} MT`);
+  lines.push("=".repeat(42));
+  lines.push(`Pagamento: ${getPaymentMethodLabel(sale.payment_method)}`);
+  lines.push(`Valor Pago: ${paidAmount.toFixed(2)} MT`);
+  lines.push(`Troco: ${changeAmount.toFixed(2)} MT`);
+  lines.push("=".repeat(42));
+  lines.push(`        ${footerMessage.toUpperCase()}`);
+  lines.push("=".repeat(42));
+  lines.push("");
+  lines.push("");
+
   return lines.join("\n");
 }
 
