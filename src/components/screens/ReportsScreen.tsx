@@ -194,10 +194,19 @@ export function ReportsScreen() {
   );
 
   // Buscar relatórios diários
-  const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(startDate, endDate, selectedCashierId);
+  const periodStartIso = useMemo(
+    () => startOfDay(parseISO(startDate)).toISOString(),
+    [startDate]
+  );
+  const periodEndIso = useMemo(
+    () => endOfDay(parseISO(endDate)).toISOString(),
+    [endDate]
+  );
+
+  const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(periodStartIso, periodEndIso, selectedCashierId);
 
   // Buscar resumo geral
-  const { data: summary, isLoading: summaryLoading } = useSalesSummary(startDate, endDate, selectedCashierId);
+  const { data: summary, isLoading: summaryLoading } = useSalesSummary(periodStartIso, periodEndIso, selectedCashierId);
 
   // Buscar resumo do dia selecionado
   const { data: daySummary, isLoading: daySummaryLoading } = usePeriodicReport(
@@ -208,8 +217,8 @@ export function ReportsScreen() {
 
   // Buscar todas as vendas (para a view "all-sales")
   const { data: allSales = [], isLoading: allSalesLoading } = useSales({
-    start_date: startDate,
-    end_date: endDate,
+    start_date: periodStartIso,
+    end_date: periodEndIso,
     limit: 1000,
     status: "completed",
     user_id: selectedCashierId,
@@ -238,15 +247,6 @@ export function ReportsScreen() {
     },
     enabled: !!selectedDate && activeView === "daily",
   });
-
-  const periodStartIso = useMemo(
-    () => startOfDay(parseISO(startDate)).toISOString(),
-    [startDate]
-  );
-  const periodEndIso = useMemo(
-    () => endOfDay(parseISO(endDate)).toISOString(),
-    [endDate]
-  );
 
   const { data: periodServiceOrders = [], isLoading: servicesLoading } = useQuery({
     queryKey: ["reportServiceOrders", periodStartIso, periodEndIso],
