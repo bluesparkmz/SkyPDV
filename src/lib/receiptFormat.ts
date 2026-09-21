@@ -9,10 +9,23 @@ const IVA_RATE = 0.16;
 const formatMoney = (value: string | number | null | undefined): string =>
   `${Number(value || 0).toFixed(2)} MT`;
 
-const formatMozambiqueDateTime = (value?: string): string =>
-  (value ? new Date(value) : new Date()).toLocaleString("pt-MZ", {
+const formatMozambiqueDateTime = (value?: string): string => {
+  // O backend grava datas UTC sem o sufixo "Z". Sem ele, o navegador trata a
+  // data como hora local e deixa de aplicar corretamente o UTC+2 de Moçambique.
+  const normalized = value?.trim().replace(" ", "T");
+  const date = normalized
+    ? new Date(/(?:Z|[+-]\d{2}:?\d{2})$/i.test(normalized) ? normalized : `${normalized}Z`)
+    : new Date();
+
+  return date.toLocaleString("pt-MZ", {
     timeZone: "Africa/Maputo",
   });
+};
+
+const getSalePaymentLabel = (sale: Sale): string => {
+  const savedLabel = sale.notes?.match(/(?:M[eé]todo|Método)\s*:\s*([^\n)]+)/i)?.[1]?.trim();
+  return savedLabel || getPaymentMethodLabel(sale.payment_method);
+};
 
 /** Recibo de venda em espera / pendente (impressão via plugin WS). */
 export function formatParkedSaleReceipt(
@@ -111,7 +124,7 @@ export function formatSaleReceipt(
   lines.push("=".repeat(42));
   lines.push(`TOTAL: ${total.toFixed(2)} MT`);
   lines.push("=".repeat(42));
-  lines.push(`Pagamento: ${getPaymentMethodLabel(sale.payment_method)}`);
+  lines.push(`Pagamento: ${getSalePaymentLabel(sale)}`);
   lines.push(`Valor Pago: ${paidAmount.toFixed(2)} MT`);
   lines.push(`Troco: ${changeAmount.toFixed(2)} MT`);
   lines.push("=".repeat(42));
