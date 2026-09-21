@@ -398,6 +398,16 @@ export function ReportsScreen() {
     return acc;
   }, {} as Record<string, { count: number; total: number }>);
 
+  // Dashboard is scoped to the selected period, not to the currently selected day.
+  // Build this from the actual sales so custom methods (for example ABSA) appear too.
+  const periodPaymentMethodsSummary = allSales.reduce((acc, sale) => {
+    const method = sale.payment_method || "cash";
+    if (!acc[method]) acc[method] = { count: 0, total: 0 };
+    acc[method].count += 1;
+    acc[method].total += parseFloat(sale.total || "0");
+    return acc;
+  }, {} as Record<string, { count: number; total: number }>);
+
   const formatCurrency = (value: string | number) => {
     const num = typeof value === 'string' ? parseFloat(value) : value;
     return new Intl.NumberFormat("pt-MZ", {
@@ -867,6 +877,8 @@ export function ReportsScreen() {
                 serviceTotals={periodServiceTotals}
                 outflowTotals={periodOutflowTotals}
                 extrasLoading={servicesLoading || outflowsLoading}
+                paymentMethodsSummary={periodPaymentMethodsSummary}
+                getPaymentMethodLabel={getPaymentMethodLabel}
               />
             )}
 
@@ -1127,6 +1139,8 @@ function DashboardView({
   serviceTotals,
   outflowTotals,
   extrasLoading,
+  paymentMethodsSummary,
+  getPaymentMethodLabel,
 }: {
   summary: any;
   summaryLoading: boolean;
@@ -1134,6 +1148,8 @@ function DashboardView({
   serviceTotals: { total_orders: number; total_revenue: number };
   outflowTotals: { product_count: number; cash_count: number; product_quantity: number; cash_amount: number };
   extrasLoading: boolean;
+  paymentMethodsSummary: Record<string, { count: number; total: number }>;
+  getPaymentMethodLabel: (method: string) => string;
 }) {
   return (
     <div className="space-y-6">
@@ -1256,30 +1272,13 @@ function DashboardView({
         <div className="fluent-card p-4">
           <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {summary.cash_sales && parseFloat(summary.cash_sales) > 0 && (
-              <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Cash</p>
-                <p className="text-lg font-bold">{formatCurrency(summary.cash_sales)}</p>
+            {Object.entries(paymentMethodsSummary).map(([method, data]) => (
+              <div key={method} className="p-3 rounded-lg bg-muted/30 border border-border">
+                <p className="text-xs text-muted-foreground uppercase mb-1">{getPaymentMethodLabel(method)}</p>
+                <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
+                <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
               </div>
-            )}
-            {summary.card_sales && parseFloat(summary.card_sales) > 0 && (
-              <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">BCI POS</p>
-                <p className="text-lg font-bold">{formatCurrency(summary.card_sales)}</p>
-              </div>
-            )}
-            {summary.skywallet_sales && parseFloat(summary.skywallet_sales) > 0 && (
-              <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">E-Mola</p>
-                <p className="text-lg font-bold">{formatCurrency(summary.skywallet_sales)}</p>
-              </div>
-            )}
-            {summary.mpesa_sales && parseFloat(summary.mpesa_sales) > 0 && (
-              <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                <p className="text-xs text-muted-foreground uppercase mb-1">M-pesa</p>
-                <p className="text-lg font-bold">{formatCurrency(summary.mpesa_sales)}</p>
-              </div>
-            )}
+            ))}
           </div>
         </div>
       )}
