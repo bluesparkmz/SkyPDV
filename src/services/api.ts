@@ -1424,6 +1424,7 @@ export interface PDVServiceOrder {
   total: string;
   customer_name?: string | null;
   customer_phone?: string | null;
+  payment_method_id?: number | null;
   payment_method: string;
   amount_paid: string;
   change_amount: string;
@@ -1441,7 +1442,7 @@ export interface CreatePDVServiceOrder {
   discount_amount?: number;
   customer_name?: string;
   customer_phone?: string;
-  payment_method: "cash" | "card" | "mpesa" | "skywallet" | "mixed";
+  payment_method_id: number;
   amount_paid?: number;
   notes?: string;
 }

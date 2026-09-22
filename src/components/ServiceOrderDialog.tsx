@@ -54,7 +54,7 @@ export function ServiceOrderDialog({
     setDiscountAmount("0");
     setCustomerName("");
     setCustomerPhone("");
-    setPaymentMethod("cash");
+    setPaymentMethodId("");
     setAmountPaid("");
     setNotes("");
     setError(null);
@@ -86,6 +86,10 @@ export function ServiceOrderDialog({
     }
     if (numQty <= 0) {
       setError("A quantidade deve ser maior que zero.");
+      return;
+    }
+    if (!paymentMethodId || !selectedPaymentMethod) {
+      setError("Selecione um método de pagamento cadastrado pela empresa.");
       return;
     }
     if (isCash && numPaid < total) {
@@ -264,6 +268,11 @@ export function ServiceOrderDialog({
                 </button>
               ))}
             </div>
+            {paymentMethods.length === 0 && (
+              <p className="text-xs text-destructive">
+                A empresa ainda não cadastrou métodos de pagamento. Cadastre-os em Configurações → Pagamentos.
+              </p>
+            )}
           </div>
 
           {/* Valor Pago e Troco (Para dinheiro) */}
@@ -316,7 +325,7 @@ export function ServiceOrderDialog({
             </button>
             <button
               type="submit"
-              disabled={loading || services.length === 0}
+              disabled={loading || services.length === 0 || paymentMethods.length === 0}
               className="px-4 py-2 text-xs font-medium rounded-md bg-emerald-600 text-white hover:bg-emerald-700 flex items-center gap-1.5 shadow-sm transition-colors"
             >
               <CheckmarkCircle24Regular className="w-4 h-4" />
