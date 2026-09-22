@@ -400,7 +400,9 @@ export function ReportsScreen() {
     return sale.payment_method || "Não informado";
   };
 
-  const paymentMethodsSummary = (daySales.length > 0 ? daySales : allSales).reduce((acc, sale) => {
+  // Never fall back to the whole period: a day with no sales must show zero
+  // for every company payment method, not values from previous days.
+  const paymentMethodsSummary = daySales.reduce((acc, sale) => {
     const method = getSalePaymentMethodLabel(sale);
     if (!acc[method]) {
       acc[method] = { count: 0, total: 0 };
@@ -436,11 +438,17 @@ export function ReportsScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    return format(parseISO(dateString), "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR });
+    const date = parseServerUtcDate(dateString);
+    return date
+      ? new Intl.DateTimeFormat("pt-MZ", { timeZone: "Africa/Maputo", weekday: "long", day: "2-digit", month: "long", year: "numeric" }).format(date)
+      : "";
   };
 
   const formatTime = (dateString: string) => {
-    return format(parseISO(dateString), "HH:mm", { locale: ptBR });
+    const date = parseServerUtcDate(dateString);
+    return date
+      ? new Intl.DateTimeFormat("pt-MZ", { timeZone: "Africa/Maputo", hour: "2-digit", minute: "2-digit", hour12: false }).format(date)
+      : "";
   };
 
   const cashierTotals = useMemo(() => {
@@ -1869,7 +1877,11 @@ function AllSalesView({
                 {sales.map((sale: Sale) => (
                   <TableRow key={sale.id}>
                     <TableCell className="font-medium">
-                      {format(parseISO(sale.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                      {parseServerUtcDate(sale.created_at)?.toLocaleString("pt-MZ", {
+                        timeZone: "Africa/Maputo",
+                        day: "2-digit", month: "2-digit", year: "numeric",
+                        hour: "2-digit", minute: "2-digit", hour12: false,
+                      })}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">#{sale.receipt_number || sale.id}</Badge>
