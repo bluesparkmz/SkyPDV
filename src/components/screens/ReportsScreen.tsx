@@ -72,6 +72,7 @@ import { useSales } from "@/hooks/useSales";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { dashboardApi } from "@/services/api";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useWhatsappPrefs } from "@/hooks/useWhatsappPrefs";
@@ -172,6 +173,7 @@ export function ReportsScreen() {
     queryKey: ["terminal"],
     queryFn: terminalApi.get,
   });
+  const { data: companyPaymentMethods = [] } = usePaymentMethods();
 
   useEffect(() => {
     // Sincronizar estado inicial e mudanças de redimensionamento
@@ -406,7 +408,7 @@ export function ReportsScreen() {
     acc[method].count += 1;
     acc[method].total += parseFloat(sale.total);
     return acc;
-  }, {} as Record<string, { count: number; total: number }>);
+  }, Object.fromEntries(companyPaymentMethods.map((method) => [method.name, { count: 0, total: 0 }])) as Record<string, { count: number; total: number }>);
 
   // Dashboard is scoped to the selected period, not to the currently selected day.
   // Build this from the actual sales so custom methods (for example ABSA) appear too.
@@ -416,7 +418,7 @@ export function ReportsScreen() {
     acc[method].count += 1;
     acc[method].total += parseFloat(sale.total || "0");
     return acc;
-  }, {} as Record<string, { count: number; total: number }>);
+  }, Object.fromEntries(companyPaymentMethods.map((method) => [method.name, { count: 0, total: 0 }])) as Record<string, { count: number; total: number }>);
 
   const formatCurrency = (value: string | number) => {
     const num = typeof value === 'string' ? parseFloat(value) : value;
