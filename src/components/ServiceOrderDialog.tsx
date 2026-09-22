@@ -11,7 +11,7 @@ import {
 } from "@fluentui/react-icons";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CreatePDVServiceOrder, PDVService } from "@/services/api";
-import { LOCAL_PAYMENT_METHODS, getPaymentMethodLabel, mapToApiPaymentMethod } from "@/lib/paymentMethods";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 
 interface ServiceOrderDialogProps {
   isOpen: boolean;
@@ -35,7 +35,8 @@ export function ServiceOrderDialog({
   const [discountAmount, setDiscountAmount] = useState("0");
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const { data: paymentMethods = [] } = usePaymentMethods();
+  const [paymentMethodId, setPaymentMethodId] = useState<string>("");
   const [amountPaid, setAmountPaid] = useState("");
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
@@ -65,15 +66,17 @@ export function ServiceOrderDialog({
   const subtotal = servicePrice * numQty;
   const numDiscount = parseFloat(discountAmount) || 0;
   const total = Math.max(0, subtotal - numDiscount);
-  const numPaid = parseFloat(amountPaid) || (paymentMethod === "cash" ? 0 : total);
+  const selectedPaymentMethod = paymentMethods.find((method) => String(method.id) === paymentMethodId);
+  const isCash = /^(cash|dinheiro|dinheiro fisico|numerario)$/i.test(selectedPaymentMethod?.name || "");
+  const numPaid = parseFloat(amountPaid) || (isCash ? 0 : total);
   const change = Math.max(0, numPaid - total);
 
   // Auto-fill amount paid when payment method is not cash
   useEffect(() => {
-    if (paymentMethod !== "cash" && total > 0) {
+    if (!isCash && total > 0) {
       setAmountPaid(total.toFixed(2));
     }
-  }, [paymentMethod, total]);
+  }, [isCash, total]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,7 +88,7 @@ export function ServiceOrderDialog({
       setError("A quantidade deve ser maior que zero.");
       return;
     }
-    if (paymentMethod === "cash" && numPaid < total) {
+    if (isCash && numPaid < total) {
       setError("O valor pago não pode ser inferior ao total.");
       return;
     }
@@ -93,12 +96,10 @@ export function ServiceOrderDialog({
     try {
       setLoading(true);
       setError(null);
-      const apiPaymentMethod = mapToApiPaymentMethod(paymentMethod);
-      const methodLabel = getPaymentMethodLabel(paymentMethod);
       const combinedNotes = notes.trim()
-        ? `${notes.trim()} (Método: ${methodLabel})`
-        : paymentMethod !== "cash"
-        ? `Método: ${methodLabel}`
+        ? `${notes.trim()} (Método: ${selectedPaymentMethod?.name || ""})`
+        : selectedPaymentMethod
+        ? `Método: ${selectedPaymentMethod.name}`
         : undefined;
 
       await onSubmit({
@@ -107,7 +108,7 @@ export function ServiceOrderDialog({
         discount_amount: numDiscount > 0 ? numDiscount : undefined,
         customer_name: customerName.trim() || undefined,
         customer_phone: customerPhone.trim() || undefined,
-        payment_method: apiPaymentMethod,
+        payment_method_id: Number(paymentMethodId),
         amount_paid: numPaid,
         notes: combinedNotes,
       });
@@ -248,18 +249,18 @@ export function ServiceOrderDialog({
               Método de Pagamento <span className="text-destructive">*</span>
             </label>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {LOCAL_PAYMENT_METHODS.map((m) => (
+              {paymentMethods.map((m) => (
                 <button
-                  key={m.value}
+                  key={m.id}
                   type="button"
-                  onClick={() => setPaymentMethod(m.value)}
+                  onClick={() => setPaymentMethodId(String(m.id))}
                   className={`px-3 py-2 rounded-lg text-xs font-semibold border transition-all text-center ${
-                    paymentMethod === m.value
+                    paymentMethodId === String(m.id)
                       ? "bg-primary text-primary-foreground border-primary shadow-sm ring-2 ring-primary/20"
                       : "bg-card hover:bg-muted text-foreground border-input"
                   }`}
                 >
-                  {m.label}
+                  {m.name}
                 </button>
               ))}
             </div>
