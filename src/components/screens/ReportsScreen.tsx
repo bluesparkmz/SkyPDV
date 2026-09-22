@@ -203,14 +203,10 @@ export function ReportsScreen() {
   );
 
   // Buscar relatórios diários
-  const periodStartIso = useMemo(
-    () => startOfDay(parseISO(startDate)).toISOString(),
-    [startDate]
-  );
-  const periodEndIso = useMemo(
-    () => endOfDay(parseISO(endDate)).toISOString(),
-    [endDate]
-  );
+  // Never use the workstation timezone for server-side report filters.
+  // The business day is always Mozambique time (UTC+2), on every PC.
+  const periodStartIso = useMemo(() => mozambiqueDayRange(startDate).start, [startDate]);
+  const periodEndIso = useMemo(() => mozambiqueDayRange(endDate).end, [endDate]);
 
   const { data: dailySales = [], isLoading: dailyLoading } = useSalesByDay(periodStartIso, periodEndIso, selectedCashierId);
 
