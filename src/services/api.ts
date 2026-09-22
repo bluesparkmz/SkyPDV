@@ -1474,6 +1474,7 @@ export const servicesApi = {
   create: (data: CreatePDVService) => apiPost<PDVService>("/skypdv/services", data),
   update: (id: number, data: UpdatePDVService) => apiPut<PDVService>(`/skypdv/services/${id}`, data),
   delete: (id: number) => apiDelete<{ ok: boolean; message: string }>(`/skypdv/services/${id}`),
+  downloadCatalogPdf: () => apiGetBlob("/skypdv/services/catalog.pdf"),
 };
 
 export const serviceOrdersApi = {

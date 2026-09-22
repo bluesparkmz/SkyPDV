@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   Add24Regular,
-  ArrowClockwise24Regular,
   ArrowDownload24Regular,
   CalendarDay24Regular,
   CalendarWeekNumbers24Regular,
@@ -11,6 +10,7 @@ import {
   Edit24Regular,
   Money24Regular,
   Receipt24Regular,
+  Print24Regular,
   Search24Regular,
   Wrench24Regular,
 } from "@fluentui/react-icons";
@@ -147,6 +147,7 @@ export function ServicesScreen() {
   }, [isMobile]);
 
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingCatalogPdf, setExportingCatalogPdf] = useState(false);
 
   // ------------------------------------------------------------------
   // Data loading
@@ -269,6 +270,26 @@ export function ServicesScreen() {
     }
   };
 
+  const handleDownloadCatalogPdf = async () => {
+    try {
+      setExportingCatalogPdf(true);
+      const { blob, filename } = await servicesApi.downloadCatalogPdf();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename || "catalogo_servicos.pdf";
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      setTimeout(() => window.URL.revokeObjectURL(url), 1000);
+      toast.success("Catálogo de serviços em PDF descarregado com sucesso!");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao gerar PDF do catálogo de serviços.");
+    } finally {
+      setExportingCatalogPdf(false);
+    }
+  };
+
 
   // ------------------------------------------------------------------
   // Catalog filter
@@ -371,13 +392,13 @@ export function ServicesScreen() {
                 </div>
                 <div className="flex gap-2">
                   <button
-                    onClick={loadData}
-                    disabled={loading}
-                    className="fluent-button justify-center gap-2 px-3"
-                    title="Actualizar dados"
+                    onClick={handleDownloadCatalogPdf}
+                    disabled={exportingCatalogPdf}
+                    className="fluent-button justify-center gap-2 px-3 disabled:opacity-50"
+                    title="Gerar PDF do catálogo de serviços e preços"
                   >
-                    <ArrowClockwise24Regular className={`h-5 w-5 ${loading ? "animate-spin" : ""}`} />
-                    <span className="hidden sm:inline">Actualizar</span>
+                    <Print24Regular className={`h-5 w-5 ${exportingCatalogPdf ? "animate-pulse" : ""}`} />
+                    <span className="hidden sm:inline">{exportingCatalogPdf ? "A gerar PDF..." : "Imprimir"}</span>
                   </button>
 
                   {/* Download PDF — only visible on orders views */}
