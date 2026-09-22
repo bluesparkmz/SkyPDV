@@ -1,86 +1,21 @@
+/**
+ * Payment methods are company data. There are intentionally no default
+ * banks, wallets or cash options in the frontend.
+ */
 export interface PaymentMethodOption {
   value: string;
   label: string;
 }
 
-export const LOCAL_PAYMENT_METHODS: PaymentMethodOption[] = [
-  { value: "cash", label: "Dinheiro" },
-  { value: "emola", label: "E-mola" },
-  { value: "mpesa", label: "Mpesa" },
-  { value: "bci_pos", label: "BCI-POS" },
-  { value: "pos_absa", label: "POS-ABSA" },
-  { value: "bim_pos", label: "BIM-POS" },
-  { value: "mozabanco", label: "MozaBanco" },
-  { value: "standerback", label: "StanderBack" },
-];
+// Compatibility for old screens: an empty list is never a fallback catalog.
+export const LOCAL_PAYMENT_METHODS: PaymentMethodOption[] = [];
 
-export const PAYMENT_METHOD_LABELS: Record<string, string> = {
-  cash: "Dinheiro",
-  Dinheiro: "Dinheiro",
-  dinheiro: "Dinheiro",
-  emola: "E-mola",
-  "E-mola": "E-mola",
-  "e-mola": "E-mola",
-  skywallet: "E-mola",
-  SkyWallet: "E-mola",
-  mpesa: "Mpesa",
-  Mpesa: "Mpesa",
-  "M-Pesa": "Mpesa",
-  "M-pesa": "Mpesa",
-  bci_pos: "BCI-POS",
-  "BCI-POS": "BCI-POS",
-  "bci-pos": "BCI-POS",
-  pos_absa: "POS-ABSA",
-  "POS-ABSA": "POS-ABSA",
-  "pos-absa": "POS-ABSA",
-  card: "BCI-POS",
-  bim_pos: "BIM-POS",
-  "BIM-POS": "BIM-POS",
-  "bim-pos": "BIM-POS",
-  mozabanco: "MozaBanco",
-  MozaBanco: "MozaBanco",
-  standerback: "StanderBack",
-  StanderBack: "StanderBack",
-  mixed: "Misto",
-};
-
+/** Shows the exact saved value, including historical sales. */
 export function getPaymentMethodLabel(method: string | undefined | null): string {
-  if (!method) return "";
-  return PAYMENT_METHOD_LABELS[method] || method;
+  return String(method || "Não informado").trim() || "Não informado";
 }
 
-/**
- * Mapeia métodos de pagamento locais para os tipos suportados pelo backend PDV
- * (cash, card, skywallet, mpesa, mixed) evitando erro 422 da API remota.
- */
-export function mapToApiPaymentMethod(method: string): "cash" | "card" | "skywallet" | "mpesa" | "mixed" {
-  switch (method) {
-    case "cash":
-    case "Dinheiro":
-      return "cash";
-    case "emola":
-    case "E-mola":
-    case "skywallet":
-      return "skywallet";
-    case "mpesa":
-    case "Mpesa":
-    case "M-Pesa":
-      return "mpesa";
-    case "bci_pos":
-    case "BCI-POS":
-    case "pos_absa":
-    case "POS-ABSA":
-    case "bim_pos":
-    case "BIM-POS":
-    case "mozabanco":
-    case "MozaBanco":
-    case "standerback":
-    case "StanderBack":
-    case "card":
-      return "card";
-    case "mixed":
-      return "mixed";
-    default:
-      return "cash";
-  }
+/** @deprecated New sales must send payment_method_id returned by the API. */
+export function mapToApiPaymentMethod(method: string): string {
+  return method;
 }

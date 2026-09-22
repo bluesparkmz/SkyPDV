@@ -216,21 +216,7 @@ export function SalesHistoryScreen() {
     return format(new Date(dateString), "dd/MM/yyyy HH:mm", { locale: ptBR });
   };
 
-  const getPaymentMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      emola: "E-mola",
-      skywallet: "E-mola",
-      mpesa: "Mpesa",
-      bci_pos: "BCI-POS",
-      card: "BCI-POS",
-      bim_pos: "BIM-POS",
-      mozabanco: "MozaBanco",
-      standerback: "StanderBack",
-      mixed: "Misto",
-    };
-    return labels[method] || method;
-  };
+  const getPaymentMethodLabel = (method: string) => method || "Não informado";
 
   const getCashierLabel = (sale: Sale) => {
     if (!sale.created_by) return "-";

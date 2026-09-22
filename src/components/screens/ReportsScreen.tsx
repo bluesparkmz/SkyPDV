@@ -395,11 +395,7 @@ export function ReportsScreen() {
   const getSalePaymentMethodLabel = (sale: Sale) => {
     const savedLabel = String(sale.notes || "").match(/M[eé]todo\s*:\s*([^\n)]+)/i)?.[1]?.trim();
     if (savedLabel) return savedLabel;
-    const method = sale.payment_method || "cash";
-    const labels: Record<string, string> = {
-      cash: "Dinheiro", skywallet: "E-Mola", emola: "E-Mola", mpesa: "M-Pesa", card: "BCI-POS", mixed: "Misto",
-    };
-    return labels[method] || method;
+    return sale.payment_method || "Não informado";
   };
 
   const paymentMethodsSummary = (daySales.length > 0 ? daySales : allSales).reduce((acc, sale) => {
@@ -485,21 +481,7 @@ export function ReportsScreen() {
     return Array.from(map.values()).sort((a, b) => (a.label < b.label ? 1 : -1));
   }, [allSales]);
 
-  const getPaymentMethodLabel = (method: string) => {
-    const labels: Record<string, string> = {
-      cash: "Dinheiro",
-      emola: "E-mola",
-      skywallet: "E-mola",
-      mpesa: "Mpesa",
-      bci_pos: "BCI-POS",
-      card: "BCI-POS",
-      bim_pos: "BIM-POS",
-      mozabanco: "MozaBanco",
-      standerback: "StanderBack",
-      mixed: "Misto",
-    };
-    return labels[method] || method;
-  };
+  const getPaymentMethodLabel = (method: string) => method || "Não informado";
 
   const filteredCashRegisters = useMemo(() => {
     const query = operatorNameFilter.trim().toLowerCase();
