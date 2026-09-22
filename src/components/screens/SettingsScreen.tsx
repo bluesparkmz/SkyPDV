@@ -2,7 +2,8 @@ import { useState, useEffect, type ReactNode } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LOCAL_PAYMENT_METHODS, getPaymentMethodLabel, mapToApiPaymentMethod } from "@/lib/paymentMethods";
+import { getPaymentMethodLabel } from "@/lib/paymentMethods";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import type { DrawerProps } from "@fluentui/react-components";
 import {
   Hamburger,
@@ -1550,7 +1551,8 @@ export function InvoiceSection() {
   const [invoiceNumber, setInvoiceNumber] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split("T")[0]);
   const [logoUrl, setLogoUrl] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("cash");
+  const { data: paymentMethods = [] } = usePaymentMethods();
+  const [paymentMethod, setPaymentMethod] = useState<string>("");
   const [taxIncludedInPrice, setTaxIncludedInPrice] = useState(true);
   const [invoiceView, setInvoiceView] = useState<"clients" | "receipts" | "invoices" | "settings">("invoices");
   const [receiptFilterStart, setReceiptFilterStart] = useState("");
@@ -1783,7 +1785,7 @@ export function InvoiceSection() {
       client_name: customerName,
       client_nuit: clientNuit,
       client_address: clientAddress,
-      payment_method_label: paymentMethod,
+      payment_method_label: paymentMethods.find((method) => String(method.id) === paymentMethod)?.name || "",
       logo_url: logoUrl || companyConfigLogo || localInvoiceSettings.invoice_logo || "",
       stamp_url: companyConfigStamp || localInvoiceSettings.invoice_stamp || "",
       tax_rate: String(taxRate),
@@ -1830,7 +1832,7 @@ export function InvoiceSection() {
       })),
       customer_name: customerName || undefined,
       customer_phone: customerPhone || undefined,
-      payment_method: mapToApiPaymentMethod(paymentMethod) as any,
+      payment_method_id: Number(paymentMethod),
       sale_type: "local",
       notes: JSON.stringify({ invoice_meta: invoiceMeta }),
     });
@@ -2608,9 +2610,9 @@ export function InvoiceSection() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {LOCAL_PAYMENT_METHODS.map((method) => (
-                        <SelectItem key={method.value} value={method.value}>
-                          {method.label}
+                      {paymentMethods.map((method) => (
+                        <SelectItem key={method.id} value={String(method.id)}>
+                          {method.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
