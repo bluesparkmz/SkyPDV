@@ -1,4 +1,4 @@
-import type { Account, Sale, Terminal } from "@/services/api";
+import type { Account, PDVServiceOrder, Sale, Terminal } from "@/services/api";
 import type { CartItem } from "@/types/product";
 import { getPaymentMethodLabel } from "@/lib/paymentMethods";
 
@@ -133,6 +133,61 @@ export function formatSaleReceipt(
   lines.push("");
   lines.push("");
 
+  return lines.join("\n");
+}
+
+/** Recibo térmico de um serviço concluído. */
+export function formatServiceReceipt(
+  order: PDVServiceOrder,
+  opts?: { terminal?: Terminal | null; printedAt?: string }
+): string {
+  const receiptSettings = (opts?.terminal?.settings as Record<string, unknown> | null) || {};
+  const companyName = String(receiptSettings.receipt_company_name || opts?.terminal?.name || "SKYPDV - SISTEMA DE VENDAS").trim();
+  const companyNuit = String(receiptSettings.receipt_nuit || "").trim();
+  const companyContacts = String(receiptSettings.receipt_contacts || opts?.terminal?.phone || "").trim();
+  const companyAddress = String(receiptSettings.receipt_address || opts?.terminal?.address || "").trim();
+  const footerMessage = String(receiptSettings.receipt_footer || "OBRIGADO PELA PREFERENCIA!").trim();
+  const date = formatMozambiqueDateTime(opts?.printedAt || order.created_at);
+  const quantity = Number(order.quantity || 0);
+  const unitPrice = Number(order.service_price || 0);
+  const subtotal = Number(order.subtotal || unitPrice * quantity);
+  const discount = Number(order.discount_amount || 0);
+  const total = Number(order.total || subtotal - discount);
+  const paidAmount = Number(order.amount_paid || total);
+  const changeAmount = Number(order.change_amount || 0);
+
+  const lines: string[] = [];
+  lines.push("=".repeat(42));
+  lines.push(`        ${companyName.toUpperCase()}`);
+  lines.push("RECIBO DE SERVICO");
+  lines.push("=".repeat(42));
+  if (companyNuit) lines.push(`NUIT: ${companyNuit}`);
+  if (companyContacts) lines.push(`Contacto: ${companyContacts}`);
+  if (companyAddress) lines.push(`Endereco: ${companyAddress}`);
+  lines.push(`Data: ${date}`);
+  lines.push(`Recibo: #${order.receipt_number || order.id}`);
+  if (order.customer_name) lines.push(`Cliente: ${order.customer_name}`);
+  if (order.customer_phone) lines.push(`Telefone: ${order.customer_phone}`);
+  lines.push("-".repeat(42));
+  lines.push("SERVICO:");
+  lines.push("-".repeat(42));
+  lines.push(order.service_name);
+  lines.push(`  ${quantity}x ${unitPrice.toFixed(2)} MT = ${subtotal.toFixed(2)} MT`);
+  lines.push("-".repeat(42));
+  lines.push(`Subtotal: ${subtotal.toFixed(2)} MT`);
+  if (discount > 0) lines.push(`Desconto: ${discount.toFixed(2)} MT`);
+  lines.push("=".repeat(42));
+  lines.push(`TOTAL: ${total.toFixed(2)} MT`);
+  lines.push("=".repeat(42));
+  lines.push(`Pagamento: ${getPaymentMethodLabel(order.payment_method)}`);
+  lines.push(`Valor Pago: ${paidAmount.toFixed(2)} MT`);
+  lines.push(`Troco: ${changeAmount.toFixed(2)} MT`);
+  if (order.notes) lines.push(`Obs: ${order.notes}`);
+  lines.push("=".repeat(42));
+  lines.push(`        ${footerMessage.toUpperCase()}`);
+  lines.push("=".repeat(42));
+  lines.push("");
+  lines.push("");
   return lines.join("\n");
 }
 

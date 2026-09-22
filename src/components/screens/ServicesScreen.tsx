@@ -31,6 +31,8 @@ import { toast } from "sonner";
 import { ServiceDialog } from "@/components/ServiceDialog";
 import { ServiceOrderDialog } from "@/components/ServiceOrderDialog";
 import { getPaymentMethodLabel } from "@/lib/paymentMethods";
+import { formatServiceReceipt } from "@/lib/receiptFormat";
+import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   CreatePDVService,
@@ -40,6 +42,7 @@ import {
   PDVServiceSummary,
   serviceOrdersApi,
   servicesApi,
+  terminalApi,
 } from "@/services/api";
 
 // -------------------------------------------------------------------
@@ -121,6 +124,7 @@ const useStyles = makeStyles({
 export function ServicesScreen() {
   const styles = useStyles();
   const isMobile = useIsMobile();
+  const { printReceipt } = useHardwarePlugin();
   const drawerType: Required<DrawerProps>["type"] = isMobile ? "overlay" : "inline";
   const [isNavOpen, setIsNavOpen] = useState(false);
   const restoreFocusTargetAttributes = useRestoreFocusTarget();
@@ -217,9 +221,24 @@ export function ServicesScreen() {
 
   const handleCreateOrder = async (data: CreatePDVServiceOrder) => {
     try {
-      await serviceOrdersApi.create(data);
+      const order = await serviceOrdersApi.create(data);
       toast.success("Serviço prestado registado com sucesso no caixa!");
       await loadData();
+
+      try {
+        const terminal = await terminalApi.get();
+        const printResult = await printReceipt(formatServiceReceipt(order, { terminal }));
+        if (printResult && !printResult.success) {
+          toast.error(`Falha na impressão do recibo: ${printResult.error || "Nenhuma impressora configurada"}`, {
+            duration: 6000,
+          });
+        } else if (printResult?.success) {
+          toast.success("Recibo do serviço impresso com sucesso!");
+        }
+      } catch (printError: any) {
+        console.error("Erro ao imprimir recibo do serviço:", printError);
+        toast.error(`Erro ao comunicar com impressora: ${printError?.message || printError}`, { duration: 6000 });
+      }
     } catch (err: any) {
       toast.error(err?.message || "Erro ao registar serviço prestado.");
       throw err;
