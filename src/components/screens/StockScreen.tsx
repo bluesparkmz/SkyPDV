@@ -251,9 +251,12 @@ export function StockScreen() {
 
   const exportCsv = () => {
     const headers = ["Produto", "SKU", "Local", "Atual", "Minimo", "Maximo", "Reservado", "Estado", "Ultima reposicao", "Ultima contagem"];
+    // CSV is plain text: semicolon and UTF-8 BOM make it open in separate
+    // columns with accents preserved in Excel, WPS and LibreOffice.
+    const csvCell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
     const lines = filteredRows.map((row) => [
-      `"${(row.product?.name ?? row.product_name).replace(/"/g, '""')}"`,
-      `"${(row.product?.sku || row.product_sku || "").replace(/"/g, '""')}"`,
+      row.product?.name ?? row.product_name,
+      row.product?.sku || row.product_sku || "",
       getLocationLabel(row.storage_location),
       row.quantityNumber.toFixed(3),
       row.minQuantityNumber.toFixed(3),
@@ -262,10 +265,10 @@ export function StockScreen() {
       row.status,
       row.last_restock_at ? new Date(row.last_restock_at).toLocaleString("pt-MZ") : "",
       row.last_count_at ? new Date(row.last_count_at).toLocaleString("pt-MZ") : "",
-    ].join(","));
+    ].map(csvCell).join(";"));
 
-    const csv = [headers.join(","), ...lines].join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const csv = `\uFEFF${[headers.map(csvCell).join(";"), ...lines].join("\r\n")}`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
