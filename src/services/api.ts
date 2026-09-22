@@ -584,9 +584,7 @@ export const dashboardApi = {
 // Métodos de Pagamento
 export const paymentMethodsApi = {
   list: () => apiGet<PaymentMethod[]>("/skypdv/payment-methods"),
-  create: (data: CreatePaymentMethod, isGlobal = false) =>
-    apiPost<PaymentMethod>(`/skypdv/payment-methods?is_global=${isGlobal}`, data),
-  adopt: (id: number) => apiPost<PaymentMethod>(`/skypdv/payment-methods/${id}/adopt`),
+  create: (data: CreatePaymentMethod) => apiPost<PaymentMethod>("/skypdv/payment-methods", data),
   update: (id: number, data: UpdatePaymentMethod) =>
     apiPut<PaymentMethod>(`/skypdv/payment-methods/${id}`, data),
   delete: (id: number) => apiDelete<void>(`/skypdv/payment-methods/${id}`),
@@ -1002,7 +1000,8 @@ export interface Sale {
   discount_percent: string;
   tax_amount: string;
   total: string;
-  payment_method: "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+  payment_method_id: number | null;
+  payment_method: string;
   payment_status: string;
   amount_paid: string;
   change_amount: string;
@@ -1040,7 +1039,7 @@ export interface CreateSale {
   customer_id?: number;
   customer_name?: string;
   customer_phone?: string;
-  payment_method: "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+  payment_method_id: number;
   amount_paid?: string;
   discount_amount?: string;
   discount_percent?: string;
@@ -1114,7 +1113,7 @@ export interface PaymentMethodSales {
 
 export interface PaymentMethod {
   id: number;
-  terminal_id: number | null;
+  terminal_id: number;
   is_global: boolean;
   created_by: number | null;
   name: string;
@@ -1125,7 +1124,7 @@ export interface PaymentMethod {
   updated_at: string;
 }
 
-export type PaymentMethodValue = "cash" | "card" | "skywallet" | "mpesa" | "mixed";
+export type PaymentMethodValue = string;
 export type PaymentMethodType = PaymentMethodValue;
 export type PaymentMethodName = PaymentMethodValue;
 

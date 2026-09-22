@@ -20,11 +20,11 @@ import {
 } from "@/components/ui/select";
 import { useCreateSale } from "@/hooks/useSales";
 import { CartItem } from "@/types/product";
-import { CreateSale, PaymentMethodValue, terminalApi } from "@/services/api";
+import { CreateSale, terminalApi } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
-import { LOCAL_PAYMENT_METHODS, getPaymentMethodLabel, mapToApiPaymentMethod } from "@/lib/paymentMethods";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { formatSaleReceipt } from "@/lib/receiptFormat";
 
 interface SaleDialogProps {
@@ -41,7 +41,8 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
     queryKey: ["terminal"],
     queryFn: terminalApi.get,
   });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>("cash");
+  const { data: paymentMethods = [], isLoading: paymentMethodsLoading } = usePaymentMethods();
+  const [paymentMethodId, setPaymentMethodId] = useState("");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const [showShutdownWarning, setShowShutdownWarning] = useState(false);
@@ -57,12 +58,13 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
   const taxAmount = Math.round((total - calculatedSubtotal) * 100) / 100;
   const paidNumber = parseFloat(amountPaid || "0") || 0;
   const changeAmount = Math.max(0, Math.round((paidNumber - total) * 100) / 100);
-  const isCash = paymentMethod === "cash";
+  const selectedPaymentMethod = paymentMethods.find((method) => String(method.id) === paymentMethodId);
+  const isCash = /^(cash|dinheiro|numerario)$/i.test(selectedPaymentMethod?.name || "");
   const isAmountSufficient = !isNaN(paidNumber) && paidNumber >= total - 0.005;
 
   useEffect(() => {
     if (open) {
-      setPaymentMethod("cash");
+      setPaymentMethodId("");
       setAmountPaid(total.toFixed(2));
     }
   }, [open, total]);
@@ -84,11 +86,11 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
         quantity: item.quantity.toString(),
         unit_price: item.price.toString(),
       })),
-      payment_method: mapToApiPaymentMethod(paymentMethod) as any,
+      payment_method_id: Number(paymentMethodId),
       amount_paid: amountPaid,
       change_status: changeStatus,
       sale_type: "local",
-      notes: paymentMethod !== "cash" ? `Método: ${getPaymentMethodLabel(paymentMethod)}` : undefined,
+      notes: selectedPaymentMethod ? `Método: ${selectedPaymentMethod.name}` : undefined,
     };
 
     try {
@@ -106,7 +108,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
           toast.success("Recibo impresso com sucesso!");
         }
 
-        if (paymentMethod === "cash") {
+        if (isCash) {
           const drawerResult = await openCashDrawer();
           if (drawerResult && !drawerResult.success) {
             toast.warning(`Aviso da gaveta: ${drawerResult.error || "Falha ao acionar gaveta"}`);
@@ -121,7 +123,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
       onOpenChange(false);
       // Reset form
       setAmountPaid("");
-      setPaymentMethod("cash");
+      setPaymentMethodId("");
       setChangeStatus("given");
     } catch (error) {
       // Error handled by mutation
@@ -181,14 +183,14 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
           {/* Payment Method */}
           <div className="space-y-2">
             <Label htmlFor="payment">Método de Pagamento</Label>
-            <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
+            <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
               <SelectTrigger id="payment">
-                <SelectValue />
+                <SelectValue placeholder={paymentMethodsLoading ? "A carregar..." : "Selecione um método"} />
               </SelectTrigger>
               <SelectContent>
-                {LOCAL_PAYMENT_METHODS.map((method) => (
-                  <SelectItem key={method.value} value={method.value}>
-                    {method.label}
+                {paymentMethods.map((method) => (
+                  <SelectItem key={method.id} value={String(method.id)}>
+                    {method.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -240,7 +242,7 @@ export function SaleDialog({ open, onOpenChange, items, subtotal, onSuccess }: S
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={!amountPaid || !isAmountSufficient || createSale.isPending}
+            disabled={!paymentMethodId || !amountPaid || !isAmountSufficient || createSale.isPending}
           >
             {createSale.isPending ? "Processando..." : "Finalizar Venda"}
           </Button>

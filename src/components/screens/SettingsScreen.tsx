@@ -52,6 +52,7 @@ import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { getHardwarePlugin } from "@/lib/hardwarePlugin";
 import { toast } from "sonner";
 import { TerminalUsersSettings } from "./TerminalUsersSettings";
+import { PaymentMethodsSettings } from "./PaymentMethodsSettings";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { BuildingShop24Regular } from "@fluentui/react-icons";
 import { HARDWARE_PLUGIN_URL } from "@/config";
@@ -100,7 +101,7 @@ const useStyles = makeStyles({
   },
 });
 
-type SettingsTab = "profile" | "general" | "company" | "receipt" | "invoice" | "printer" | "appearance" | "security" | "users";
+type SettingsTab = "profile" | "general" | "company" | "payments" | "receipt" | "invoice" | "printer" | "appearance" | "security" | "users";
 
 type Props = {
   onOpenSetup?: () => void;
@@ -184,6 +185,7 @@ export function SettingsScreen({ onOpenSetup }: Props) {
     { id: "profile" as const, name: "Perfil", icon: <PersonCircle24Regular className="w-5 h-5" /> },
     { id: "general" as const, name: "Geral", icon: <Settings24Regular className="w-5 h-5" /> },
     { id: "company" as const, name: "Empresa", icon: <Building24Regular className="w-5 h-5" /> },
+    { id: "payments" as const, name: "Pagamentos", icon: <Money24Regular className="w-5 h-5" /> },
     { id: "receipt" as const, name: "Recibos", icon: <Receipt24Regular className="w-5 h-5" /> },
     { id: "invoice" as const, name: "Fatura", icon: <Receipt24Regular className="w-5 h-5" /> },
     { id: "printer" as const, name: "Impressora", icon: <Print24Regular className="w-5 h-5" /> },
@@ -744,6 +746,8 @@ export function SettingsScreen({ onOpenSetup }: Props) {
                 </div>
                 </SettingsPanel>
               )}
+
+              {activeTab === "payments" && <PaymentMethodsSettings />}
 
               {activeTab === "appearance" && (
                 <SettingsPanel

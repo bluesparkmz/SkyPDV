@@ -13,8 +13,7 @@ export function useCreatePaymentMethod() {
   const queryClient = useQueryClient();
   
   return useMutation({
-    mutationFn: ({ data, isGlobal }: { data: CreatePaymentMethod; isGlobal?: boolean }) => 
-      paymentMethodsApi.create(data, isGlobal),
+    mutationFn: (data: CreatePaymentMethod) => paymentMethodsApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["paymentMethods"] });
       toast.success("Método de pagamento criado com sucesso!");
@@ -55,4 +54,3 @@ export function useDeletePaymentMethod() {
     },
   });
 }
-

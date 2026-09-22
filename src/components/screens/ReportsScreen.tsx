@@ -136,6 +136,15 @@ function isProductOutflow(type: string | undefined | null) {
   return String(type || "").toLowerCase().includes("product");
 }
 
+function mozambiqueDayRange(date: string) {
+  // Sales timestamps are stored in UTC. A report date always means the
+  // Mozambique calendar day (UTC+2), regardless of the browser timezone.
+  return {
+    start: new Date(`${date}T00:00:00.000+02:00`).toISOString(),
+    end: new Date(`${date}T23:59:59.999+02:00`).toISOString(),
+  };
+}
+
 export function ReportsScreen() {
   const styles = useStyles();
   const isMobile = useIsMobile();
@@ -232,14 +241,13 @@ export function ReportsScreen() {
 
   // Buscar vendas do dia selecionado
   const { data: daySales = [], isLoading: daySalesLoading } = useQuery({
-    queryKey: ["daySales", selectedDate, selectedCashierId],
+    queryKey: ["daySales", selectedDate, selectedCashierId, "Africa/Maputo"],
     queryFn: async () => {
       if (!selectedDate) return [];
-      const start = startOfDay(new Date(selectedDate));
-      const end = endOfDay(new Date(selectedDate));
+      const { start, end } = mozambiqueDayRange(selectedDate);
       return salesApi.list({
-        start_date: start.toISOString(),
-        end_date: end.toISOString(),
+        start_date: start,
+        end_date: end,
         status: "completed",
         limit: 1000,
         user_id: selectedCashierId,
