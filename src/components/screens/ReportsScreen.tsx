@@ -568,16 +568,10 @@ export function ReportsScreen() {
 
   const handleExport = async (
     type: "pdf" | "excel",
-    opts?: { skipPhoneCheck?: boolean; productScope?: "all" | "beverages" }
+    opts?: { productScope?: "all" | "beverages" }
   ) => {
     try {
       const hasPhone = !!whatsappPrefs.phone?.trim();
-      if (!hasPhone && !opts?.skipPhoneCheck) {
-        setPendingExportType(type);
-        setPendingProductScope(opts?.productScope || "all");
-        setShowWhatsappDialog(true);
-        return;
-      }
       // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
       const isDailyView = activeView === "daily" && selectedDate;
       let exportStart: string | undefined = undefined;
@@ -1102,10 +1096,7 @@ export function ReportsScreen() {
                 onClick={() => {
                   setShowWhatsappDialog(false);
                   if (pendingExportType) {
-                    handleExport(pendingExportType, {
-                      skipPhoneCheck: true,
-                      productScope: pendingProductScope,
-                    });
+                    handleExport(pendingExportType, { productScope: pendingProductScope });
                   }
                 }}
               >
@@ -1117,10 +1108,7 @@ export function ReportsScreen() {
                   saveToBackend(tempPhone);
                   setShowWhatsappDialog(false);
                   if (pendingExportType) {
-                    handleExport(pendingExportType, {
-                      skipPhoneCheck: true,
-                      productScope: pendingProductScope,
-                    });
+                    handleExport(pendingExportType, { productScope: pendingProductScope });
                   }
                 }}
                 disabled={!tempPhone.trim()}
