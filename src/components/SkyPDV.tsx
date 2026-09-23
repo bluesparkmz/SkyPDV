@@ -667,6 +667,7 @@ export function SkyPDV() {
               <CategoryTabs
                 activeCategory={activeCategory}
                 onCategoryChange={setActiveCategory}
+                onServicesClick={() => setCurrentScreen("services")}
               />
 
               {/* Products Grid */}
@@ -760,5 +761,4 @@ export function SkyPDV() {
     </div>
   );
 }
-
 
