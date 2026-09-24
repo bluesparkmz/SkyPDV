@@ -42,6 +42,9 @@ import {
   PDVServiceOrder,
   PDVOutflow,
   terminalApi,
+  productsApi,
+  Product,
+  SaleItemUpdate,
 } from "@/services/api";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { formatSaleReceipt } from "@/lib/receiptFormat";
@@ -69,7 +72,7 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useQuery } from "@tanstack/react-query";
-import { useSales, useUpdateSalePaymentMethod, useVoidSale } from "@/hooks/useSales";
+import { useSales, useUpdateSaleItems, useUpdateSalePaymentMethod, useVoidSale } from "@/hooks/useSales";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useAuth } from "@/contexts/AuthContext";
@@ -179,6 +182,7 @@ export function ReportsScreen() {
   const [reprintingSaleId, setReprintingSaleId] = useState<number | null>(null);
   const [saleForPaymentAdjustment, setSaleForPaymentAdjustment] = useState<Sale | null>(null);
   const [saleForVoid, setSaleForVoid] = useState<Sale | null>(null);
+  const [saleForItemsAdjustment, setSaleForItemsAdjustment] = useState<Sale | null>(null);
   const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
   const { printReceipt } = useHardwarePlugin();
   const { data: terminal } = useQuery({
@@ -187,7 +191,12 @@ export function ReportsScreen() {
   });
   const { data: companyPaymentMethods = [] } = usePaymentMethods();
   const updateSalePaymentMethod = useUpdateSalePaymentMethod();
+  const updateSaleItems = useUpdateSaleItems();
   const voidSale = useVoidSale();
+  const { data: products = [] } = useQuery({
+    queryKey: ["products", "sale-items-adjustment"],
+    queryFn: () => productsApi.list({ limit: 1000 }),
+  });
 
   useEffect(() => {
     // Sincronizar estado inicial e mudanças de redimensionamento
@@ -934,6 +943,7 @@ export function ReportsScreen() {
                 onViewSale={handleViewSaleDetails}
                 onReprintReceipt={handleReprintReceipt}
                 onAdjustPaymentMethod={handleAdjustPaymentMethod}
+                onAdjustItems={setSaleForItemsAdjustment}
                 onVoidSale={setSaleForVoid}
                 currentUserId={currentUserId}
                 isAdmin={isAdmin}
@@ -1146,6 +1156,20 @@ export function ReportsScreen() {
           </DialogContent>
         </Dialog>
 
+        <SaleItemsAdjustmentDialog
+          sale={saleForItemsAdjustment}
+          products={products}
+          isSaving={updateSaleItems.isPending}
+          onClose={() => setSaleForItemsAdjustment(null)}
+          onSave={(items) => {
+            if (!saleForItemsAdjustment) return;
+            updateSaleItems.mutate(
+              { id: saleForItemsAdjustment.id, items },
+              { onSuccess: () => setSaleForItemsAdjustment(null) }
+            );
+          }}
+        />
+
         <Dialog open={showWhatsappDialog} onOpenChange={setShowWhatsappDialog}>
           <DialogContent>
             <DialogHeader>
@@ -1201,6 +1225,109 @@ export function ReportsScreen() {
 
       </div>
     </div>
+  );
+}
+
+type EditableSaleItem = {
+  product_id: number;
+  quantity: string;
+  unit_price: string;
+};
+
+function SaleItemsAdjustmentDialog({
+  sale,
+  products,
+  isSaving,
+  onClose,
+  onSave,
+}: {
+  sale: Sale | null;
+  products: Product[];
+  isSaving: boolean;
+  onClose: () => void;
+  onSave: (items: SaleItemUpdate[]) => void;
+}) {
+  const [items, setItems] = useState<EditableSaleItem[]>([]);
+
+  useEffect(() => {
+    setItems(
+      sale?.items.map((item) => ({
+        product_id: item.product_id,
+        quantity: item.quantity,
+        unit_price: item.unit_price,
+      })) || []
+    );
+  }, [sale]);
+
+  const updateItem = (index: number, changes: Partial<EditableSaleItem>) => {
+    setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...changes } : item));
+  };
+
+  const addItem = () => {
+    const product = products[0];
+    if (!product) return;
+    setItems((current) => [...current, { product_id: product.id, quantity: "1", unit_price: product.price }]);
+  };
+
+  const total = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unit_price) || 0), 0);
+  const canSave = items.length > 0 && items.every((item) => item.product_id && Number(item.quantity) > 0);
+
+  return (
+    <Dialog open={!!sale} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Trocar ou ajustar itens</DialogTitle>
+          <DialogDescription>
+            Remova o item devolvido ou substitua-o. O stock devolvido volta automaticamente e o novo item baixa do stock.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          {items.map((item, index) => (
+            <div key={`${item.product_id}-${index}`} className="grid grid-cols-1 sm:grid-cols-[1fr_110px_110px_auto] gap-2 items-end border rounded-lg p-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Produto</p>
+                <Select
+                  value={String(item.product_id)}
+                  onValueChange={(value) => {
+                    const product = products.find((entry) => entry.id === Number(value));
+                    updateItem(index, { product_id: Number(value), unit_price: product?.price || item.unit_price });
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={String(product.id)}>{product.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Quantidade</p>
+                <Input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(event) => updateItem(index, { quantity: event.target.value })} />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Preço (MT)</p>
+                <Input type="number" min="0" step="0.01" value={item.unit_price} onChange={(event) => updateItem(index, { unit_price: event.target.value })} />
+              </div>
+              <Button variant="ghost" className="text-destructive hover:text-destructive" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
+                Remover
+              </Button>
+            </div>
+          ))}
+          <Button variant="outline" onClick={addItem} disabled={products.length === 0}>Adicionar produto</Button>
+          <div className="flex justify-between border-t pt-3 font-semibold">
+            <span>Novo total</span>
+            <span>{total.toFixed(2)} MT</span>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={() => onSave(items)} disabled={!canSave || isSaving}>
+            {isSaving ? "A guardar..." : "Confirmar alteração"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -1427,6 +1554,7 @@ function DailyReportsView({
   onViewSale,
   onReprintReceipt,
   onAdjustPaymentMethod,
+  onAdjustItems,
   onVoidSale,
   currentUserId,
   isAdmin,
@@ -1464,6 +1592,7 @@ function DailyReportsView({
   onViewSale: (sale: Sale) => void;
   onReprintReceipt: (sale: Sale) => void;
   onAdjustPaymentMethod: (sale: Sale) => void;
+  onAdjustItems: (sale: Sale) => void;
   onVoidSale: (sale: Sale) => void;
   currentUserId?: number;
   isAdmin: boolean;
@@ -1662,10 +1791,15 @@ function DailyReportsView({
                                       <DropdownMenuItem onClick={() => onAdjustPaymentMethod(sale)}>
                                         Ajustar método de pagamento
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => onAdjustItems(sale)}>
+                                        Trocar ou ajustar itens
+                                      </DropdownMenuItem>
                                       {isAdmin && (
-                                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
-                                          Anular venda
-                                        </DropdownMenuItem>
+                                        <>
+                                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
+                                            Anular venda
+                                          </DropdownMenuItem>
+                                        </>
                                       )}
                                     </>
                                   )}

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { salesApi, CreateSale, SalesParams, Sale } from "@/services/api";
+import { salesApi, CreateSale, SalesParams, Sale, SaleItemUpdate } from "@/services/api";
 import { toast } from "sonner";
 
 export function useSales(params?: SalesParams) {
@@ -83,6 +83,24 @@ export function useUpdateSalePaymentMethod() {
     onError: (error: any) => {
       toast.error(error?.message || "Erro ao atualizar o método de pagamento.");
     },
+  });
+}
+
+export function useUpdateSaleItems() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, items }: { id: number; items: SaleItemUpdate[] }) => salesApi.updateItems(id, items),
+    onSuccess: (updatedSale) => {
+      queryClient.setQueriesData<Sale[]>({ queryKey: ["daySales"] }, (sales) =>
+        sales?.map((sale) => sale.id === updatedSale.id ? { ...sale, ...updatedSale } : sale)
+      );
+      ["sales", "dashboard", "cashRegister", "cashRegisterHistory", "products", "inventoryAlertsSummary", "salesSummary", "salesByDay", "daySales", "periodicReport", "dashboardStats"].forEach((queryKey) =>
+        queryClient.invalidateQueries({ queryKey: [queryKey] })
+      );
+      toast.success("Itens da venda atualizados e stock ajustado.");
+    },
+    onError: (error: any) => toast.error(error?.message || "Erro ao atualizar os itens da venda."),
   });
 }
 

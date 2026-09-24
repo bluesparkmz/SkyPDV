@@ -390,6 +390,8 @@ export const salesApi = {
   },
   get: (id: number) => apiGet<Sale>(`/skypdv/sales/${id}`),
   void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`),
+  updateItems: (id: number, items: SaleItemUpdate[]) =>
+    apiPatch<Sale>(`/skypdv/sales/${id}/items`, { items }),
   updatePaymentMethod: (id: number, payment_method_id: number) =>
     apiPatch<Sale>(`/skypdv/sales/${id}/payment-method`, { payment_method_id }),
 };
@@ -1059,6 +1061,15 @@ export interface CreateSaleItem {
   discount_amount?: string;
   discount_percent?: string;
   item_type?: "menu_item" | "drink";
+  notes?: string;
+}
+
+export interface SaleItemUpdate {
+  product_id: number;
+  quantity: string;
+  unit_price?: string;
+  discount_amount?: string;
+  discount_percent?: string;
   notes?: string;
 }
 
