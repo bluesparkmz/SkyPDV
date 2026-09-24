@@ -57,6 +57,26 @@ export function useVoidSale() {
   });
 }
 
+export function useUpdateSalePaymentMethod() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, paymentMethodId }: { id: number; paymentMethodId: number }) =>
+      salesApi.updatePaymentMethod(id, paymentMethodId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
+      queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
+      queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
+      queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
+      toast.success("Método de pagamento atualizado.");
+    },
+    onError: (error: any) => {
+      toast.error(error?.message || "Erro ao atualizar o método de pagamento.");
+    },
+  });
+}
+
 export function useSale(id: number) {
   return useQuery({
     queryKey: ["sale", id],
@@ -64,4 +84,3 @@ export function useSale(id: number) {
     enabled: !!id,
   });
 }
-

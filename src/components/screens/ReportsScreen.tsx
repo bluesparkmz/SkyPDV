@@ -16,6 +16,7 @@ import {
   Wrench24Regular,
   ArrowExit24Regular,
   Box24Regular,
+  MoreHorizontal24Regular,
 } from "@fluentui/react-icons";
 import type { DrawerProps } from "@fluentui/react-components";
 import {
@@ -68,9 +69,10 @@ import { Badge } from "@/components/ui/badge";
 import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useQuery } from "@tanstack/react-query";
-import { useSales } from "@/hooks/useSales";
+import { useSales, useUpdateSalePaymentMethod, useVoidSale } from "@/hooks/useSales";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
+import { useAuth } from "@/contexts/AuthContext";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { dashboardApi } from "@/services/api";
@@ -83,6 +85,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const useStyles = makeStyles({
   root: {
@@ -168,12 +177,17 @@ export function ReportsScreen() {
   const [pendingProductScope, setPendingProductScope] = useState<"all" | "beverages">("all");
   const [tempPhone, setTempPhone] = useState("");
   const [reprintingSaleId, setReprintingSaleId] = useState<number | null>(null);
+  const [saleForPaymentAdjustment, setSaleForPaymentAdjustment] = useState<Sale | null>(null);
+  const [saleForVoid, setSaleForVoid] = useState<Sale | null>(null);
+  const [selectedPaymentMethodId, setSelectedPaymentMethodId] = useState("");
   const { printReceipt } = useHardwarePlugin();
   const { data: terminal } = useQuery({
     queryKey: ["terminal"],
     queryFn: terminalApi.get,
   });
   const { data: companyPaymentMethods = [] } = usePaymentMethods();
+  const updateSalePaymentMethod = useUpdateSalePaymentMethod();
+  const voidSale = useVoidSale();
 
   useEffect(() => {
     // Sincronizar estado inicial e mudanças de redimensionamento
@@ -183,6 +197,8 @@ export function ReportsScreen() {
 
   // Verificar se é admin
   const isAdmin = useIsAdmin();
+  const { user: authUser } = useAuth();
+  const currentUserId = authUser?.user?.id;
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
     const map = new Map<number, string>();
@@ -534,6 +550,24 @@ export function ReportsScreen() {
   const handleViewSaleDetails = (sale: Sale) => {
     setSelectedSale(sale);
     setIsSaleDetailOpen(true);
+  };
+
+  const handleAdjustPaymentMethod = (sale: Sale) => {
+    setSaleForPaymentAdjustment(sale);
+    setSelectedPaymentMethodId(sale.payment_method_id ? String(sale.payment_method_id) : "");
+  };
+
+  const confirmPaymentMethodAdjustment = () => {
+    if (!saleForPaymentAdjustment || !selectedPaymentMethodId) return;
+    updateSalePaymentMethod.mutate(
+      { id: saleForPaymentAdjustment.id, paymentMethodId: Number(selectedPaymentMethodId) },
+      { onSuccess: () => setSaleForPaymentAdjustment(null) }
+    );
+  };
+
+  const confirmVoidSale = () => {
+    if (!saleForVoid) return;
+    voidSale.mutate(saleForVoid.id, { onSuccess: () => setSaleForVoid(null) });
   };
 
   const handleReprintReceipt = async (sale: Sale) => {
@@ -899,6 +933,10 @@ export function ReportsScreen() {
                 onSelectDay={handleSelectDay}
                 onViewSale={handleViewSaleDetails}
                 onReprintReceipt={handleReprintReceipt}
+                onAdjustPaymentMethod={handleAdjustPaymentMethod}
+                onVoidSale={setSaleForVoid}
+                currentUserId={currentUserId}
+                isAdmin={isAdmin}
                 reprintingSaleId={reprintingSaleId}
                 startDate={startDate}
                 endDate={endDate}
@@ -1062,6 +1100,48 @@ export function ReportsScreen() {
                   {reprintingSaleId === selectedSale.id ? "A imprimir..." : "Reimprimir Recibo"}
                 </Button>
               )}
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!saleForPaymentAdjustment} onOpenChange={(open) => !open && setSaleForPaymentAdjustment(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ajustar método de pagamento</DialogTitle>
+              <DialogDescription>
+                Escolha o método correto para a venda #{saleForPaymentAdjustment?.receipt_number || saleForPaymentAdjustment?.id}.
+              </DialogDescription>
+            </DialogHeader>
+            <Select value={selectedPaymentMethodId} onValueChange={setSelectedPaymentMethodId}>
+              <SelectTrigger><SelectValue placeholder="Selecione o método" /></SelectTrigger>
+              <SelectContent>
+                {companyPaymentMethods.map((method) => (
+                  <SelectItem key={method.id} value={String(method.id)}>{method.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSaleForPaymentAdjustment(null)}>Cancelar</Button>
+              <Button onClick={confirmPaymentMethodAdjustment} disabled={!selectedPaymentMethodId || updateSalePaymentMethod.isPending}>
+                {updateSalePaymentMethod.isPending ? "A guardar..." : "Guardar"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!saleForVoid} onOpenChange={(open) => !open && setSaleForVoid(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Anular venda</DialogTitle>
+              <DialogDescription>
+                A venda #{saleForVoid?.receipt_number || saleForVoid?.id} será anulada e o stock será estornado. Esta ação não pode ser desfeita.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSaleForVoid(null)}>Cancelar</Button>
+              <Button variant="destructive" onClick={confirmVoidSale} disabled={voidSale.isPending}>
+                {voidSale.isPending ? "A anular..." : "Anular venda"}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -1346,6 +1426,10 @@ function DailyReportsView({
   onSelectDay,
   onViewSale,
   onReprintReceipt,
+  onAdjustPaymentMethod,
+  onVoidSale,
+  currentUserId,
+  isAdmin,
   reprintingSaleId,
   startDate,
   endDate,
@@ -1379,6 +1463,10 @@ function DailyReportsView({
   onSelectDay: (date: string) => void;
   onViewSale: (sale: Sale) => void;
   onReprintReceipt: (sale: Sale) => void;
+  onAdjustPaymentMethod: (sale: Sale) => void;
+  onVoidSale: (sale: Sale) => void;
+  currentUserId?: number;
+  isAdmin: boolean;
   reprintingSaleId: number | null;
   startDate: string;
   endDate: string;
@@ -1552,28 +1640,35 @@ function DailyReportsView({
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => onViewSale(sale)}
-                                className="gap-2"
-                              >
-                                <Eye24Regular className="w-4 h-4" />
-                                Ver
-                              </Button>
-                              {sale.status !== "cancelled" && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => onReprintReceipt(sale)}
-                                  disabled={reprintingSaleId === sale.id}
-                                  className="gap-2"
-                                  title="Reimprimir recibo térmico"
-                                >
-                                  <Print24Regular className="w-4 h-4" />
-                                  {reprintingSaleId === sale.id ? "..." : "Reimprimir"}
-                                </Button>
-                              )}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" title="Opções da venda">
+                                    <MoreHorizontal24Regular className="w-4 h-4" />
+                                    <span className="sr-only">Opções da venda</span>
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => onViewSale(sale)}>
+                                    Ver detalhes
+                                  </DropdownMenuItem>
+                                  {sale.status !== "cancelled" && (
+                                    <DropdownMenuItem onClick={() => onReprintReceipt(sale)} disabled={reprintingSaleId === sale.id}>
+                                      {reprintingSaleId === sale.id ? "A imprimir..." : "Imprimir recibo"}
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canManageSales && sale.status !== "cancelled" && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => onAdjustPaymentMethod(sale)}>
+                                      Ajustar método de pagamento
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
+                                      Anular venda
+                                    </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             </div>
                           </TableCell>
                         </TableRow>

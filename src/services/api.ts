@@ -390,6 +390,8 @@ export const salesApi = {
   },
   get: (id: number) => apiGet<Sale>(`/skypdv/sales/${id}`),
   void: (id: number) => apiPost<Sale>(`/skypdv/sales/${id}/void`),
+  updatePaymentMethod: (id: number, payment_method_id: number) =>
+    apiPatch<Sale>(`/skypdv/sales/${id}/payment-method`, { payment_method_id }),
 };
 
 // Faturas (mesma estrutura de vendas, mas status pendente/pago)
