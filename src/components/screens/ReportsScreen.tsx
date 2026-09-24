@@ -1656,15 +1656,17 @@ function DailyReportsView({
                                       {reprintingSaleId === sale.id ? "A imprimir..." : "Imprimir recibo"}
                                     </DropdownMenuItem>
                                   )}
-                                  {canManageSales && sale.status !== "cancelled" && (
+                                  {(isAdmin || sale.created_by === currentUserId) && sale.status !== "cancelled" && (
                                     <>
                                       <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => onAdjustPaymentMethod(sale)}>
-                                      Ajustar método de pagamento
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
-                                      Anular venda
-                                    </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => onAdjustPaymentMethod(sale)}>
+                                        Ajustar método de pagamento
+                                      </DropdownMenuItem>
+                                      {isAdmin && (
+                                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
+                                          Anular venda
+                                        </DropdownMenuItem>
+                                      )}
                                     </>
                                   )}
                                 </DropdownMenuContent>
