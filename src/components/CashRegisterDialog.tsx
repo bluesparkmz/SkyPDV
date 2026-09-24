@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOpenCashRegister, useCloseCashRegister, useCashRegister } from "@/hooks/useCashRegister";
-import { CashRegister, cashRegisterApi } from "@/services/api";
+import { CashRegister, cashRegisterApi, dashboardApi } from "@/services/api";
 import { ArrowDownload24Regular } from "@fluentui/react-icons";
 
 interface CashRegisterDialogProps {
@@ -95,11 +95,19 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
     if (!closedRegister) return;
     try {
       setIsDownloadingReport(true);
-      const { blob, filename } = await cashRegisterApi.downloadReport(closedRegister.id);
+      const closedAt = parseServerUtcDate(closedRegister.closed_at) || new Date();
+      const startOfDay = new Date(closedAt);
+      startOfDay.setHours(0, 0, 0, 0);
+      const endOfDay = new Date(closedAt);
+      endOfDay.setHours(23, 59, 59, 999);
+      const { blob, filename } = await dashboardApi.downloadSalesSummaryPdf(
+        startOfDay.toISOString(),
+        endOfDay.toISOString()
+      );
       const url = URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = filename || `fechamento_caixa_${closedRegister.id}.pdf`;
+      anchor.download = filename || `relatorio_diario_${startOfDay.toISOString().slice(0, 10)}.pdf`;
       document.body.appendChild(anchor);
       anchor.click();
       anchor.remove();
@@ -222,8 +230,6 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
             {paymentMethodsUsed.map(([method, amount]) => (
               <div key={method} className="flex justify-between"><span className="text-muted-foreground">{method}</span><span>{formatMoney(amount)}</span></div>
             ))}
-            <div className="flex justify-between border-t border-border pt-2"><span className="text-muted-foreground">Valor final no caixa</span><span className="font-semibold">{formatMoney(closedRegister.closing_amount)}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Diferença</span><span className="font-medium">{formatMoney(closedRegister.difference)}</span></div>
           </div>
         )}
 
@@ -231,7 +237,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
           <Button variant="outline" onClick={() => setClosedRegister(null)}>Concluir</Button>
           <Button onClick={handleDownloadReport} disabled={isDownloadingReport} className="gap-2">
             <ArrowDownload24Regular className="h-4 w-4" />
-            {isDownloadingReport ? "A baixar..." : "Baixar relatório do dia"}
+            {isDownloadingReport ? "A baixar..." : "Baixar relatório diário"}
           </Button>
         </DialogFooter>
       </DialogContent>

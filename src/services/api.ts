@@ -331,7 +331,6 @@ export const cashRegisterApi = {
   getCurrent: () => apiGet<CashRegister | null>("/skypdv/cash-register/current"),
   open: (data: OpenCashRegister) => apiPost<CashRegister>("/skypdv/cash-register/open", data),
   close: (data: CloseCashRegister) => apiPost<CashRegister>("/skypdv/cash-register/close", data),
-  downloadReport: (registerId: number) => apiGetBlob(`/skypdv/cash-register/${registerId}/report.pdf`),
   history: (params?: { start_date?: string; end_date?: string; user_id?: number }) => {
     const query = new URLSearchParams();
     if (params?.start_date) query.append("start_date", params.start_date);
