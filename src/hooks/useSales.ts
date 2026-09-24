@@ -23,6 +23,7 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: ["inventoryAlertsSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
+      queryClient.invalidateQueries({ queryKey: ["daySales"] });
       queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       toast.success("Venda registrada com sucesso!");
@@ -38,7 +39,10 @@ export function useVoidSale() {
   
   return useMutation({
     mutationFn: (id: number) => salesApi.void(id),
-    onSuccess: () => {
+    onSuccess: (voidedSale) => {
+      queryClient.setQueriesData<Sale[]>({ queryKey: ["daySales"] }, (sales) =>
+        sales?.filter((sale) => sale.id !== voidedSale.id)
+      );
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["dashboard"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
@@ -47,6 +51,7 @@ export function useVoidSale() {
       queryClient.invalidateQueries({ queryKey: ["inventoryAlertsSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
+      queryClient.invalidateQueries({ queryKey: ["daySales"] });
       queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
       queryClient.invalidateQueries({ queryKey: ["dashboardStats"] });
       toast.success("Venda anulada com sucesso!");
@@ -63,11 +68,15 @@ export function useUpdateSalePaymentMethod() {
   return useMutation({
     mutationFn: ({ id, paymentMethodId }: { id: number; paymentMethodId: number }) =>
       salesApi.updatePaymentMethod(id, paymentMethodId),
-    onSuccess: () => {
+    onSuccess: (updatedSale) => {
+      queryClient.setQueriesData<Sale[]>({ queryKey: ["daySales"] }, (sales) =>
+        sales?.map((sale) => sale.id === updatedSale.id ? { ...sale, ...updatedSale } : sale)
+      );
       queryClient.invalidateQueries({ queryKey: ["sales"] });
       queryClient.invalidateQueries({ queryKey: ["cashRegister"] });
       queryClient.invalidateQueries({ queryKey: ["salesSummary"] });
       queryClient.invalidateQueries({ queryKey: ["salesByDay"] });
+      queryClient.invalidateQueries({ queryKey: ["daySales"] });
       queryClient.invalidateQueries({ queryKey: ["periodicReport"] });
       toast.success("Método de pagamento atualizado.");
     },
