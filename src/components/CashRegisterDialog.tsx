@@ -37,9 +37,6 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
 
   const isOpen = currentRegister?.status === "open";
-  const expiresAt = currentRegister?.opened_at
-    ? new Date((parseServerUtcDate(currentRegister.opened_at)?.getTime() || 0) + 24 * 60 * 60 * 1000)
-    : null;
   const expectedClosingAmount = currentRegister?.expected_amount
     ? parseFloat(currentRegister.expected_amount).toFixed(2)
     : currentRegister
@@ -117,7 +114,15 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
     }
   };
 
-  const formatMoney = (value?: string | null) => `${Number(value || 0).toFixed(2)} MT`;
+  const formatMoney = (value?: string | null) => `${Number(value || 0).toFixed(2)} MZN`;
+  const currentPaymentMethods = currentRegister
+    ? [
+        ["Cash", currentRegister.total_cash],
+        ["E-Mola", currentRegister.total_skywallet],
+        ["M-Pesa", currentRegister.total_mpesa],
+        ["POS / Cartão", currentRegister.total_card],
+      ].filter(([, amount]) => Number(amount || 0) > 0)
+    : [];
   const paymentMethodsUsed = closedRegister
     ? [
         ["Dinheiro", closedRegister.total_cash],
@@ -135,7 +140,7 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
           <DialogTitle>{isOpen ? "Fechar Caixa" : "Abrir Caixa"}</DialogTitle>
           <DialogDescription>
             {isOpen
-              ? "O fechamento usa automaticamente o valor vendido/esperado desta sessao."
+              ? "Confira o resumo das vendas por método de pagamento antes de fechar o caixa."
               : "Registre o valor inicial em dinheiro no caixa para iniciar a sessao. Cada caixa dura no maximo 24 horas."}
           </DialogDescription>
         </DialogHeader>
@@ -144,48 +149,30 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
           {isOpen && currentRegister && (
             <div className="space-y-2 rounded-lg bg-secondary/50 p-4">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Abertura:</span>
-                <span className="font-medium">{parseFloat(currentRegister.opening_amount).toFixed(2)} MT</span>
-              </div>
-              <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total de Vendas:</span>
-                <span className="font-medium">{parseFloat(currentRegister.total_sales).toFixed(2)} MT</span>
+                <span className="font-medium">{formatMoney(currentRegister.total_sales)}</span>
               </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Esperado:</span>
-                <span className="font-medium">
-                  {currentRegister.expected_amount
-                    ? `${parseFloat(currentRegister.expected_amount).toFixed(2)} MT`
-                    : "Calculando..."}
-                </span>
-              </div>
-              {expiresAt && (
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Expira em:</span>
-                  <span className="font-medium">{expiresAt.toLocaleString("pt-MZ")}</span>
+              {currentPaymentMethods.map(([method, amount]) => (
+                <div key={method} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{method}:</span>
+                  <span className="font-medium">{formatMoney(amount)}</span>
                 </div>
-              )}
+              ))}
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label htmlFor="amount">{isOpen ? "Valor de Fechamento" : "Valor de Abertura"}</Label>
+          {!isOpen && <div className="space-y-2">
+            <Label htmlFor="amount">Valor de Abertura</Label>
             <Input
               id="amount"
               type="number"
               step="0.01"
-              value={isOpen ? closingAmount : openingAmount}
-              onChange={(e) => (isOpen ? setClosingAmount(e.target.value) : setOpeningAmount(e.target.value))}
+              value={openingAmount}
+              onChange={(e) => setOpeningAmount(e.target.value)}
               placeholder="0.00"
-              disabled={isOpen || openMutation.isPending || closeMutation.isPending}
-              readOnly={isOpen}
+              disabled={openMutation.isPending || closeMutation.isPending}
             />
-            {isOpen && (
-              <p className="text-xs text-muted-foreground">
-                Este valor e calculado automaticamente com base no total vendido no caixa.
-              </p>
-            )}
-          </div>
+          </div>}
 
           <div className="space-y-2">
             <Label htmlFor="notes">Observacoes</Label>
