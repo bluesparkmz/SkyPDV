@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useOpenCashRegister, useCloseCashRegister, useCashRegister } from "@/hooks/useCashRegister";
-import { CashRegister, cashRegisterApi, dashboardApi } from "@/services/api";
+import { CashRegister, cashRegisterApi, dashboardApi, salesApi } from "@/services/api";
 import { ArrowDownload24Regular } from "@fluentui/react-icons";
 
 interface CashRegisterDialogProps {
@@ -23,6 +24,15 @@ interface CashRegisterDialogProps {
 function parseServerUtcDate(value?: string | null) {
   if (!value) return null;
   return /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? new Date(value) : new Date(`${value}Z`);
+}
+
+function mozambiqueTodayRange() {
+  // Mozambique is UTC+2 year-round. Keep this aligned with Relatórios Diários.
+  const date = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  return {
+    start: new Date(`${date}T00:00:00.000+02:00`).toISOString(),
+    end: new Date(`${date}T23:59:59.999+02:00`).toISOString(),
+  };
 }
 
 export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogProps) {
@@ -37,6 +47,17 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
 
   const isOpen = currentRegister?.status === "open";
+  const dailyReportRange = mozambiqueTodayRange();
+  const { data: dailySales = [], isLoading: isDailyReportLoading } = useQuery({
+    queryKey: ["cashRegisterDailyReport", dailyReportRange.start, dailyReportRange.end],
+    queryFn: () => salesApi.list({
+      start_date: dailyReportRange.start,
+      end_date: dailyReportRange.end,
+      status: "completed",
+      limit: 1000,
+    }),
+    enabled: (open && isOpen) || !!closedRegister,
+  });
   const expectedClosingAmount = currentRegister?.expected_amount
     ? parseFloat(currentRegister.expected_amount).toFixed(2)
     : currentRegister
@@ -115,23 +136,14 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
   };
 
   const formatMoney = (value?: string | null) => `${Number(value || 0).toFixed(2)} MZN`;
-  const currentPaymentMethods = currentRegister
-    ? [
-        ["Cash", currentRegister.total_cash],
-        ["E-Mola", currentRegister.total_skywallet],
-        ["M-Pesa", currentRegister.total_mpesa],
-        ["POS / Cartão", currentRegister.total_card],
-      ].filter(([, amount]) => Number(amount || 0) > 0)
-    : [];
-  const paymentMethodsUsed = closedRegister
-    ? [
-        ["Dinheiro", closedRegister.total_cash],
-        ["M-Pesa", closedRegister.total_mpesa],
-        ["E-Mola / SkyWallet", closedRegister.total_skywallet],
-        ["POS / Cartão", closedRegister.total_card],
-      ].filter(([, amount]) => Number(amount || 0) > 0)
-    : [];
-
+  const dailyPaymentMethods = dailySales.reduce((methods, sale) => {
+    const method = String(sale.notes || "").match(/M[eé]todo\s*:\s*([^\n)]+)/i)?.[1]?.trim()
+      || sale.payment_method
+      || "Não informado";
+    methods[method] = (methods[method] || 0) + Number(sale.total || 0);
+    return methods;
+  }, {} as Record<string, number>);
+  const dailySalesTotal = dailySales.reduce((total, sale) => total + Number(sale.total || 0), 0);
   return (
     <>
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -150,12 +162,12 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
             <div className="space-y-2 rounded-lg bg-secondary/50 p-4">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Total de Vendas:</span>
-                <span className="font-medium">{formatMoney(currentRegister.total_sales)}</span>
+                <span className="font-medium">{isDailyReportLoading ? "A carregar..." : formatMoney(String(dailySalesTotal))}</span>
               </div>
-              {currentPaymentMethods.map(([method, amount]) => (
+              {Object.entries(dailyPaymentMethods).map(([method, amount]) => (
                 <div key={method} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{method}:</span>
-                  <span className="font-medium">{formatMoney(amount)}</span>
+                  <span className="font-medium">{formatMoney(String(amount))}</span>
                 </div>
               ))}
             </div>
@@ -213,9 +225,9 @@ export function CashRegisterDialog({ open, onOpenChange }: CashRegisterDialogPro
         {closedRegister && (
           <div className="space-y-2 rounded-lg bg-secondary/50 p-4 text-sm">
             <div className="flex justify-between"><span className="text-muted-foreground">Vendas realizadas</span><span className="font-medium">{closedRegister.sales_count}</span></div>
-            <div className="flex justify-between"><span className="text-muted-foreground">Total de vendas</span><span className="font-semibold">{formatMoney(closedRegister.total_sales)}</span></div>
-            {paymentMethodsUsed.map(([method, amount]) => (
-              <div key={method} className="flex justify-between"><span className="text-muted-foreground">{method}</span><span>{formatMoney(amount)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Total de vendas</span><span className="font-semibold">{isDailyReportLoading ? "A carregar..." : formatMoney(String(dailySalesTotal))}</span></div>
+            {Object.entries(dailyPaymentMethods).map(([method, amount]) => (
+              <div key={method} className="flex justify-between"><span className="text-muted-foreground">{method}</span><span>{formatMoney(String(amount))}</span></div>
             ))}
           </div>
         )}
