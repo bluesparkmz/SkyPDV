@@ -451,8 +451,28 @@ export const accountsApi = {
     apiPut<Account>(`/skypdv/accounts/${accountId}/items/${itemId}`, data),
   removeItem: (accountId: number, itemId: number) =>
     apiDelete<void>(`/skypdv/accounts/${accountId}/items/${itemId}`),
-  close: (id: number, payment_method: PaymentMethodValue, amount_paid: string, change_status: "given" | "not_given") =>
-    apiPost<Account>(`/skypdv/accounts/${id}/close`, { payment_method, amount_paid, change_status }),
+  close: (
+    id: number,
+    data:
+      | {
+          payment_method?: PaymentMethodValue;
+          payment_method_id?: number;
+          amount_paid: string;
+          change_status: "given" | "not_given";
+        }
+      | PaymentMethodValue,
+    amount_paid?: string,
+    change_status?: "given" | "not_given"
+  ) => {
+    if (typeof data === "object" && data !== null) {
+      return apiPost<Account>(`/skypdv/accounts/${id}/close`, data);
+    }
+    return apiPost<Account>(`/skypdv/accounts/${id}/close`, {
+      payment_method: data,
+      amount_paid,
+      change_status,
+    });
+  },
   remove: (id: number) => apiDelete<void>(`/skypdv/accounts/${id}`),
 };
 

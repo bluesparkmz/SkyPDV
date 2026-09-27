@@ -46,8 +46,9 @@ import {
 } from "@/hooks/useAccounts";
 import { useHardwarePlugin } from "@/hooks/useHardwarePlugin";
 import { formatAccountReceipt, formatAccountItemsReceipt, formatKitchenTicket } from "@/lib/receiptFormat";
-import { Account, CreateAccount, PaymentMethodValue, terminalApi } from "@/services/api";
-import { LOCAL_PAYMENT_METHODS, mapToApiPaymentMethod } from "@/lib/paymentMethods";
+import { Account, CreateAccount, terminalApi } from "@/services/api";
+import { usePaymentMethods } from "@/hooks/usePaymentMethods";
+import { getPaymentMethodLabel } from "@/lib/paymentMethods";
 import { toast } from "sonner";
 
 export function TabsScreen() {
@@ -67,7 +68,7 @@ export function TabsScreen() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
   const [accountForm, setAccountForm] = useState<CreateAccount>({ client_name: "", client_phone: "" });
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethodValue>("cash");
+  const [paymentMethodId, setPaymentMethodId] = useState<string>("");
   const [amountPaid, setAmountPaid] = useState("");
   const [changeStatus, setChangeStatus] = useState<"given" | "not_given">("given");
   const [selectedKitchenItems, setSelectedKitchenItems] = useState<number[]>([]);
@@ -80,7 +81,8 @@ export function TabsScreen() {
     queryKey: ["terminal"],
     queryFn: terminalApi.get,
   });
-  const { printReceipt } = useHardwarePlugin();
+  const { data: paymentMethods = [], isLoading: paymentMethodsLoading } = usePaymentMethods();
+  const { printReceipt, openCashDrawer } = useHardwarePlugin();
   const createAccount = useCreateAccount();
   const updateAccount = useUpdateAccount();
   const closeAccount = useCloseAccount();
@@ -113,7 +115,21 @@ export function TabsScreen() {
     0,
     Number(amountPaid || 0) - Number(selectedAccount?.current_balance || 0)
   );
-  const isCloseCash = paymentMethod === "cash";
+  const selectedPaymentMethod = paymentMethods.find((method) => String(method.id) === paymentMethodId);
+  const isCloseCash = /^(cash|dinheiro|numerario)$/i.test(selectedPaymentMethod?.name || "");
+
+  useEffect(() => {
+    if (isCloseModalOpen && paymentMethods.length > 0) {
+      if (!paymentMethodId || !paymentMethods.some((m) => String(m.id) === paymentMethodId)) {
+        const defaultMethod =
+          paymentMethods.find((m) => /^(cash|dinheiro|numerario)$/i.test(m.name)) ||
+          paymentMethods[0];
+        if (defaultMethod) {
+          setPaymentMethodId(String(defaultMethod.id));
+        }
+      }
+    }
+  }, [isCloseModalOpen, paymentMethods, paymentMethodId]);
 
   useEffect(() => {
     if (closeChangeAmount <= 0 && changeStatus !== "given") {
@@ -181,6 +197,10 @@ export function TabsScreen() {
 
   const handleClose = async () => {
     if (!selectedAccountId) return;
+    if (!paymentMethodId && paymentMethods.length > 0) {
+      toast.error("Selecione um método de pagamento.");
+      return;
+    }
     const total = selectedAccount?.current_balance ? Number(selectedAccount.current_balance) : 0;
     const paid = Number(amountPaid || 0);
     if (!paid || paid < total) {
@@ -189,14 +209,15 @@ export function TabsScreen() {
     }
     const closedAccount = await closeAccount.mutateAsync({
       id: selectedAccountId,
-      payment_method: mapToApiPaymentMethod(paymentMethod) as any,
+      payment_method: selectedPaymentMethod?.name || "Dinheiro",
+      payment_method_id: paymentMethodId ? Number(paymentMethodId) : undefined,
       amount_paid: amountPaid,
       change_status: changeStatus,
     });
     try {
       const receiptContent = formatAccountReceipt(closedAccount, {
         terminal,
-        paymentMethod,
+        paymentMethod: selectedPaymentMethod?.name,
         amountPaid: paid,
       });
       const printResult = await printReceipt(receiptContent);
@@ -205,12 +226,19 @@ export function TabsScreen() {
       } else if (printResult?.success) {
         toast.success("Recibo impresso com sucesso!");
       }
+      if (isCloseCash) {
+        try {
+          await openCashDrawer();
+        } catch {
+          // ignore drawer error
+        }
+      }
     } catch (error: any) {
       console.error("Erro ao imprimir recibo da conta:", error);
       toast.error(`Erro ao comunicar com impressora: ${error?.message || error}`, { duration: 6000 });
     }
     setIsCloseModalOpen(false);
-    setPaymentMethod("cash");
+    setPaymentMethodId("");
     setAmountPaid("");
     setChangeStatus("given");
     refetch();
@@ -221,7 +249,7 @@ export function TabsScreen() {
       const receiptContent =
         account.status === "open"
           ? formatAccountItemsReceipt(account, { terminal })
-          : formatAccountReceipt(account, { terminal, paymentMethod });
+          : formatAccountReceipt(account, { terminal, paymentMethod: selectedPaymentMethod?.name });
       const printResult = await printReceipt(receiptContent);
       if (printResult && !printResult.success) {
         toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, { duration: 6000 });
@@ -502,6 +530,14 @@ export function TabsScreen() {
                           setSelectedAccountId(account.id);
                           setAmountPaid(Number(account.current_balance || 0).toFixed(2));
                           setChangeStatus("given");
+                          if (paymentMethods.length > 0) {
+                            const defaultMethod =
+                              paymentMethods.find((m) => /^(cash|dinheiro|numerario)$/i.test(m.name)) ||
+                              paymentMethods[0];
+                            if (defaultMethod) {
+                              setPaymentMethodId(String(defaultMethod.id));
+                            }
+                          }
                           setIsCloseModalOpen(true);
                         }}
                       >
@@ -616,14 +652,14 @@ export function TabsScreen() {
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="payment_method">Metodo de Pagamento</Label>
-              <Select value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)}>
-                <SelectTrigger>
-                  <SelectValue />
+              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+                <SelectTrigger id="payment_method">
+                  <SelectValue placeholder={paymentMethodsLoading ? "A carregar..." : "Selecione um método"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {LOCAL_PAYMENT_METHODS.map((method) => (
-                    <SelectItem key={method.value} value={method.value}>
-                      {method.label}
+                  {paymentMethods.map((method) => (
+                    <SelectItem key={method.id} value={String(method.id)}>
+                      {method.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -664,7 +700,7 @@ export function TabsScreen() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCloseModalOpen(false)}>Cancelar</Button>
-            <Button onClick={handleClose} disabled={closeAccount.isPending}>
+            <Button onClick={handleClose} disabled={closeAccount.isPending || (!paymentMethodId && paymentMethods.length > 0)}>
               {closeAccount.isPending ? "Fechando..." : "Fechar Conta"}
             </Button>
           </DialogFooter>
