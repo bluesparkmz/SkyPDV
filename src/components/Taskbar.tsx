@@ -15,6 +15,7 @@ import {
   Tag24Regular,
   DataTrending24Regular,
   Wrench24Regular,
+  Food24Regular,
 } from "@fluentui/react-icons";
 import { Screen } from "@/types/screen";
 
@@ -32,7 +33,7 @@ const taskbarApps: { screen: Screen; icon: React.FC<React.SVGProps<SVGSVGElement
   { screen: "services", icon: Wrench24Regular, title: "Serviços" },
   { screen: "categories", icon: Tag24Regular, title: "Categorias" },
   { screen: "stock", icon: ClipboardTaskListLtr24Regular, title: "Estoque" },
-  { screen: "tables", icon: Table24Regular, title: "Mesas" },
+  { screen: "kitchen", icon: Food24Regular, title: "Cozinha" },
   { screen: "tabs", icon: DocumentText24Regular, title: "Contas" },
   { screen: "sales", icon: Receipt24Regular, title: "Vendas" },
   { screen: "invoices", icon: DocumentText24Regular, title: "Faturas" },

@@ -31,6 +31,7 @@ import { FastfoodAdminScreen } from "./screens/FastfoodAdminScreen";
 import { FinanceScreen } from "./screens/FinanceScreen";
 import { InvoicesScreen } from "./screens/InvoicesScreen";
 import { ServicesScreen } from "./screens/ServicesScreen";
+import { KitchenScreen } from "./screens/KitchenScreen";
 import { useProducts } from "@/hooks/useProducts";
 import { useCashRegister } from "@/hooks/useCashRegister";
 import { useDashboard } from "@/hooks/useDashboard";
@@ -439,6 +440,8 @@ export function SkyPDV() {
         return <InvoicesScreen />;
       case "services":
         return <ServicesScreen />;
+      case "kitchen":
+        return <KitchenScreen />;
       case "pdv":
       default:
         return (
