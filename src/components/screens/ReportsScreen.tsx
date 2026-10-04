@@ -75,7 +75,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useSales, useUpdateSaleItems, useUpdateSalePaymentMethod, useVoidSale } from "@/hooks/useSales";
 import { cn } from "@/lib/utils";
 import { useIsAdmin } from "@/hooks/useIsAdmin";
-import { useAuth } from "@/contexts/AuthContext";
 import { useTerminalUsers } from "@/hooks/useTerminalUsers";
 import { usePaymentMethods } from "@/hooks/usePaymentMethods";
 import { dashboardApi } from "@/services/api";
@@ -206,8 +205,6 @@ export function ReportsScreen() {
 
   // Verificar se é admin
   const isAdmin = useIsAdmin();
-  const { user: authUser } = useAuth();
-  const currentUserId = authUser?.user?.id;
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
     const map = new Map<number, string>();
@@ -945,7 +942,6 @@ export function ReportsScreen() {
                 onAdjustPaymentMethod={handleAdjustPaymentMethod}
                 onAdjustItems={setSaleForItemsAdjustment}
                 onVoidSale={setSaleForVoid}
-                currentUserId={currentUserId}
                 isAdmin={isAdmin}
                 reprintingSaleId={reprintingSaleId}
                 startDate={startDate}
@@ -1556,7 +1552,6 @@ function DailyReportsView({
   onAdjustPaymentMethod,
   onAdjustItems,
   onVoidSale,
-  currentUserId,
   isAdmin,
   reprintingSaleId,
   startDate,
@@ -1594,7 +1589,6 @@ function DailyReportsView({
   onAdjustPaymentMethod: (sale: Sale) => void;
   onAdjustItems: (sale: Sale) => void;
   onVoidSale: (sale: Sale) => void;
-  currentUserId?: number;
   isAdmin: boolean;
   reprintingSaleId: number | null;
   startDate: string;
@@ -1794,13 +1788,9 @@ function DailyReportsView({
                                       <DropdownMenuItem onClick={() => onAdjustItems(sale)}>
                                         Trocar ou ajustar itens
                                       </DropdownMenuItem>
-                                      {isAdmin && (
-                                        <>
-                                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
-                                            Anular venda
-                                          </DropdownMenuItem>
-                                        </>
-                                      )}
+                                      <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => onVoidSale(sale)}>
+                                        Anular venda
+                                      </DropdownMenuItem>
                                     </>
                                   )}
                                 </DropdownMenuContent>
