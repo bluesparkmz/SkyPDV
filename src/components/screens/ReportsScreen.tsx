@@ -1785,7 +1785,7 @@ function DailyReportsView({
                                       {reprintingSaleId === sale.id ? "A imprimir..." : "Imprimir recibo"}
                                     </DropdownMenuItem>
                                   )}
-                                  {(isAdmin || sale.created_by === currentUserId) && sale.status !== "cancelled" && (
+                                  {isAdmin && sale.status !== "cancelled" && (
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => onAdjustPaymentMethod(sale)}>
