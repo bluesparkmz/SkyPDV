@@ -865,42 +865,29 @@ export interface StockMovement {
   created_at: string;
 }
 
-export interface FornecimentoMovementLine {
-  movement_id: number;
+export interface FornecimentoRow {
   product_id: number;
   product_name: string;
   product_sku: string | null;
   category: string | null;
+  kind: "fornecimento" | "cadastro" | "ambos";
   quantity: string;
-  quantity_before: string | null;
-  quantity_after: string | null;
+  unit_price: string;
+  line_total: string;
   balance: string;
+  balance_value: string;
   notes: string | null;
-  created_by: number | null;
-  created_at: string;
-}
-
-export interface FornecimentoProductCreated {
-  product_id: number;
-  product_name: string;
-  product_sku: string | null;
-  category: string | null;
-  cost_price: string;
-  price: string;
-  initial_stock: string | null;
-  balance: string;
   created_at: string;
 }
 
 export interface FornecimentosReport {
   date: string;
-  supplies_count: number;
-  products_supplied_count: number;
-  total_qty_supplied: string;
-  total_cost_value: string;
-  products_created_count: number;
-  movements: FornecimentoMovementLine[];
-  products_created: FornecimentoProductCreated[];
+  products_count: number;
+  total_qty: string;
+  total_value: string;
+  total_balance: string;
+  total_balance_value: string;
+  rows: FornecimentoRow[];
 }
 
 export interface CashRegister {

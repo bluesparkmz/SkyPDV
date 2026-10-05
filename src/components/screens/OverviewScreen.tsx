@@ -5,7 +5,7 @@ import {
   Box24Regular,
   Print24Regular,
   ArrowImport24Regular,
-  CalendarLtr24Regular,
+  Money24Regular,
   Cube24Regular,
 } from "@fluentui/react-icons";
 import { inventoryApi, type FornecimentosReport } from "@/services/api";
@@ -36,6 +36,12 @@ function fmtTime(iso: string) {
   }
 }
 
+const kindLabel: Record<string, string> = {
+  fornecimento: "Fornecido",
+  cadastro: "Cadastrado",
+  ambos: "Forn. + Cad.",
+};
+
 export function OverviewScreen() {
   const [date, setDate] = useState(todayStr);
   const [printing, setPrinting] = useState(false);
@@ -49,24 +55,24 @@ export function OverviewScreen() {
     if (!data) return [];
     return [
       {
-        title: "Entradas do dia",
-        value: String(data.supplies_count),
-        icon: ArrowImport24Regular,
-      },
-      {
-        title: "Produtos fornecidos",
-        value: String(data.products_supplied_count),
+        title: "Total produtos",
+        value: String(data.products_count),
         icon: Box24Regular,
       },
       {
         title: "Qtd fornecida",
-        value: fmtQty(data.total_qty_supplied),
+        value: fmtQty(data.total_qty),
         icon: Cube24Regular,
       },
       {
-        title: "Custo estimado",
-        value: `${fmtMoney(data.total_cost_value)} MT`,
-        icon: CalendarLtr24Regular,
+        title: "Valor (qtd × preço)",
+        value: `${fmtMoney(data.total_value)} MT`,
+        icon: Money24Regular,
+      },
+      {
+        title: "Saldo total",
+        value: `${fmtQty(data.total_balance)} · ${fmtMoney(data.total_balance_value)} MT`,
+        icon: ArrowImport24Regular,
       },
     ];
   }, [data]);
@@ -103,7 +109,7 @@ export function OverviewScreen() {
             <div>
               <h1 className="text-lg font-bold text-foreground md:text-2xl">Fornecimentos</h1>
               <p className="text-xs text-muted-foreground md:text-sm">
-                Entradas e produtos cadastrados por data — saldo actual
+                Produtos fornecidos e cadastrados — valor = quantidade × preço
               </p>
             </div>
           </div>
@@ -114,11 +120,7 @@ export function OverviewScreen() {
               onChange={(e) => setDate(e.target.value || todayStr())}
               className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
             />
-            <button
-              type="button"
-              onClick={() => setDate(todayStr())}
-              className="fluent-button h-9 px-3 text-sm"
-            >
+            <button type="button" onClick={() => setDate(todayStr())} className="fluent-button h-9 px-3 text-sm">
               Hoje
             </button>
             <button
@@ -150,12 +152,12 @@ export function OverviewScreen() {
             <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
               {stats.map((s) => (
                 <div key={s.title} className="fluent-card p-3 md:p-5">
-                  <div className="flex items-start justify-between">
-                    <div>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
                       <p className="mb-0.5 text-[10px] text-muted-foreground md:mb-1 md:text-sm">{s.title}</p>
-                      <p className="text-base font-bold text-foreground md:text-2xl">{s.value}</p>
+                      <p className="truncate text-base font-bold text-foreground md:text-xl">{s.value}</p>
                     </div>
-                    <div className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary md:size-12">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary md:size-12">
                       <s.icon className="size-4 md:size-6" />
                     </div>
                   </div>
@@ -163,87 +165,65 @@ export function OverviewScreen() {
               ))}
             </div>
 
-            <div className="fluent-card mb-5 overflow-hidden">
-              <div className="border-b border-border px-4 py-3">
-                <h2 className="font-semibold text-foreground">Produtos fornecidos</h2>
-                <p className="text-xs text-muted-foreground">
-                  Entradas de stock em {data?.date || date}
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead className="bg-muted/40 text-xs text-muted-foreground">
-                    <tr>
-                      <th className="px-4 py-2 font-medium">Hora</th>
-                      <th className="px-4 py-2 font-medium">Produto</th>
-                      <th className="px-4 py-2 font-medium">Categoria</th>
-                      <th className="px-4 py-2 font-medium text-right">Qtd</th>
-                      <th className="px-4 py-2 font-medium text-right">Saldo</th>
-                      <th className="px-4 py-2 font-medium">Notas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(data?.movements || []).length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
-                          Sem fornecimentos nesta data.
-                        </td>
-                      </tr>
-                    ) : (
-                      data!.movements.map((row) => (
-                        <tr key={row.movement_id} className="border-t border-border/70">
-                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtTime(row.created_at)}</td>
-                          <td className="px-4 py-2.5 font-medium text-foreground">{row.product_name}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">{row.category || "—"}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums text-success">+{fmtQty(row.quantity)}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtQty(row.balance)}</td>
-                          <td className="max-w-[220px] truncate px-4 py-2.5 text-muted-foreground">{row.notes || "—"}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
             <div className="fluent-card overflow-hidden">
               <div className="border-b border-border px-4 py-3">
-                <h2 className="font-semibold text-foreground">Produtos cadastrados</h2>
+                <h2 className="font-semibold text-foreground">Produtos do dia</h2>
                 <p className="text-xs text-muted-foreground">
-                  Novos produtos registados em {data?.date || date}
-                  {data ? ` · ${data.products_created_count}` : ""}
+                  Fornecidos e cadastrados em {data?.date || date}
                 </p>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
+                <table className="w-full min-w-[720px] text-left text-sm">
                   <thead className="bg-muted/40 text-xs text-muted-foreground">
                     <tr>
                       <th className="px-4 py-2 font-medium">Hora</th>
+                      <th className="px-4 py-2 font-medium">Tipo</th>
                       <th className="px-4 py-2 font-medium">Produto</th>
-                      <th className="px-4 py-2 font-medium">Categoria</th>
+                      <th className="px-4 py-2 font-medium text-right">Qtd</th>
                       <th className="px-4 py-2 font-medium text-right">Preço</th>
+                      <th className="px-4 py-2 font-medium text-right">Total</th>
                       <th className="px-4 py-2 font-medium text-right">Saldo</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {(data?.products_created || []).length === 0 ? (
+                    {(data?.rows || []).length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
-                          Nenhum produto cadastrado nesta data.
+                        <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                          Sem produtos fornecidos ou cadastrados nesta data.
                         </td>
                       </tr>
                     ) : (
-                      data!.products_created.map((row) => (
+                      data!.rows.map((row) => (
                         <tr key={row.product_id} className="border-t border-border/70">
                           <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtTime(row.created_at)}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{kindLabel[row.kind] || row.kind}</td>
                           <td className="px-4 py-2.5 font-medium text-foreground">{row.product_name}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">{row.category || "—"}</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums">{fmtMoney(row.price)} MT</td>
-                          <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtQty(row.balance)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-success">{fmtQty(row.quantity)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">{fmtMoney(row.unit_price)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtMoney(row.line_total)} MT</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">{fmtQty(row.balance)}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
+                  {data && data.rows.length > 0 ? (
+                    <tfoot>
+                      <tr className="border-t-2 border-border bg-primary/5 font-semibold">
+                        <td className="px-4 py-3" colSpan={3}>
+                          Total · {data.products_count} produto{data.products_count === 1 ? "" : "s"}
+                        </td>
+                        <td className="px-4 py-3 text-right tabular-nums">{fmtQty(data.total_qty)}</td>
+                        <td className="px-4 py-3" />
+                        <td className="px-4 py-3 text-right tabular-nums">{fmtMoney(data.total_value)} MT</td>
+                        <td className="px-4 py-3 text-right tabular-nums">
+                          {fmtQty(data.total_balance)}
+                          <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                            {fmtMoney(data.total_balance_value)} MT
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  ) : null}
                 </table>
               </div>
             </div>
