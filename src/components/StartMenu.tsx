@@ -16,11 +16,11 @@ import {
   Warning24Regular,
   DocumentText24Regular,
   Tag24Regular,
-  DataTrending24Regular,
   Food24Regular,
   Money24Regular,
   Wrench24Regular,
   ArrowExit24Regular,
+  ArrowImport24Regular,
 } from "@fluentui/react-icons";
 
 interface StartMenuProps {
@@ -32,7 +32,7 @@ interface StartMenuProps {
 
 const pinnedApps: { name: string; icon: React.FC<React.SVGProps<SVGSVGElement>>; screen: Screen }[] = [
   { name: "PDV", icon: Desktop24Regular, screen: "pdv" },
-  { name: "Visão Geral", icon: DataTrending24Regular, screen: "overview" },
+  { name: "Fornecimentos", icon: ArrowImport24Regular, screen: "overview" },
   { name: "Produtos", icon: Box24Regular, screen: "products" },
   { name: "Serviços", icon: Wrench24Regular, screen: "services" },
   { name: "Categorias", icon: Tag24Regular, screen: "categories" },

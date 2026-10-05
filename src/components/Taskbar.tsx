@@ -1,11 +1,8 @@
 import { useState, useEffect } from "react";
 import {
   Desktop24Regular,
-  Home24Regular,
   Box24Regular,
   ClipboardTaskListLtr24Regular,
-  PeopleTeam24Regular,
-  Table24Regular,
   Receipt24Regular,
   ChartMultiple24Regular,
   Settings24Regular,
@@ -13,9 +10,9 @@ import {
   GridDots24Regular,
   DocumentText24Regular,
   Tag24Regular,
-  DataTrending24Regular,
   Wrench24Regular,
   Food24Regular,
+  ArrowImport24Regular,
 } from "@fluentui/react-icons";
 import { Screen } from "@/types/screen";
 
@@ -28,7 +25,7 @@ interface TaskbarProps {
 
 const taskbarApps: { screen: Screen; icon: React.FC<React.SVGProps<SVGSVGElement>>; title: string }[] = [
   { screen: "pdv", icon: Desktop24Regular, title: "SkyPDV" },
-  { screen: "overview", icon: DataTrending24Regular, title: "Visão Geral" },
+  { screen: "overview", icon: ArrowImport24Regular, title: "Fornecimentos" },
   { screen: "products", icon: Box24Regular, title: "Produtos" },
   { screen: "services", icon: Wrench24Regular, title: "Serviços" },
   { screen: "categories", icon: Tag24Regular, title: "Categorias" },

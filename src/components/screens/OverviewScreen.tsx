@@ -1,227 +1,254 @@
-import { useDashboard } from "@/hooks/useDashboard";
-import { useSales as useSalesList } from "@/hooks/useSales";
-import { parseISO, getDay } from "date-fns";
+import { useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
 import {
-  Money24Regular,
-  Receipt24Regular,
   Box24Regular,
-  ArrowTrendingLines24Regular,
   Print24Regular,
-  Clock24Regular,
-  DataTrending24Regular,
+  ArrowImport24Regular,
+  CalendarLtr24Regular,
+  Cube24Regular,
 } from "@fluentui/react-icons";
+import { inventoryApi, type FornecimentosReport } from "@/services/api";
+import { toast } from "sonner";
 
-interface StatCardProps {
-  title: string;
-  value: string;
-  change?: string;
-  trend?: "up" | "down";
-  icon: React.FC<React.SVGProps<SVGSVGElement>>;
+function todayStr() {
+  return format(new Date(), "yyyy-MM-dd");
 }
 
-function StatCard({ title, value, change, trend, icon: Icon }: StatCardProps) {
-  return (
-    <div className="fluent-card p-3 md:p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] md:text-sm text-muted-foreground mb-0.5 md:mb-1">{title}</p>
-          <p className="text-base md:text-2xl font-bold text-foreground">{value}</p>
-          {change && (
-            <p className={`text-[10px] md:text-sm mt-0.5 md:mt-1 ${trend === "up" ? "text-success" : "text-destructive"}`}>
-              {trend === "up" ? "↑" : "↓"} {change}
-            </p>
-          )}
-        </div>
-        <div className="w-8 h-8 md:w-12 md:h-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-          <Icon className="w-4 h-4 md:w-6 md:h-6" />
-        </div>
-      </div>
-    </div>
-  );
+function fmtQty(value: string | number | null | undefined) {
+  const n = Number(value ?? 0);
+  if (Number.isNaN(n)) return String(value ?? "0");
+  if (Number.isInteger(n)) return String(n);
+  return n.toFixed(3).replace(/\.?0+$/, "");
+}
+
+function fmtMoney(value: string | number | null | undefined) {
+  const n = Number(value ?? 0);
+  if (Number.isNaN(n)) return "0.00";
+  return n.toFixed(2);
+}
+
+function fmtTime(iso: string) {
+  try {
+    return format(parseISO(iso), "HH:mm");
+  } catch {
+    return "";
+  }
 }
 
 export function OverviewScreen() {
-  const { data: dashboard, isLoading } = useDashboard();
-  const { data: recentSales = [] } = useSalesList({ limit: 5, status: "completed" });
+  const [date, setDate] = useState(todayStr);
+  const [printing, setPrinting] = useState(false);
 
-  const stats = dashboard ? [
-    {
-      title: "Vendas Hoje",
-      value: `${parseFloat(dashboard.today_revenue).toFixed(2)} MT`,
-      change: undefined,
-      trend: undefined,
-      icon: Money24Regular,
-    },
-    {
-      title: "Pedidos Hoje",
-      value: dashboard.today_sales.toString(),
-      change: undefined,
-      trend: undefined,
-      icon: Receipt24Regular,
-    },
-    {
-      title: "Estoque Baixo",
-      value: dashboard.low_stock_alerts.toString(),
-      change: undefined,
-      trend: undefined,
-      icon: Box24Regular,
-    },
-    {
-      title: "Receita do Mês",
-      value: `${parseFloat(dashboard.month_revenue).toFixed(2)} MT`,
-      change: undefined,
-      trend: undefined,
-      icon: ArrowTrendingLines24Regular,
-    },
-  ] : [];
+  const { data, isLoading, isFetching, refetch } = useQuery<FornecimentosReport>({
+    queryKey: ["fornecimentos", date],
+    queryFn: () => inventoryApi.getFornecimentos(date),
+  });
+
+  const stats = useMemo(() => {
+    if (!data) return [];
+    return [
+      {
+        title: "Entradas do dia",
+        value: String(data.supplies_count),
+        icon: ArrowImport24Regular,
+      },
+      {
+        title: "Produtos fornecidos",
+        value: String(data.products_supplied_count),
+        icon: Box24Regular,
+      },
+      {
+        title: "Qtd fornecida",
+        value: fmtQty(data.total_qty_supplied),
+        icon: Cube24Regular,
+      },
+      {
+        title: "Custo estimado",
+        value: `${fmtMoney(data.total_cost_value)} MT`,
+        icon: CalendarLtr24Regular,
+      },
+    ];
+  }, [data]);
+
+  const handlePrint = async () => {
+    setPrinting(true);
+    try {
+      const { blob, filename } = await inventoryApi.downloadFornecimentosPdf(date);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename || `fornecimentos-${date}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast.success("Extrato gerado");
+    } catch (err) {
+      console.error(err);
+      toast.error(err instanceof Error ? err.message : "Falha ao imprimir extrato");
+    } finally {
+      setPrinting(false);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden">
-      {/* Fixed Header */}
-      <div className="p-3 md:p-6 border-b border-border bg-background/80 backdrop-blur-md z-10">
-        <div className="flex items-center justify-between gap-4">
+      <div className="shrink-0 border-b border-border bg-card/80 px-4 py-3 md:px-6 md:py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-primary flex items-center justify-center text-white">
-              <DataTrending24Regular className="w-5 h-5 md:w-6 md:h-6" />
+            <div className="grid size-10 place-items-center rounded-xl bg-primary text-primary-foreground md:size-12">
+              <ArrowImport24Regular className="size-5 md:size-6" />
             </div>
             <div>
-              <h1 className="text-lg md:text-2xl font-bold text-foreground">Visão Geral</h1>
-              <p className="text-xs md:text-sm text-muted-foreground hidden sm:block">Resumo do dia</p>
+              <h1 className="text-lg font-bold text-foreground md:text-2xl">Fornecimentos</h1>
+              <p className="text-xs text-muted-foreground md:text-sm">
+                Entradas e produtos cadastrados por data — saldo actual
+              </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button className="fluent-button gap-2 px-3 justify-center">
-              <Print24Regular className="w-5 h-5" />
-              <span className="hidden sm:inline">Relatório</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value || todayStr())}
+              className="h-9 rounded-lg border border-input bg-background px-3 text-sm outline-none focus:ring-2 focus:ring-ring/40"
+            />
+            <button
+              type="button"
+              onClick={() => setDate(todayStr())}
+              className="fluent-button h-9 px-3 text-sm"
+            >
+              Hoje
+            </button>
+            <button
+              type="button"
+              onClick={() => void refetch()}
+              className="fluent-button h-9 px-3 text-sm"
+              disabled={isFetching}
+            >
+              Actualizar
+            </button>
+            <button
+              type="button"
+              onClick={() => void handlePrint()}
+              disabled={printing || isLoading}
+              className="fluent-button fluent-button-primary h-9 gap-1.5 px-3 text-sm"
+            >
+              <Print24Regular className="size-4" />
+              {printing ? "A gerar…" : "Imprimir extrato"}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Scrollable Content Area */}
-      <div className="flex-1 p-3 md:p-6 overflow-auto windows-scrollbar">
-
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4 mb-4 md:mb-6">
-          {stats.map((stat) => (
-            <StatCard key={stat.title} {...stat} />
-          ))}
-        </div>
-
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4 md:mb-6">
-          <div className="lg:col-span-2 fluent-card p-4 md:p-5">
-            <h3 className="text-sm md:text-base font-semibold text-foreground mb-4">Vendas da Semana</h3>
-            <div className="h-40 md:h-48 flex items-end justify-between gap-1 md:gap-2 px-1 md:px-4">
-              {(() => {
-                const weekDays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-                const dailyRevenues = new Array(7).fill(0);
-
-                if (dashboard?.weekly_breakdown) {
-                  dashboard.weekly_breakdown.forEach(item => {
-                    const date = parseISO(item.period);
-                    // getDay() is 0 (Sun) to 6 (Sat)
-                    // We want 0 (Mon) to 6 (Sun)
-                    let dayIndex = getDay(date) - 1;
-                    if (dayIndex === -1) dayIndex = 6; // Sunday
-
-                    if (dayIndex >= 0 && dayIndex < 7) {
-                      dailyRevenues[dayIndex] = parseFloat(item.total_revenue.toString());
-                    }
-                  });
-                }
-
-                const maxRevenue = Math.max(...dailyRevenues, 100); // Mínimo de 100 para não estourar se for tudo 0
-
-                return weekDays.map((day, i) => {
-                  const revenue = dailyRevenues[i];
-                  const heightPercent = (revenue / maxRevenue) * 100;
-
-                  return (
-                    <div key={day} className="flex-1 flex flex-col items-center gap-2">
-                      <div
-                        className="w-full bg-primary/20 rounded-t-lg relative overflow-hidden group"
-                        style={{ height: `100%` }}
-                      >
-                        <div
-                          className="absolute bottom-0 left-0 right-0 bg-primary rounded-t-lg transition-all duration-500"
-                          style={{ height: `${heightPercent}%` }}
-                        />
-                        {/* Tooltip simples no hover */}
-                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-popover text-popover-foreground text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none transition-opacity">
-                          {revenue.toFixed(2)} MT
-                        </div>
-                      </div>
-                      <span className="text-[10px] md:text-xs text-muted-foreground">{day}</span>
+      <div className="flex-1 overflow-auto windows-scrollbar p-4 md:p-6">
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">A carregar fornecimentos…</p>
+        ) : (
+          <>
+            <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
+              {stats.map((s) => (
+                <div key={s.title} className="fluent-card p-3 md:p-5">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <p className="mb-0.5 text-[10px] text-muted-foreground md:mb-1 md:text-sm">{s.title}</p>
+                      <p className="text-base font-bold text-foreground md:text-2xl">{s.value}</p>
                     </div>
-                  );
-                });
-              })()}
-            </div>
-          </div>
-
-          <div className="fluent-card p-4 md:p-5">
-            <h3 className="text-sm md:text-base font-semibold text-foreground mb-4">Por Categoria</h3>
-            <div className="space-y-2 md:space-y-3">
-              {[
-                { name: "Bebidas", percent: 35, color: "bg-primary" },
-                { name: "Lanches", percent: 28, color: "bg-success" },
-                { name: "Doces", percent: 22, color: "bg-warning" },
-                { name: "Outros", percent: 15, color: "bg-muted-foreground" },
-              ].map((cat) => (
-                <div key={cat.name}>
-                  <div className="flex justify-between text-xs md:text-sm mb-1">
-                    <span className="text-foreground">{cat.name}</span>
-                    <span className="text-muted-foreground">{cat.percent}%</span>
-                  </div>
-                  <div className="h-2 bg-secondary rounded-full overflow-hidden">
-                    <div className={`h-full ${cat.color} rounded-full`} style={{ width: `${cat.percent}%` }} />
+                    <div className="flex size-8 items-center justify-center rounded-xl bg-primary/10 text-primary md:size-12">
+                      <s.icon className="size-4 md:size-6" />
+                    </div>
                   </div>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
 
-        {/* Recent Sales */}
-        <div className="fluent-card p-4 md:p-5">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm md:text-base font-semibold text-foreground">Vendas Recentes</h3>
-            <button className="text-xs md:text-sm text-primary hover:underline">Ver todas</button>
-          </div>
-          <div className="space-y-2">
-            {isLoading ? (
-              <div className="text-center py-4 text-muted-foreground">Carregando...</div>
-            ) : recentSales.length === 0 ? (
-              <div className="text-center py-4 text-muted-foreground">Nenhuma venda recente</div>
-            ) : (
-              recentSales.map((sale) => (
-                <div key={sale.id} className="flex items-center justify-between p-2 md:p-3 rounded-lg hover:bg-secondary/50 transition-colors">
-                  <div className="flex items-center gap-2 md:gap-3">
-                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Receipt24Regular className="w-3 h-3 md:w-4 md:h-4 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-xs md:text-sm font-medium text-foreground">Venda #{sale.id}</p>
-                      <p className="text-[10px] md:text-xs text-muted-foreground">
-                        {sale.customer_name || "Cliente Avulso"}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs md:text-sm font-semibold text-foreground">
-                      {parseFloat(sale.total).toFixed(2)} MT
-                    </p>
-                    <p className="text-[10px] md:text-xs text-muted-foreground">
-                      {new Date(sale.created_at).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                    </p>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
+            <div className="fluent-card mb-5 overflow-hidden">
+              <div className="border-b border-border px-4 py-3">
+                <h2 className="font-semibold text-foreground">Produtos fornecidos</h2>
+                <p className="text-xs text-muted-foreground">
+                  Entradas de stock em {data?.date || date}
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 font-medium">Hora</th>
+                      <th className="px-4 py-2 font-medium">Produto</th>
+                      <th className="px-4 py-2 font-medium">Categoria</th>
+                      <th className="px-4 py-2 font-medium text-right">Qtd</th>
+                      <th className="px-4 py-2 font-medium text-right">Saldo</th>
+                      <th className="px-4 py-2 font-medium">Notas</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data?.movements || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                          Sem fornecimentos nesta data.
+                        </td>
+                      </tr>
+                    ) : (
+                      data!.movements.map((row) => (
+                        <tr key={row.movement_id} className="border-t border-border/70">
+                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtTime(row.created_at)}</td>
+                          <td className="px-4 py-2.5 font-medium text-foreground">{row.product_name}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{row.category || "—"}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums text-success">+{fmtQty(row.quantity)}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtQty(row.balance)}</td>
+                          <td className="max-w-[220px] truncate px-4 py-2.5 text-muted-foreground">{row.notes || "—"}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="fluent-card overflow-hidden">
+              <div className="border-b border-border px-4 py-3">
+                <h2 className="font-semibold text-foreground">Produtos cadastrados</h2>
+                <p className="text-xs text-muted-foreground">
+                  Novos produtos registados em {data?.date || date}
+                  {data ? ` · ${data.products_created_count}` : ""}
+                </p>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="bg-muted/40 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="px-4 py-2 font-medium">Hora</th>
+                      <th className="px-4 py-2 font-medium">Produto</th>
+                      <th className="px-4 py-2 font-medium">Categoria</th>
+                      <th className="px-4 py-2 font-medium text-right">Preço</th>
+                      <th className="px-4 py-2 font-medium text-right">Saldo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(data?.products_created || []).length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                          Nenhum produto cadastrado nesta data.
+                        </td>
+                      </tr>
+                    ) : (
+                      data!.products_created.map((row) => (
+                        <tr key={row.product_id} className="border-t border-border/70">
+                          <td className="px-4 py-2.5 tabular-nums text-muted-foreground">{fmtTime(row.created_at)}</td>
+                          <td className="px-4 py-2.5 font-medium text-foreground">{row.product_name}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{row.category || "—"}</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums">{fmtMoney(row.price)} MT</td>
+                          <td className="px-4 py-2.5 text-right tabular-nums font-medium">{fmtQty(row.balance)}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

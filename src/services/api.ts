@@ -636,6 +636,18 @@ export const inventoryApi = {
     apiPost<StockMovement>("/skypdv/inventory/adjustment", data),
   transfer: (data: StockTransfer) =>
     apiPost<StockMovement>("/skypdv/inventory/transfer", data),
+  getFornecimentos: (date?: string) => {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : "";
+    return apiGet<FornecimentosReport>(`/skypdv/reports/fornecimentos${qs}`);
+  },
+  downloadFornecimentosPdf: (date?: string) => {
+    const qs = date ? `?date=${encodeURIComponent(date)}` : "";
+    return apiGetBlob(`/skypdv/reports/fornecimentos.pdf${qs}`);
+  },
+  downloadDailyStockPdf: (date: string, productScope: "all" | "beverages" | "important" = "all") => {
+    const qs = new URLSearchParams({ date, product_scope: productScope });
+    return apiGetBlob(`/skypdv/reports/stock-day.pdf?${qs.toString()}`);
+  },
 };
 
 // Terminal Users
@@ -851,6 +863,44 @@ export interface StockMovement {
   notes: string | null;
   created_by: number;
   created_at: string;
+}
+
+export interface FornecimentoMovementLine {
+  movement_id: number;
+  product_id: number;
+  product_name: string;
+  product_sku: string | null;
+  category: string | null;
+  quantity: string;
+  quantity_before: string | null;
+  quantity_after: string | null;
+  balance: string;
+  notes: string | null;
+  created_by: number | null;
+  created_at: string;
+}
+
+export interface FornecimentoProductCreated {
+  product_id: number;
+  product_name: string;
+  product_sku: string | null;
+  category: string | null;
+  cost_price: string;
+  price: string;
+  initial_stock: string | null;
+  balance: string;
+  created_at: string;
+}
+
+export interface FornecimentosReport {
+  date: string;
+  supplies_count: number;
+  products_supplied_count: number;
+  total_qty_supplied: string;
+  total_cost_value: string;
+  products_created_count: number;
+  movements: FornecimentoMovementLine[];
+  products_created: FornecimentoProductCreated[];
 }
 
 export interface CashRegister {
