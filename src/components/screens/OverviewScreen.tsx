@@ -43,9 +43,9 @@ function fmtTime(iso: string) {
 }
 
 const kindLabel: Record<string, string> = {
-  fornecimento: "Fornecido",
-  cadastro: "Cadastrado",
-  ambos: "Forn. + Cad.",
+  fornecimento: "Entrada",
+  cadastro: "Cadastro",
+  ambos: "Entrada",
 };
 
 export function OverviewScreen() {
