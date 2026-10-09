@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import {
   Print24Regular,
   ArrowImport24Regular,
+  Edit24Regular,
+  Delete24Regular,
 } from "@fluentui/react-icons";
-import { inventoryApi, type FornecimentosReport } from "@/services/api";
+import {
+  inventoryApi,
+  type FornecimentoRow,
+  type FornecimentosReport,
+} from "@/services/api";
 import { toast } from "sonner";
 import {
   Table,
@@ -16,6 +22,27 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 function todayStr() {
   return format(new Date(), "yyyy-MM-dd");
@@ -49,12 +76,45 @@ const kindLabel: Record<string, string> = {
 };
 
 export function OverviewScreen() {
+  const queryClient = useQueryClient();
   const [date, setDate] = useState(todayStr);
   const [printing, setPrinting] = useState(false);
+  const [editRow, setEditRow] = useState<FornecimentoRow | null>(null);
+  const [editQty, setEditQty] = useState("");
+  const [deleteRow, setDeleteRow] = useState<FornecimentoRow | null>(null);
 
   const { data, isLoading, isFetching, refetch } = useQuery<FornecimentosReport>({
     queryKey: ["fornecimentos", date],
     queryFn: () => inventoryApi.getFornecimentos(date),
+  });
+
+  const invalidate = () => {
+    void queryClient.invalidateQueries({ queryKey: ["fornecimentos", date] });
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: ({ movementId, quantity }: { movementId: number; quantity: number }) =>
+      inventoryApi.updateFornecimento(movementId, quantity),
+    onSuccess: () => {
+      toast.success("Quantidade do fornecimento actualizada");
+      setEditRow(null);
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "Falha ao editar fornecimento");
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (movementId: number) => inventoryApi.deleteFornecimento(movementId),
+    onSuccess: () => {
+      toast.success("Fornecimento eliminado e stock revertido");
+      setDeleteRow(null);
+      invalidate();
+    },
+    onError: (err: unknown) => {
+      toast.error(err instanceof Error ? err.message : "Falha ao eliminar fornecimento");
+    },
   });
 
   const summary = useMemo(() => {
@@ -65,6 +125,26 @@ export function OverviewScreen() {
       { label: "Valor do dia", value: `${fmtMoney(data.total_value)} MT` },
     ];
   }, [data]);
+
+  const openEdit = (row: FornecimentoRow) => {
+    setEditRow(row);
+    setEditQty(fmtQty(row.quantity));
+  };
+
+  const handleSaveEdit = () => {
+    if (!editRow?.movement_id) return;
+    const qty = Number(editQty);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      toast.error("A quantidade deve ser maior que zero");
+      return;
+    }
+    updateMutation.mutate({ movementId: editRow.movement_id, quantity: qty });
+  };
+
+  const handleConfirmDelete = () => {
+    if (!deleteRow?.movement_id) return;
+    deleteMutation.mutate(deleteRow.movement_id);
+  };
 
   const handlePrint = async () => {
     setPrinting(true);
@@ -97,7 +177,7 @@ export function OverviewScreen() {
               Fornecimentos
             </h1>
             <p className="mt-0.5 text-xs text-muted-foreground md:text-sm">
-              Só o dia seleccionado — valor = quantidade × preço
+              Só o dia seleccionado — valor = quantidade × preço. Pode editar ou eliminar entradas.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -170,42 +250,77 @@ export function OverviewScreen() {
                     <TableHead className="px-4 py-3 text-right text-xs font-semibold">Qtd</TableHead>
                     <TableHead className="px-4 py-3 text-right text-xs font-semibold">Preço</TableHead>
                     <TableHead className="px-4 py-3 text-right text-xs font-semibold">Total</TableHead>
+                    <TableHead className="px-4 py-3 text-right text-xs font-semibold">Acções</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {(data?.rows || []).length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
                         Sem produtos fornecidos ou cadastrados nesta data.
                       </TableCell>
                     </TableRow>
                   ) : (
                     <>
-                      {data!.rows.map((row) => (
-                        <TableRow
-                          key={row.product_id}
-                          className="border-b border-border transition-colors hover:bg-secondary/30"
-                        >
-                          <TableCell className="h-12 px-4 py-2 text-sm tabular-nums text-muted-foreground">
-                            {fmtTime(row.created_at)}
-                          </TableCell>
-                          <TableCell className="h-12 px-4 py-2 text-sm">
-                            <Badge variant="secondary">{kindLabel[row.kind] || row.kind}</Badge>
-                          </TableCell>
-                          <TableCell className="h-12 px-4 py-2 text-sm font-medium">
-                            {row.product_name}
-                          </TableCell>
-                          <TableCell className="h-12 px-4 py-2 text-right text-sm tabular-nums">
-                            {fmtQty(row.quantity)}
-                          </TableCell>
-                          <TableCell className="h-12 px-4 py-2 text-right text-sm tabular-nums">
-                            {fmtMoney(row.unit_price)}
-                          </TableCell>
-                          <TableCell className="h-12 px-4 py-2 text-right text-sm font-semibold tabular-nums">
-                            {fmtMoney(row.line_total)} MT
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {data!.rows.map((row) => {
+                        const rowKey = row.movement_id
+                          ? `mov-${row.movement_id}`
+                          : `cad-${row.product_id}-${row.created_at}`;
+                        const canManage = row.kind === "fornecimento" && row.movement_id != null;
+                        return (
+                          <TableRow
+                            key={rowKey}
+                            className="border-b border-border transition-colors hover:bg-secondary/30"
+                          >
+                            <TableCell className="h-12 px-4 py-2 text-sm tabular-nums text-muted-foreground">
+                              {fmtTime(row.created_at)}
+                            </TableCell>
+                            <TableCell className="h-12 px-4 py-2 text-sm">
+                              <Badge variant="secondary">{kindLabel[row.kind] || row.kind}</Badge>
+                            </TableCell>
+                            <TableCell className="h-12 px-4 py-2 text-sm font-medium">
+                              {row.product_name}
+                            </TableCell>
+                            <TableCell className="h-12 px-4 py-2 text-right text-sm tabular-nums">
+                              {fmtQty(row.quantity)}
+                            </TableCell>
+                            <TableCell className="h-12 px-4 py-2 text-right text-sm tabular-nums">
+                              {fmtMoney(row.unit_price)}
+                            </TableCell>
+                            <TableCell className="h-12 px-4 py-2 text-right text-sm font-semibold tabular-nums">
+                              {fmtMoney(row.line_total)} MT
+                            </TableCell>
+                            <TableCell className="h-12 px-4 py-2">
+                              {canManage ? (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    title="Editar quantidade"
+                                    onClick={() => openEdit(row)}
+                                  >
+                                    <Edit24Regular className="size-4" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 text-destructive hover:text-destructive"
+                                    title="Eliminar fornecimento"
+                                    onClick={() => setDeleteRow(row)}
+                                  >
+                                    <Delete24Regular className="size-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <span className="block text-right text-xs text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                       <TableRow className="bg-secondary/30">
                         <TableCell className="h-12 px-4 py-2 text-sm font-semibold" colSpan={3}>
                           Total do dia · {data!.products_count} produto
@@ -218,6 +333,7 @@ export function OverviewScreen() {
                         <TableCell className="h-12 px-4 py-2 text-right text-sm font-semibold tabular-nums">
                           {fmtMoney(data!.total_value)} MT
                         </TableCell>
+                        <TableCell className="h-12 px-4 py-2" />
                       </TableRow>
                     </>
                   )}
@@ -227,6 +343,93 @@ export function OverviewScreen() {
           )}
         </div>
       </div>
+
+      <Dialog
+        open={!!editRow}
+        onOpenChange={(open) => {
+          if (!open) setEditRow(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Editar quantidade</DialogTitle>
+            <DialogDescription>
+              Corrige a quantidade fornecida de{" "}
+              <span className="font-medium text-foreground">{editRow?.product_name}</span>. O stock
+              será ajustado pela diferença.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-qty">Nova quantidade</Label>
+              <Input
+                id="edit-qty"
+                type="number"
+                min={0.001}
+                step="any"
+                value={editQty}
+                onChange={(e) => setEditQty(e.target.value)}
+                className="text-lg font-semibold"
+              />
+            </div>
+            {editRow ? (
+              <p className="text-xs text-muted-foreground">
+                Actual: {fmtQty(editRow.quantity)} → Nova: {fmtQty(editQty || 0)}
+              </p>
+            ) : null}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEditRow(null)}
+              disabled={updateMutation.isPending}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSaveEdit}
+              disabled={updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "A guardar…" : "Guardar"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={!!deleteRow}
+        onOpenChange={(open) => {
+          if (!open) setDeleteRow(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminar fornecimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vai remover a entrada de{" "}
+              <span className="font-medium text-foreground">
+                {fmtQty(deleteRow?.quantity)} × {deleteRow?.product_name}
+              </span>{" "}
+              e reverter essa quantidade no stock. Esta acção não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "A eliminar…" : "Eliminar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

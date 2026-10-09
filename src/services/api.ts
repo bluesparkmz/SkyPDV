@@ -640,6 +640,14 @@ export const inventoryApi = {
     const qs = date ? `?date=${encodeURIComponent(date)}` : "";
     return apiGet<FornecimentosReport>(`/skypdv/reports/fornecimentos${qs}`);
   },
+  updateFornecimento: (movementId: number, quantity: number | string) =>
+    apiPut<StockMovement>(`/skypdv/inventory/movements/${movementId}`, {
+      quantity: String(quantity),
+    }),
+  deleteFornecimento: (movementId: number) =>
+    apiDelete<{ message: string; reversed_qty: string }>(
+      `/skypdv/inventory/movements/${movementId}`
+    ),
   downloadFornecimentosPdf: (date?: string) => {
     const qs = date ? `?date=${encodeURIComponent(date)}` : "";
     return apiGetBlob(`/skypdv/reports/fornecimentos.pdf${qs}`);
@@ -866,6 +874,7 @@ export interface StockMovement {
 }
 
 export interface FornecimentoRow {
+  movement_id: number | null;
   product_id: number;
   product_name: string;
   product_sku: string | null;
