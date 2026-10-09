@@ -91,7 +91,7 @@ export function OverviewScreen() {
   const queryKey = ["fornecimentos", date] as const;
 
   const summarizeRows = (rows: FornecimentoRow[]) => {
-    const supply = rows.filter((r) => r.kind === "fornecimento");
+    const supply = rows.filter((r) => r.kind === "fornecimento" && Number(r.quantity) > 0);
     const total_qty = supply.reduce((sum, r) => sum + Number(r.quantity || 0), 0);
     const total_value = supply.reduce((sum, r) => sum + Number(r.line_total || 0), 0);
     return {
@@ -314,15 +314,17 @@ export function OverviewScreen() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {(data?.rows || []).length === 0 ? (
+                  {(data?.rows || []).filter((r) => Number(r.quantity) > 0).length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={7} className="py-8 text-center text-sm text-muted-foreground">
-                        Sem produtos fornecidos ou cadastrados nesta data.
+                        Sem fornecimentos nesta data.
                       </TableCell>
                     </TableRow>
                   ) : (
                     <>
-                      {data!.rows.map((row) => {
+                      {data!.rows
+                        .filter((r) => Number(r.quantity) > 0)
+                        .map((row) => {
                         const rowKey = row.movement_id
                           ? `mov-${row.movement_id}`
                           : `cad-${row.product_id}-${row.created_at}`;
