@@ -88,31 +88,86 @@ export function OverviewScreen() {
     queryFn: () => inventoryApi.getFornecimentos(date),
   });
 
-  const invalidate = () => {
-    void queryClient.invalidateQueries({ queryKey: ["fornecimentos", date] });
+  const queryKey = ["fornecimentos", date] as const;
+
+  const summarizeRows = (rows: FornecimentoRow[]) => {
+    const supply = rows.filter((r) => r.kind === "fornecimento");
+    const total_qty = supply.reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+    const total_value = supply.reduce((sum, r) => sum + Number(r.line_total || 0), 0);
+    return {
+      products_count: new Set(supply.map((r) => r.product_id)).size,
+      total_qty: String(total_qty),
+      total_value: total_value.toFixed(2),
+    };
+  };
+
+  const removeRowFromCache = (movementId: number) => {
+    queryClient.setQueryData<FornecimentosReport>(queryKey, (prev) => {
+      if (!prev) return prev;
+      const rows = prev.rows.filter((r) => r.movement_id !== movementId);
+      return { ...prev, rows, ...summarizeRows(rows) };
+    });
+  };
+
+  const patchRowQtyInCache = (movementId: number, quantity: number, unitPrice: number) => {
+    queryClient.setQueryData<FornecimentosReport>(queryKey, (prev) => {
+      if (!prev) return prev;
+      const rows = prev.rows.map((r) => {
+        if (r.movement_id !== movementId) return r;
+        const line_total = quantity * unitPrice;
+        return {
+          ...r,
+          quantity: String(quantity),
+          line_total: line_total.toFixed(2),
+        };
+      });
+      return { ...prev, rows, ...summarizeRows(rows) };
+    });
+  };
+
+  const refresh = async () => {
+    await queryClient.invalidateQueries({ queryKey });
+    await refetch();
   };
 
   const updateMutation = useMutation({
     mutationFn: ({ movementId, quantity }: { movementId: number; quantity: number }) =>
       inventoryApi.updateFornecimento(movementId, quantity),
-    onSuccess: () => {
-      toast.success("Quantidade do fornecimento actualizada");
+    onSuccess: (_data, vars) => {
+      if (vars.quantity <= 0) {
+        removeRowFromCache(vars.movementId);
+        toast.success("Fornecimento eliminado");
+      } else {
+        const price = Number(editRow?.unit_price || 0);
+        patchRowQtyInCache(vars.movementId, vars.quantity, price);
+        toast.success("Quantidade do fornecimento actualizada");
+      }
       setEditRow(null);
-      invalidate();
+      void refresh();
     },
     onError: (err: unknown) => {
       toast.error(err instanceof Error ? err.message : "Falha ao editar fornecimento");
+      void refresh();
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (movementId: number) => inventoryApi.deleteFornecimento(movementId),
-    onSuccess: () => {
-      toast.success("Fornecimento eliminado e stock revertido");
-      setDeleteRow(null);
-      invalidate();
+    onMutate: async (movementId) => {
+      await queryClient.cancelQueries({ queryKey });
+      const previous = queryClient.getQueryData<FornecimentosReport>(queryKey);
+      removeRowFromCache(movementId);
+      return { previous };
     },
-    onError: (err: unknown) => {
+    onSuccess: () => {
+      toast.success("Fornecimento eliminado — saiu do extrato e dos totais");
+      setDeleteRow(null);
+      void refresh();
+    },
+    onError: (err: unknown, _id, ctx) => {
+      if (ctx?.previous) {
+        queryClient.setQueryData(queryKey, ctx.previous);
+      }
       toast.error(err instanceof Error ? err.message : "Falha ao eliminar fornecimento");
     },
   });
@@ -134,8 +189,13 @@ export function OverviewScreen() {
   const handleSaveEdit = () => {
     if (!editRow?.movement_id) return;
     const qty = Number(editQty);
-    if (!Number.isFinite(qty) || qty <= 0) {
-      toast.error("A quantidade deve ser maior que zero");
+    if (!Number.isFinite(qty) || qty < 0) {
+      toast.error("Quantidade inválida");
+      return;
+    }
+    // 0 = eliminar por completo (sem rasto nos totais)
+    if (qty === 0) {
+      updateMutation.mutate({ movementId: editRow.movement_id, quantity: 0 });
       return;
     }
     updateMutation.mutate({ movementId: editRow.movement_id, quantity: qty });
@@ -361,11 +421,11 @@ export function OverviewScreen() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <div className="space-y-2">
-              <Label htmlFor="edit-qty">Nova quantidade</Label>
+              <Label htmlFor="edit-qty">Nova quantidade (0 = eliminar)</Label>
               <Input
                 id="edit-qty"
                 type="number"
-                min={0.001}
+                min={0}
                 step="any"
                 value={editQty}
                 onChange={(e) => setEditQty(e.target.value)}
@@ -375,6 +435,7 @@ export function OverviewScreen() {
             {editRow ? (
               <p className="text-xs text-muted-foreground">
                 Actual: {fmtQty(editRow.quantity)} → Nova: {fmtQty(editQty || 0)}
+                {Number(editQty) === 0 ? " · será removido do extrato e dos totais" : ""}
               </p>
             ) : null}
           </div>
