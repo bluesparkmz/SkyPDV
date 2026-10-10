@@ -732,6 +732,12 @@ export function ProductsScreen() {
               onClose={() => setIsDialogOpen(false)}
               onSave={handleSaveProduct}
               product={productForDialog}
+              existingProducts={products}
+              onExistingProduct={(existing) => {
+                setIsDialogOpen(false);
+                toast.message(`«${existing.name}» já existe — a abrir Fornecer`);
+                openSupplyDialog(existing);
+              }}
             />
             <DeleteProductDialog
               isOpen={isDeleteDialogOpen}

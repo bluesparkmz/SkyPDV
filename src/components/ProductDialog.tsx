@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwise24Regular,
+  ArrowDownload24Regular,
   Box24Regular,
   CheckmarkCircle24Regular,
   Dismiss24Regular,
@@ -12,13 +13,20 @@ import { useCategories } from "@/hooks/useCategories";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { isEmoji } from "@/lib/imageUtils";
-import { productsApi } from "@/services/api";
+import { productsApi, type Product as ApiProduct } from "@/services/api";
 import { Product } from "@/types/product";
+
+function normalizeProductName(name: string) {
+  return name.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 interface ProductDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (product: Omit<Product, "id"> & { id?: string }) => void;
+  /** Se o nome já existir no cadastro, chama isto em vez de criar (abre Fornecer). */
+  onExistingProduct?: (product: ApiProduct) => void;
+  existingProducts?: ApiProduct[];
   product?: Product | null;
 }
 
@@ -55,7 +63,14 @@ function saveProductFormPrefs(prefs: ProductFormPrefs) {
   }
 }
 
-export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialogProps) {
+export function ProductDialog({
+  isOpen,
+  onClose,
+  onSave,
+  onExistingProduct,
+  existingProducts = [],
+  product,
+}: ProductDialogProps) {
   const [formData, setFormData] = useState({
     name: "",
     price: "",
@@ -183,11 +198,30 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
     }
   };
 
+  const isEditing = Boolean(product);
+
+  const duplicateProduct = useMemo((): ApiProduct | null => {
+    if (isEditing || !formData.name.trim()) return null;
+    const target = normalizeProductName(formData.name);
+    return (
+      existingProducts.find(
+        (p) => p.is_active !== false && normalizeProductName(p.name) === target
+      ) || null
+    );
+  }, [existingProducts, formData.name, isEditing]);
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
 
     // Block submit if an upload is still in progress
     if (uploadState === "uploading") return;
+
+    // Produto já cadastrado → não cria outro; abre diálogo de fornecer
+    if (!isEditing && duplicateProduct) {
+      onExistingProduct?.(duplicateProduct);
+      onClose();
+      return;
+    }
 
     let finalImage = formData.image;
     let finalEmoji = formData.emoji;
@@ -217,8 +251,6 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
 
     onClose();
   };
-
-  const isEditing = Boolean(product);
 
   // What to show inside the preview box
   const previewSrc = imagePreview || (!isEmoji(formData.image) ? formData.image : null);
@@ -331,6 +363,27 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                   required
                   className="w-full rounded-lg border border-border bg-secondary/50 px-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
                 />
+                {!isEditing && duplicateProduct ? (
+                  <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/20 dark:text-amber-100">
+                    <p className="font-medium">Este produto já está cadastrado.</p>
+                    <p className="mt-1 text-amber-800/90 dark:text-amber-200/90">
+                      Não será criado outro. Use <strong>Fornecer</strong> para adicionar stock.
+                    </p>
+                    {onExistingProduct ? (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onExistingProduct(duplicateProduct);
+                          onClose();
+                        }}
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
+                      >
+                        <ArrowDownload24Regular className="h-3.5 w-3.5" />
+                        Fornecer «{duplicateProduct.name}»
+                      </button>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               {!isEditing && formData.track_stock ? (
@@ -498,7 +551,7 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
               {isEditing && (
                 <p className="text-xs text-muted-foreground">
                   {formData.track_stock
-                    ? "A quantidade deste produto e gerida na tela de Estoque."
+                    ? "Para adicionar stock use Fornecer (não neste cadastro)."
                     : "Este produto esta configurado para vender sem controle de estoque."}
                 </p>
               )}
@@ -519,6 +572,11 @@ export function ProductDialog({ isOpen, onClose, onSave, product }: ProductDialo
                 <>
                   <ArrowClockwise24Regular className="h-4 w-4 animate-spin" />
                   Enviando imagem…
+                </>
+              ) : duplicateProduct && !isEditing ? (
+                <>
+                  <ArrowDownload24Regular className="h-4 w-4" />
+                  Fornecer stock
                 </>
               ) : (
                 <>
