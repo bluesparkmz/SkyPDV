@@ -69,7 +69,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { format, parseISO, startOfMonth, endOfMonth, startOfDay, endOfDay } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale/pt-BR";
 import { useQuery } from "@tanstack/react-query";
 import { useSales, useUpdateSaleItems, useUpdateSalePaymentMethod, useVoidSale } from "@/hooks/useSales";
@@ -125,7 +125,7 @@ const useStyles = makeStyles({
   },
 });
 
-type ReportView = "dashboard" | "daily" | "all-sales" | "cash-registers";
+type ReportView = "dashboard" | "daily" | "monthly" | "all-sales" | "cash-registers";
 
 const OUTFLOW_REASON_LABELS: Record<string, string> = {
   consumo_interno: "Consumo interno",
@@ -157,6 +157,21 @@ function mozambiqueDayRange(date: string) {
   };
 }
 
+function mozambiquePeriodRange(start: string, end: string) {
+  return {
+    start: mozambiqueDayRange(start).start,
+    end: mozambiqueDayRange(end).end,
+  };
+}
+
+function monthBounds(yearMonth: string) {
+  const parsed = parseISO(`${yearMonth}-01`);
+  return {
+    start: format(startOfMonth(parsed), "yyyy-MM-dd"),
+    end: format(endOfMonth(parsed), "yyyy-MM-dd"),
+  };
+}
+
 export function ReportsScreen() {
   const styles = useStyles();
   const isMobile = useIsMobile();
@@ -167,6 +182,7 @@ export function ReportsScreen() {
   const todayKey = format(new Date(), "yyyy-MM-dd");
   const [activeView, setActiveView] = useState<ReportView>("daily");
   const [selectedDate, setSelectedDate] = useState<string | null>(todayKey);
+  const [selectedMonth, setSelectedMonth] = useState(format(new Date(), "yyyy-MM"));
   const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
   const [isSaleDetailOpen, setIsSaleDetailOpen] = useState(false);
   const [startDate, setStartDate] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'));
@@ -550,7 +566,9 @@ export function ReportsScreen() {
 
   const handleSelectDay = (date: string) => {
     setSelectedDate(date);
-    setActiveView("daily");
+    if (activeView !== "monthly") {
+      setActiveView("daily");
+    }
   };
 
   const handleViewSaleDetails = (sale: Sale) => {
@@ -612,37 +630,32 @@ export function ReportsScreen() {
   ) => {
     try {
       const hasPhone = !!whatsappPrefs.phone?.trim();
-      // Se estiver na view diária e tiver uma data selecionada, exporta apenas esse dia
-      const isDailyView = activeView === "daily" && selectedDate;
-      let exportStart: string | undefined = undefined;
-      let exportEnd: string | undefined = undefined;
-      if (isDailyView && selectedDate) {
-        const s = startOfDay(parseISO(selectedDate));
-        const e = endOfDay(parseISO(selectedDate));
-        exportStart = s.toISOString();
-        exportEnd = e.toISOString();
-      } else {
-        exportStart = startDate;
-        exportEnd = endDate;
-      }
+      const exportSingleDay =
+        activeView === "daily" && !!selectedDate && startDate === endDate;
+      const range = exportSingleDay && selectedDate
+        ? mozambiqueDayRange(selectedDate)
+        : mozambiquePeriodRange(startDate, endDate);
+      const exportStart = range.start;
+      const exportEnd = range.end;
 
       const phoneParam = whatsappPrefs.enabled && hasPhone ? whatsappPrefs.phone : undefined;
       const { blob, filename: apiFilename } =
         type === "pdf"
           ? await dashboardApi.downloadSalesSummaryPdf(
-              exportStart!,
-              exportEnd!,
+              exportStart,
+              exportEnd,
               selectedCashierId,
               phoneParam,
               opts?.productScope
             )
-          : await dashboardApi.downloadSalesSummaryExcel(exportStart!, exportEnd!, selectedCashierId, phoneParam);
+          : await dashboardApi.downloadSalesSummaryExcel(exportStart, exportEnd, selectedCashierId, phoneParam);
 
       const todayStr = format(new Date(), 'dd-MM-yyyy');
-      // Formata o período para o nome do arquivo
-      const periodStr = isDailyView
-        ? format(parseISO(selectedDate!), 'dd-MM-yyyy')
-        : `${format(parseISO(startDate), 'dd-MM-yyyy')}_a_${format(parseISO(endDate), 'dd-MM-yyyy')}`;
+      const periodStr = exportSingleDay && selectedDate
+        ? format(parseISO(selectedDate), 'dd-MM-yyyy')
+        : startDate === endDate
+          ? format(parseISO(startDate), 'dd-MM-yyyy')
+          : `${format(parseISO(startDate), 'dd-MM-yyyy')}_a_${format(parseISO(endDate), 'dd-MM-yyyy')}`;
 
       const ext = type === "pdf" ? "pdf" : "xlsx";
       const filename = `Relatório_${todayStr}_Ref_${periodStr}.${ext}`;
@@ -688,9 +701,11 @@ export function ReportsScreen() {
       setEndDate(format(end, "yyyy-MM-dd"));
       setActiveView("daily");
     } else if (period === "month") {
-      setStartDate(format(startOfMonth(start), "yyyy-MM-dd"));
-      setEndDate(format(endOfMonth(end), "yyyy-MM-dd"));
-      setActiveView("daily");
+      const bounds = monthBounds(format(start, "yyyy-MM"));
+      setSelectedMonth(format(start, "yyyy-MM"));
+      setStartDate(bounds.start);
+      setEndDate(bounds.end);
+      setActiveView("monthly");
     }
   };
 
@@ -711,6 +726,12 @@ export function ReportsScreen() {
       label: "Relatórios Diários",
       icon: CalendarLtr24Regular,
       description: "Vendas, serviços e saídas por dia",
+    },
+    {
+      id: "monthly" as ReportView,
+      label: "Relatórios Mensais",
+      icon: ChartMultiple24Regular,
+      description: "Vendas do mês para imprimir",
     },
     {
       id: "all-sales" as ReportView,
@@ -740,6 +761,11 @@ export function ReportsScreen() {
           if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile após selecionar
           if (nextView === "daily" && !selectedDate) {
             setSelectedDate(format(new Date(), "yyyy-MM-dd"));
+          }
+          if (nextView === "monthly") {
+            const bounds = monthBounds(selectedMonth);
+            setStartDate(bounds.start);
+            setEndDate(bounds.end);
           }
         }}
       >
@@ -846,18 +872,39 @@ export function ReportsScreen() {
                 <h1 className="text-lg md:text-xl font-bold tracking-tight">
                   {activeView === "dashboard" && "Dashboard de Relatórios"}
                   {activeView === "daily" && "Relatórios Diários"}
+                  {activeView === "monthly" && "Relatórios Mensais"}
                   {activeView === "all-sales" && "Todas as Vendas"}
                   {activeView === "cash-registers" && "Relatorio de Caixas"}
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   {activeView === "dashboard" && ""}
                   {activeView === "daily" && "Visualize vendas, serviços e saídas por dia"}
+                  {activeView === "monthly" && "Imprima o relatório de vendas do mês"}
                   {activeView === "all-sales" && "Histórico completo de vendas"}
                   {activeView === "cash-registers" && "Caixas abertos e fechados por operador"}
                 </p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {activeView === "monthly" && (
+                <>
+                  <Input
+                    type="month"
+                    value={selectedMonth}
+                    onChange={(e) => {
+                      const nextMonth = e.target.value;
+                      if (!nextMonth) return;
+                      setSelectedMonth(nextMonth);
+                      const bounds = monthBounds(nextMonth);
+                      setStartDate(bounds.start);
+                      setEndDate(bounds.end);
+                    }}
+                    className="h-8 w-[160px] text-xs"
+                    aria-label="Mês do relatório"
+                  />
+                  <div className="hidden sm:block w-px h-6 bg-border mx-1" />
+                </>
+              )}
               {(activeView === "daily" || activeView === "all-sales") && (
                 <>
                   <Input
@@ -891,9 +938,14 @@ export function ReportsScreen() {
                 Mês
               </Button>
               <div className="hidden sm:block w-px h-6 bg-border mx-1" />
-              <Button onClick={handleExportPDF} className="gap-2" variant="outline" title="Exportar Relatório PDF">
+              <Button
+                onClick={handleExportPDF}
+                className="gap-2"
+                variant="outline"
+                title={activeView === "monthly" ? "Imprimir relatório mensal de vendas" : "Exportar Relatório PDF"}
+              >
                 <Print24Regular className="w-4 h-4" />
-                PDF
+                {activeView === "monthly" ? "Imprimir mês" : "PDF"}
               </Button>
               <Button
                 onClick={() => handleExport("excel")}
@@ -921,7 +973,7 @@ export function ReportsScreen() {
               />
             )}
 
-            {activeView === "daily" && (
+            {(activeView === "daily" || activeView === "monthly") && (
               <DailyReportsView
                 dailySales={dailyReportDays}
                 dailyLoading={dailyLoading || servicesLoading || outflowsLoading}
