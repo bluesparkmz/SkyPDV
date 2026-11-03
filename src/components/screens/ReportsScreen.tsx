@@ -132,7 +132,7 @@ const OUTFLOW_REASON_LABELS: Record<string, string> = {
   cafetaria: "Cafetaria",
   cozinha: "Cozinha",
   perda: "Perda / Avaria",
-  despesa_diaria: "Despesa diária",
+  despesa_diaria: "Despesa diÃ¡ria",
   outro: "Outro",
 };
 
@@ -214,12 +214,12 @@ export function ReportsScreen() {
   });
 
   useEffect(() => {
-    // Sincronizar estado inicial e mudanças de redimensionamento
-    // No desktop, o menu deve começar aberto. No mobile, fechado.
+    // Sincronizar estado inicial e mudanÃ§as de redimensionamento
+    // No desktop, o menu deve comeÃ§ar aberto. No mobile, fechado.
     setIsNavOpen(!isMobile);
   }, [isMobile]);
 
-  // Verificar se é admin
+  // Verificar se Ã© admin
   const isAdmin = useIsAdmin();
   const { data: terminalUsers = [] } = useTerminalUsers();
   const cashierNameByUserId = useMemo(() => {
@@ -242,7 +242,7 @@ export function ReportsScreen() {
     (u) => u.role === "cashier" && u.is_active && typeof u.user_id === "number" && Number.isFinite(u.user_id)
   );
 
-  // Buscar relatórios diários
+  // Buscar relatÃ³rios diÃ¡rios
   // Never use the workstation timezone for server-side report filters.
   // The business day is always Mozambique time (UTC+2), on every PC.
   const periodStartIso = useMemo(() => mozambiqueDayRange(startDate).start, [startDate]);
@@ -431,11 +431,11 @@ export function ReportsScreen() {
     };
   }, [filteredOutflows]);
 
-  // Calcular resumo de métodos de pagamento
+  // Calcular resumo de mÃ©todos de pagamento
   const getSalePaymentMethodLabel = (sale: Sale) => {
-    const savedLabel = String(sale.notes || "").match(/M[eé]todo\s*:\s*([^\n)]+)/i)?.[1]?.trim();
+    const savedLabel = String(sale.notes || "").match(/M[eÃ©]todo\s*:\s*([^\n)]+)/i)?.[1]?.trim();
     if (savedLabel) return savedLabel;
-    return sale.payment_method || "Não informado";
+    return sale.payment_method || "NÃ£o informado";
   };
 
   // Never fall back to the whole period: a day with no sales must show zero
@@ -529,7 +529,7 @@ export function ReportsScreen() {
     return Array.from(map.values()).sort((a, b) => (a.label < b.label ? 1 : -1));
   }, [allSales]);
 
-  const getPaymentMethodLabel = (method: string) => method || "Não informado";
+  const getPaymentMethodLabel = (method: string) => method || "NÃ£o informado";
 
   const filteredCashRegisters = useMemo(() => {
     const query = operatorNameFilter.trim().toLowerCase();
@@ -596,7 +596,7 @@ export function ReportsScreen() {
 
   const handleReprintReceipt = async (sale: Sale) => {
     if (sale.status === "cancelled") {
-      toast.error("Não é possível reimprimir uma venda cancelada.");
+      toast.error("NÃ£o Ã© possÃ­vel reimprimir uma venda cancelada.");
       return;
     }
 
@@ -610,7 +610,7 @@ export function ReportsScreen() {
       const receiptContent = formatSaleReceipt(fullSale, { terminal });
       const printResult = await printReceipt(receiptContent);
       if (printResult && !printResult.success) {
-        toast.error(`Falha na impressão: ${printResult.error || "Nenhuma impressora configurada"}`, {
+        toast.error(`Falha na impressÃ£o: ${printResult.error || "Nenhuma impressora configurada"}`, {
           duration: 6000,
         });
       } else if (printResult?.success) {
@@ -631,7 +631,7 @@ export function ReportsScreen() {
     try {
       const hasPhone = !!whatsappPrefs.phone?.trim();
       const exportSingleDay =
-        activeView === "daily" && !!selectedDate && startDate === endDate;
+        activeView === "daily" && !!selectedDate; // FIX: removed "startDate === endDate" — daily view must always export the selected day, not the full period range
       const range = exportSingleDay && selectedDate
         ? mozambiqueDayRange(selectedDate)
         : mozambiquePeriodRange(startDate, endDate);
@@ -658,7 +658,7 @@ export function ReportsScreen() {
           : `${format(parseISO(startDate), 'dd-MM-yyyy')}_a_${format(parseISO(endDate), 'dd-MM-yyyy')}`;
 
       const ext = type === "pdf" ? "pdf" : "xlsx";
-      const filename = `Relatório_${todayStr}_Ref_${periodStr}.${ext}`;
+      const filename = `RelatÃ³rio_${todayStr}_Ref_${periodStr}.${ext}`;
 
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -719,25 +719,25 @@ export function ReportsScreen() {
       id: "dashboard" as ReportView,
       label: "Dashboard",
       icon: DataTrending24Regular,
-      description: "Visão geral e resumo",
+      description: "VisÃ£o geral e resumo",
     },
     {
       id: "daily" as ReportView,
-      label: "Relatórios Diários",
+      label: "RelatÃ³rios DiÃ¡rios",
       icon: CalendarLtr24Regular,
-      description: "Vendas, serviços e saídas por dia",
+      description: "Vendas, serviÃ§os e saÃ­das por dia",
     },
     {
       id: "monthly" as ReportView,
-      label: "Relatórios Mensais",
+      label: "RelatÃ³rios Mensais",
       icon: ChartMultiple24Regular,
-      description: "Vendas do mês para imprimir",
+      description: "Vendas do mÃªs para imprimir",
     },
     {
       id: "all-sales" as ReportView,
       label: "Todas as Vendas",
       icon: Receipt24Regular,
-      description: "Histórico completo",
+      description: "HistÃ³rico completo",
     },
     {
       id: "cash-registers" as ReportView,
@@ -758,7 +758,7 @@ export function ReportsScreen() {
         onNavItemSelect={(_, data) => {
           const nextView = data.value as ReportView;
           setActiveView(nextView);
-          if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile após selecionar
+          if (isMobile) setIsNavOpen(false); // Fecha o menu no mobile apÃ³s selecionar
           if (nextView === "daily" && !selectedDate) {
             setSelectedDate(format(new Date(), "yyyy-MM-dd"));
           }
@@ -773,7 +773,7 @@ export function ReportsScreen() {
           <Hamburger onClick={() => setIsNavOpen((v) => !v)} />
         </NavDrawerHeader>
         <NavDrawerBody className={styles.drawerContent}>
-          <NavSectionHeader>Relatórios</NavSectionHeader>
+          <NavSectionHeader>RelatÃ³rios</NavSectionHeader>
           {sidebarItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -819,7 +819,7 @@ export function ReportsScreen() {
 
             {!isMobile && (
               <div className="space-y-2">
-                <div className="text-xs font-semibold text-muted-foreground uppercase">Período</div>
+                <div className="text-xs font-semibold text-muted-foreground uppercase">PerÃ­odo</div>
                 <div className="space-y-2">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">Data Inicial</label>
@@ -870,17 +870,17 @@ export function ReportsScreen() {
               )}
               <div>
                 <h1 className="text-lg md:text-xl font-bold tracking-tight">
-                  {activeView === "dashboard" && "Dashboard de Relatórios"}
-                  {activeView === "daily" && "Relatórios Diários"}
-                  {activeView === "monthly" && "Relatórios Mensais"}
+                  {activeView === "dashboard" && "Dashboard de RelatÃ³rios"}
+                  {activeView === "daily" && "RelatÃ³rios DiÃ¡rios"}
+                  {activeView === "monthly" && "RelatÃ³rios Mensais"}
                   {activeView === "all-sales" && "Todas as Vendas"}
                   {activeView === "cash-registers" && "Relatorio de Caixas"}
                 </h1>
                 <p className="text-xs text-muted-foreground">
                   {activeView === "dashboard" && ""}
-                  {activeView === "daily" && "Visualize vendas, serviços e saídas por dia"}
-                  {activeView === "monthly" && "Imprima o relatório de vendas do mês"}
-                  {activeView === "all-sales" && "Histórico completo de vendas"}
+                  {activeView === "daily" && "Visualize vendas, serviÃ§os e saÃ­das por dia"}
+                  {activeView === "monthly" && "Imprima o relatÃ³rio de vendas do mÃªs"}
+                  {activeView === "all-sales" && "HistÃ³rico completo de vendas"}
                   {activeView === "cash-registers" && "Caixas abertos e fechados por operador"}
                 </p>
               </div>
@@ -900,7 +900,7 @@ export function ReportsScreen() {
                       setEndDate(bounds.end);
                     }}
                     className="h-8 w-[160px] text-xs"
-                    aria-label="Mês do relatório"
+                    aria-label="MÃªs do relatÃ³rio"
                   />
                   <div className="hidden sm:block w-px h-6 bg-border mx-1" />
                 </>
@@ -914,7 +914,7 @@ export function ReportsScreen() {
                     className="h-8 w-[138px] text-xs"
                     aria-label="Data inicial"
                   />
-                  <span className="text-muted-foreground text-xs">até</span>
+                  <span className="text-muted-foreground text-xs">atÃ©</span>
                   <Input
                     type="date"
                     value={endDate}
@@ -935,23 +935,23 @@ export function ReportsScreen() {
                 7 Dias
               </Button>
               <Button variant="outline" onClick={() => handleQuickFilter("month")} size="sm">
-                Mês
+                MÃªs
               </Button>
               <div className="hidden sm:block w-px h-6 bg-border mx-1" />
               <Button
                 onClick={handleExportPDF}
                 className="gap-2"
                 variant="outline"
-                title={activeView === "monthly" ? "Imprimir relatório mensal de vendas" : "Exportar Relatório PDF"}
+                title={activeView === "monthly" ? "Imprimir relatÃ³rio mensal de vendas" : "Exportar RelatÃ³rio PDF"}
               >
                 <Print24Regular className="w-4 h-4" />
-                {activeView === "monthly" ? "Imprimir mês" : "PDF"}
+                {activeView === "monthly" ? "Imprimir mÃªs" : "PDF"}
               </Button>
               <Button
                 onClick={() => handleExport("excel")}
                 className="gap-2"
                 variant="outline"
-                title="Exportar Relatório Excel"
+                title="Exportar RelatÃ³rio Excel"
               >
                 <Document24Regular className="w-4 h-4" />
                 Excel
@@ -1044,13 +1044,13 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Detalhes da Venda</DialogTitle>
               <DialogDescription>
-                Recibo #{selectedSale?.receipt_number || selectedSale?.id} • {selectedSale && formatTime(selectedSale.created_at)}
+                Recibo #{selectedSale?.receipt_number || selectedSale?.id} â€¢ {selectedSale && formatTime(selectedSale.created_at)}
               </DialogDescription>
             </DialogHeader>
 
             {selectedSale && (
               <div className="space-y-6 py-4">
-                {/* Informações da Venda */}
+                {/* InformaÃ§Ãµes da Venda */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
                     <p className="text-xs text-muted-foreground uppercase mb-1">Total</p>
@@ -1059,7 +1059,7 @@ export function ReportsScreen() {
                     </p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted/30 border border-border">
-                    <p className="text-xs text-muted-foreground uppercase mb-1">Método de Pagamento</p>
+                    <p className="text-xs text-muted-foreground uppercase mb-1">MÃ©todo de Pagamento</p>
                     <p className="text-lg font-semibold">
                       {getPaymentMethodLabel(selectedSale.payment_method)}
                     </p>
@@ -1165,13 +1165,13 @@ export function ReportsScreen() {
         <Dialog open={!!saleForPaymentAdjustment} onOpenChange={(open) => !open && setSaleForPaymentAdjustment(null)}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Ajustar método de pagamento</DialogTitle>
+              <DialogTitle>Ajustar mÃ©todo de pagamento</DialogTitle>
               <DialogDescription>
-                Escolha o método correto para a venda #{saleForPaymentAdjustment?.receipt_number || saleForPaymentAdjustment?.id}.
+                Escolha o mÃ©todo correto para a venda #{saleForPaymentAdjustment?.receipt_number || saleForPaymentAdjustment?.id}.
               </DialogDescription>
             </DialogHeader>
             <Select value={selectedPaymentMethodId} onValueChange={setSelectedPaymentMethodId}>
-              <SelectTrigger><SelectValue placeholder="Selecione o método" /></SelectTrigger>
+              <SelectTrigger><SelectValue placeholder="Selecione o mÃ©todo" /></SelectTrigger>
               <SelectContent>
                 {companyPaymentMethods.map((method) => (
                   <SelectItem key={method.id} value={String(method.id)}>{method.name}</SelectItem>
@@ -1192,7 +1192,7 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Anular venda</DialogTitle>
               <DialogDescription>
-                A venda #{saleForVoid?.receipt_number || saleForVoid?.id} será anulada e o stock será estornado. Esta ação não pode ser desfeita.
+                A venda #{saleForVoid?.receipt_number || saleForVoid?.id} serÃ¡ anulada e o stock serÃ¡ estornado. Esta aÃ§Ã£o nÃ£o pode ser desfeita.
               </DialogDescription>
             </DialogHeader>
             <DialogFooter>
@@ -1223,8 +1223,8 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Enviar para WhatsApp</DialogTitle>
               <DialogDescription>
-                Informe o número de WhatsApp que deve receber o relatório. Você pode desativar esse envio nas
-                configurações.
+                Informe o nÃºmero de WhatsApp que deve receber o relatÃ³rio. VocÃª pode desativar esse envio nas
+                configuraÃ§Ãµes.
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-3 py-3">
@@ -1239,7 +1239,7 @@ export function ReportsScreen() {
                   checked={whatsappPrefs.enabled}
                   onChange={(e) => setWhatsappPrefs({ enabled: e.target.checked })}
                 />
-                <span className="text-sm text-muted-foreground">Ativar envio automático para WhatsApp</span>
+                <span className="text-sm text-muted-foreground">Ativar envio automÃ¡tico para WhatsApp</span>
               </div>
             </div>
             <DialogFooter className="gap-2">
@@ -1354,7 +1354,7 @@ function SaleItemsAdjustmentDialog({
                 <Input type="number" min="0.001" step="0.001" value={item.quantity} onChange={(event) => updateItem(index, { quantity: event.target.value })} />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Preço (MT)</p>
+                <p className="text-xs text-muted-foreground mb-1">PreÃ§o (MT)</p>
                 <Input type="number" min="0" step="0.01" value={item.unit_price} onChange={(event) => updateItem(index, { unit_price: event.target.value })} />
               </div>
               <Button variant="ghost" className="text-destructive hover:text-destructive" disabled={items.length === 1} onClick={() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index))}>
@@ -1371,7 +1371,7 @@ function SaleItemsAdjustmentDialog({
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={() => onSave(items)} disabled={!canSave || isSaving}>
-            {isSaving ? "A guardar..." : "Confirmar alteração"}
+            {isSaving ? "A guardar..." : "Confirmar alteraÃ§Ã£o"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -1418,7 +1418,7 @@ function DashboardView({
 
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket Médio</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Ticket MÃ©dio</p>
             <h3 className="text-2xl font-bold mt-1">
               {summaryLoading ? "..." : formatCurrency(summary?.average_sale_value || 0)}
             </h3>
@@ -1427,7 +1427,7 @@ function DashboardView({
             <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
               <ChartMultiple24Regular className="w-5 h-5" />
             </div>
-            <span className="text-xs text-muted-foreground">Por transação</span>
+            <span className="text-xs text-muted-foreground">Por transaÃ§Ã£o</span>
           </div>
         </div>
 
@@ -1465,7 +1465,7 @@ function DashboardView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviços Prestados</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ServiÃ§os Prestados</p>
             <h3 className="text-2xl font-bold mt-1">
               {extrasLoading ? "..." : formatCurrency(serviceTotals?.total_revenue || 0)}
             </h3>
@@ -1481,7 +1481,7 @@ function DashboardView({
         </div>
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de Dinheiro</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">SaÃ­das de Dinheiro</p>
             <h3 className="text-2xl font-bold mt-1">
               {extrasLoading ? "..." : formatCurrency(outflowTotals?.cash_amount || 0)}
             </h3>
@@ -1491,13 +1491,13 @@ function DashboardView({
               <ArrowExit24Regular className="w-5 h-5" />
             </div>
             <span className="text-xs text-muted-foreground">
-              {outflowTotals?.cash_count || 0} saída(s) do caixa
+              {outflowTotals?.cash_count || 0} saÃ­da(s) do caixa
             </span>
           </div>
         </div>
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de Produto</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">SaÃ­das de Produto</p>
             <h3 className="text-2xl font-bold mt-1">
               {extrasLoading ? "..." : outflowTotals?.product_quantity || 0}
             </h3>
@@ -1516,13 +1516,13 @@ function DashboardView({
       {/* Payment Methods Summary */}
       {summary && (
         <div className="fluent-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
+          <h3 className="text-lg font-semibold mb-4">Resumo por MÃ©todo de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(paymentMethodsSummary).map(([method, data]) => (
               <div key={method} className="p-3 rounded-lg bg-muted/30 border border-border">
                 <p className="text-xs text-muted-foreground uppercase mb-1">{method}</p>
                 <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
+                <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
               </div>
             ))}
           </div>
@@ -1532,7 +1532,7 @@ function DashboardView({
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviços prestados</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">ServiÃ§os prestados</p>
             <h3 className="text-2xl font-bold mt-1">
               {extrasLoading ? "..." : formatCurrency(serviceTotals.total_revenue)}
             </h3>
@@ -1548,7 +1548,7 @@ function DashboardView({
         </div>
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de dinheiro</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">SaÃ­das de dinheiro</p>
             <h3 className="text-2xl font-bold mt-1">
               {extrasLoading ? "..." : formatCurrency(outflowTotals.cash_amount)}
             </h3>
@@ -1558,13 +1558,13 @@ function DashboardView({
               <ArrowExit24Regular className="w-5 h-5" />
             </div>
             <span className="text-xs text-muted-foreground">
-              {extrasLoading ? "..." : `${outflowTotals.cash_count} saída(s) do caixa`}
+              {extrasLoading ? "..." : `${outflowTotals.cash_count} saÃ­da(s) do caixa`}
             </span>
           </div>
         </div>
         <div className="fluent-card p-4 flex flex-col justify-between">
           <div>
-            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Saídas de produto</p>
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">SaÃ­das de produto</p>
             <h3 className="text-2xl font-bold mt-1">
               {extrasLoading ? "..." : outflowTotals.product_quantity}
             </h3>
@@ -1574,7 +1574,7 @@ function DashboardView({
               <Box24Regular className="w-5 h-5" />
             </div>
             <span className="text-xs text-muted-foreground">
-              {extrasLoading ? "..." : `${outflowTotals.product_count} saída(s) de stock`}
+              {extrasLoading ? "..." : `${outflowTotals.product_count} saÃ­da(s) de stock`}
             </span>
           </div>
         </div>
@@ -1666,7 +1666,7 @@ function DailyReportsView({
         <div className="flex-1 overflow-y-auto fluent-card p-2">
           <p className="text-xs text-muted-foreground px-2 pt-2 pb-3 border-b border-border mb-2">
             {format(parseISO(startDate), "dd/MM/yyyy", { locale: ptBR })}
-            {" – "}
+            {" â€“ "}
             {format(parseISO(endDate), "dd/MM/yyyy", { locale: ptBR })}
           </p>
           {dailyLoading ? (
@@ -1676,7 +1676,7 @@ function DailyReportsView({
           ) : dailySales.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-32 text-center">
               <CalendarLtr24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-              <p className="text-sm text-muted-foreground">Nenhum relatório encontrado</p>
+              <p className="text-sm text-muted-foreground">Nenhum relatÃ³rio encontrado</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1706,7 +1706,7 @@ function DailyReportsView({
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">
-                    {day.services_count || 0} serviço(s) · {day.outflows_count || 0} saída(s)
+                    {day.services_count || 0} serviÃ§o(s) Â· {day.outflows_count || 0} saÃ­da(s)
                   </div>
                 </button>
               ))}
@@ -1722,7 +1722,7 @@ function DailyReportsView({
             <div className="text-center">
               <CalendarLtr24Regular className="w-16 h-16 mx-auto mb-4 text-muted-foreground opacity-50" />
               <h3 className="text-lg font-semibold mb-2">Selecione um dia</h3>
-              <p className="text-muted-foreground">Escolha um relatório diário para ver os detalhes</p>
+              <p className="text-muted-foreground">Escolha um relatÃ³rio diÃ¡rio para ver os detalhes</p>
             </div>
           </div>
         ) : (
@@ -1737,15 +1737,15 @@ function DailyReportsView({
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       {daySummary?.total_sales ?? daySales.length} vendas
-                      {selectedDay ? ` • ${selectedDay.services_count} serviço(s)` : ""}
-                      {selectedDay ? ` • ${selectedDay.outflows_count} saída(s)` : ""}
-                      {daySummary ? ` • Vendas: ${formatCurrency(daySummary.total_revenue)}` : ""}
+                      {selectedDay ? ` â€¢ ${selectedDay.services_count} serviÃ§o(s)` : ""}
+                      {selectedDay ? ` â€¢ ${selectedDay.outflows_count} saÃ­da(s)` : ""}
+                      {daySummary ? ` â€¢ Vendas: ${formatCurrency(daySummary.total_revenue)}` : ""}
                     </p>
                   )}
                 </div>
               </div>
 
-              {/* Resumo de Métodos de Pagamento */}
+              {/* Resumo de MÃ©todos de Pagamento */}
               {Object.keys(paymentMethodsSummary).length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 pt-4 border-t border-border">
                   {Object.entries(paymentMethodsSummary).map(([method, data]: any) => (
@@ -1754,14 +1754,14 @@ function DailyReportsView({
                         {getPaymentMethodLabel(method)}
                       </p>
                       <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                      <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
+                      <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Lista de Vendas, Serviços e Saídas do Dia */}
+            {/* Lista de Vendas, ServiÃ§os e SaÃ­das do Dia */}
             <div className="flex-1 overflow-y-auto space-y-4">
               <div className="fluent-card">
               <div className="p-4 border-b border-border">
@@ -1782,12 +1782,12 @@ function DailyReportsView({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Hora</TableHead>
-                        <TableHead>Nº Recibo</TableHead>
+                        <TableHead>NÂº Recibo</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>Items</TableHead>
                         <TableHead>Total</TableHead>
-                        <TableHead>Método</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
+                        <TableHead>MÃ©todo</TableHead>
+                        <TableHead className="text-right">AÃ§Ãµes</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -1817,9 +1817,9 @@ function DailyReportsView({
                             <div className="flex items-center justify-end gap-1">
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="icon" title="Opções da venda">
+                                  <Button variant="ghost" size="icon" title="OpÃ§Ãµes da venda">
                                     <MoreHorizontal24Regular className="w-4 h-4" />
-                                    <span className="sr-only">Opções da venda</span>
+                                    <span className="sr-only">OpÃ§Ãµes da venda</span>
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
@@ -1835,7 +1835,7 @@ function DailyReportsView({
                                     <>
                                       <DropdownMenuSeparator />
                                       <DropdownMenuItem onClick={() => onAdjustPaymentMethod(sale)}>
-                                        Ajustar método de pagamento
+                                        Ajustar mÃ©todo de pagamento
                                       </DropdownMenuItem>
                                       <DropdownMenuItem onClick={() => onAdjustItems(sale)}>
                                         Trocar ou ajustar itens
@@ -1861,20 +1861,20 @@ function DailyReportsView({
                 <div className="p-4 border-b border-border flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Wrench24Regular className="w-5 h-5 text-indigo-500" />
-                    <h3 className="text-lg font-semibold">Serviços prestados</h3>
+                    <h3 className="text-lg font-semibold">ServiÃ§os prestados</h3>
                   </div>
                   <Badge variant="outline">
-                    {dayServiceOrders.length} • {formatCurrency(serviceRevenue)}
+                    {dayServiceOrders.length} â€¢ {formatCurrency(serviceRevenue)}
                   </Badge>
                 </div>
                 {dayServicesLoading ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">
-                    Carregando serviços...
+                    Carregando serviÃ§os...
                   </div>
                 ) : dayServiceOrders.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-32 text-center">
                     <Wrench24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-                    <p className="text-sm text-muted-foreground">Nenhum serviço prestado neste dia</p>
+                    <p className="text-sm text-muted-foreground">Nenhum serviÃ§o prestado neste dia</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1882,10 +1882,10 @@ function DailyReportsView({
                       <TableHeader>
                         <TableRow>
                           <TableHead>Hora</TableHead>
-                          <TableHead>Serviço</TableHead>
+                          <TableHead>ServiÃ§o</TableHead>
                           <TableHead>Cliente</TableHead>
                           <TableHead>Qtd</TableHead>
-                          <TableHead>Método</TableHead>
+                          <TableHead>MÃ©todo</TableHead>
                           <TableHead>Total</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1894,7 +1894,7 @@ function DailyReportsView({
                           <TableRow key={order.id}>
                             <TableCell className="font-medium">{formatTime(order.created_at)}</TableCell>
                             <TableCell>{order.service_name}</TableCell>
-                            <TableCell>{order.customer_name || "Balcão"}</TableCell>
+                            <TableCell>{order.customer_name || "BalcÃ£o"}</TableCell>
                             <TableCell>{formatQuantity(order.quantity || "1")}</TableCell>
                             <TableCell>
                               <Badge variant="secondary">{getPaymentMethodLabel(order.payment_method)}</Badge>
@@ -1914,7 +1914,7 @@ function DailyReportsView({
                 <div className="p-4 border-b border-border flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <ArrowExit24Regular className="w-5 h-5 text-rose-500" />
-                    <h3 className="text-lg font-semibold">Saídas do caixa</h3>
+                    <h3 className="text-lg font-semibold">SaÃ­das do caixa</h3>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">Dinheiro: {formatCurrency(cashOutflowTotal)}</Badge>
@@ -1923,12 +1923,12 @@ function DailyReportsView({
                 </div>
                 {dayOutflowsLoading ? (
                   <div className="flex items-center justify-center h-32 text-muted-foreground">
-                    Carregando saídas...
+                    Carregando saÃ­das...
                   </div>
                 ) : dayOutflows.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-32 text-center">
                     <ArrowExit24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-                    <p className="text-sm text-muted-foreground">Nenhuma saída registada neste dia</p>
+                    <p className="text-sm text-muted-foreground">Nenhuma saÃ­da registada neste dia</p>
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
@@ -1937,7 +1937,7 @@ function DailyReportsView({
                         <TableRow>
                           <TableHead>Hora</TableHead>
                           <TableHead>Tipo</TableHead>
-                          <TableHead>Descrição</TableHead>
+                          <TableHead>DescriÃ§Ã£o</TableHead>
                           <TableHead>Motivo</TableHead>
                           <TableHead>Destino</TableHead>
                           <TableHead>Qtd</TableHead>
@@ -1952,7 +1952,7 @@ function DailyReportsView({
                             outflow.created_by_name ||
                             (outflow.created_by
                               ? cashierNameByUserId.get(outflow.created_by) || `#${outflow.created_by}`
-                              : "—");
+                              : "â€”");
                           return (
                             <TableRow key={outflow.id}>
                               <TableCell className="font-medium">{formatTime(outflow.created_at)}</TableCell>
@@ -1963,16 +1963,16 @@ function DailyReportsView({
                               </TableCell>
                               <TableCell>
                                 {isProduct
-                                  ? outflow.product_name || outflow.title || "—"
-                                  : outflow.title || "—"}
+                                  ? outflow.product_name || outflow.title || "â€”"
+                                  : outflow.title || "â€”"}
                               </TableCell>
                               <TableCell>
-                                {OUTFLOW_REASON_LABELS[outflow.reason] || outflow.reason || "—"}
+                                {OUTFLOW_REASON_LABELS[outflow.reason] || outflow.reason || "â€”"}
                               </TableCell>
-                              <TableCell>{outflow.destination || "—"}</TableCell>
-                              <TableCell>{isProduct ? formatQuantity(outflow.quantity || "0") : "—"}</TableCell>
+                              <TableCell>{outflow.destination || "â€”"}</TableCell>
+                              <TableCell>{isProduct ? formatQuantity(outflow.quantity || "0") : "â€”"}</TableCell>
                               <TableCell className="font-semibold text-primary">
-                                {isProduct ? "—" : formatCurrency(outflow.amount || 0)}
+                                {isProduct ? "â€”" : formatCurrency(outflow.amount || 0)}
                               </TableCell>
                               <TableCell>{operator}</TableCell>
                             </TableRow>
@@ -2042,7 +2042,7 @@ function AllSalesView({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Mês</TableHead>
+                    <TableHead>MÃªs</TableHead>
                     <TableHead>Vendas</TableHead>
                     <TableHead>Total</TableHead>
                   </TableRow>
@@ -2085,10 +2085,10 @@ function AllSalesView({
         </div>
       )}
 
-      {/* Resumo de Métodos de Pagamento */}
+      {/* Resumo de MÃ©todos de Pagamento */}
       {Object.keys(paymentMethodsSummary).length > 0 && (
         <div className="fluent-card p-4">
-          <h3 className="text-lg font-semibold mb-4">Resumo por Método de Pagamento</h3>
+          <h3 className="text-lg font-semibold mb-4">Resumo por MÃ©todo de Pagamento</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {Object.entries(paymentMethodsSummary).map(([method, data]: any) => (
               <div key={method} className="p-3 rounded-lg bg-muted/30 border border-border">
@@ -2096,7 +2096,7 @@ function AllSalesView({
                   {getPaymentMethodLabel(method)}
                 </p>
                 <p className="text-lg font-bold">{formatCurrency(data.total)}</p>
-                <p className="text-xs text-muted-foreground">{data.count} transação(ões)</p>
+                <p className="text-xs text-muted-foreground">{data.count} transaÃ§Ã£o(Ãµes)</p>
               </div>
             ))}
           </div>
@@ -2118,7 +2118,7 @@ function AllSalesView({
         ) : sales.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-center">
             <Receipt24Regular className="w-12 h-12 mb-2 text-muted-foreground opacity-50" />
-            <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no período</p>
+            <p className="text-sm text-muted-foreground">Nenhuma venda encontrada no perÃ­odo</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -2126,12 +2126,12 @@ function AllSalesView({
               <TableHeader>
                 <TableRow>
                   <TableHead>Data/Hora</TableHead>
-                  <TableHead>Nº Recibo</TableHead>
+                  <TableHead>NÂº Recibo</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Items</TableHead>
                   <TableHead>Total</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
+                  <TableHead>MÃ©todo</TableHead>
+                  <TableHead className="text-right">AÃ§Ãµes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -2179,7 +2179,7 @@ function AllSalesView({
                             onClick={() => onReprintReceipt(sale)}
                             disabled={reprintingSaleId === sale.id}
                             className="gap-2"
-                            title="Reimprimir recibo térmico"
+                            title="Reimprimir recibo tÃ©rmico"
                           >
                             <Print24Regular className="w-4 h-4" />
                             {reprintingSaleId === sale.id ? "..." : "Reimprimir"}
@@ -2333,4 +2333,5 @@ function parseServerUtcDate(value?: string | null) {
   if (!value) return null;
   return /(?:Z|[+-]\d{2}:\d{2})$/.test(value) ? new Date(value) : new Date(`${value}Z`);
 }
+
 
