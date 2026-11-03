@@ -1044,7 +1044,7 @@ export function ReportsScreen() {
             <DialogHeader>
               <DialogTitle>Detalhes da Venda</DialogTitle>
               <DialogDescription>
-                Recibo #{selectedSale?.receipt_number || selectedSale?.id} �?� {selectedSale && formatTime(selectedSale.created_at)}
+                Recibo #{selectedSale?.receipt_number || selectedSale?.id} • {selectedSale && formatTime(selectedSale.created_at)}
               </DialogDescription>
             </DialogHeader>
 
@@ -1666,7 +1666,7 @@ function DailyReportsView({
         <div className="flex-1 overflow-y-auto fluent-card p-2">
           <p className="text-xs text-muted-foreground px-2 pt-2 pb-3 border-b border-border mb-2">
             {format(parseISO(startDate), "dd/MM/yyyy", { locale: ptBR })}
-            {" �?" "}
+            {" até "}
             {format(parseISO(endDate), "dd/MM/yyyy", { locale: ptBR })}
           </p>
           {dailyLoading ? (
@@ -1737,9 +1737,9 @@ function DailyReportsView({
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       {daySummary?.total_sales ?? daySales.length} vendas
-                      {selectedDay ? ` �?� ${selectedDay.services_count} serviço(s)` : ""}
-                      {selectedDay ? ` �?� ${selectedDay.outflows_count} saída(s)` : ""}
-                      {daySummary ? ` �?� Vendas: ${formatCurrency(daySummary.total_revenue)}` : ""}
+                      {selectedDay ? ` • ${selectedDay.services_count} serviço(s)` : ""}
+                      {selectedDay ? ` • ${selectedDay.outflows_count} saída(s)` : ""}
+                      {daySummary ? ` • Vendas: ${formatCurrency(daySummary.total_revenue)}` : ""}
                     </p>
                   )}
                 </div>
@@ -1864,7 +1864,7 @@ function DailyReportsView({
                     <h3 className="text-lg font-semibold">Serviços prestados</h3>
                   </div>
                   <Badge variant="outline">
-                    {dayServiceOrders.length} �?� {formatCurrency(serviceRevenue)}
+                    {dayServiceOrders.length} • {formatCurrency(serviceRevenue)}
                   </Badge>
                 </div>
                 {dayServicesLoading ? (
@@ -1952,7 +1952,7 @@ function DailyReportsView({
                             outflow.created_by_name ||
                             (outflow.created_by
                               ? cashierNameByUserId.get(outflow.created_by) || `#${outflow.created_by}`
-                              : "�?"");
+                              : "-");
                           return (
                             <TableRow key={outflow.id}>
                               <TableCell className="font-medium">{formatTime(outflow.created_at)}</TableCell>
@@ -1963,16 +1963,16 @@ function DailyReportsView({
                               </TableCell>
                               <TableCell>
                                 {isProduct
-                                  ? outflow.product_name || outflow.title || "�?""
-                                  : outflow.title || "�?""}
+                                  ? outflow.product_name || outflow.title || "-"
+                                  : outflow.title || "-"}
                               </TableCell>
                               <TableCell>
-                                {OUTFLOW_REASON_LABELS[outflow.reason] || outflow.reason || "�?""}
+                                {OUTFLOW_REASON_LABELS[outflow.reason] || outflow.reason || "-"}
                               </TableCell>
-                              <TableCell>{outflow.destination || "�?""}</TableCell>
-                              <TableCell>{isProduct ? formatQuantity(outflow.quantity || "0") : "�?""}</TableCell>
+                              <TableCell>{outflow.destination || "-"}</TableCell>
+                              <TableCell>{isProduct ? formatQuantity(outflow.quantity || "0") : "-"}</TableCell>
                               <TableCell className="font-semibold text-primary">
-                                {isProduct ? "�?"" : formatCurrency(outflow.amount || 0)}
+                                {isProduct ? "-" : formatCurrency(outflow.amount || 0)}
                               </TableCell>
                               <TableCell>{operator}</TableCell>
                             </TableRow>
