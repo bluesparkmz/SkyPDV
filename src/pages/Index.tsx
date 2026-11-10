@@ -1,7 +1,7 @@
 import { FluentProvider, webLightTheme } from "@fluentui/react-components";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { SkyPDV } from "@/components/SkyPDV";
 import { Login } from "@/components/Login";
 import { LandingPage } from "@/components/LandingPage";
@@ -64,11 +64,7 @@ const AppContent = () => {
 };
 
 const Index = () => {
-  return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
-  );
+  return <AppContent />;
 };
 
 export default Index;
