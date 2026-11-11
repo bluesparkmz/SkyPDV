@@ -1,15 +1,27 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
+import { Copy, LogOut, RefreshCw, Search, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Login } from "@/components/Login";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ApiError } from "@/services/api";
 import {
+  createManagerInvoice,
+  getManagerBillingOptions,
   getManagerOverview,
   listManagerTerminals,
+  markManagerInvoicePaid,
   updateManagerTerminal,
+  type ManagerBillingOptions,
+  type ManagerInvoice,
   type ManagerOverview,
   type ManagerTerminal,
 } from "@/services/managerApi";
@@ -49,6 +61,12 @@ export default function ManagerPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
+  const [billingOptions, setBillingOptions] = useState<ManagerBillingOptions | null>(null);
+  const [invoiceTerminal, setInvoiceTerminal] = useState<ManagerTerminal | null>(null);
+  const [invoicePlan, setInvoicePlan] = useState<"basic" | "pro">("basic");
+  const [invoiceMonths, setInvoiceMonths] = useState(1);
+  const [invoiceBusy, setInvoiceBusy] = useState(false);
+  const [lastInvoice, setLastInvoice] = useState<ManagerInvoice | null>(null);
 
   const loadData = useCallback(
     async (overrides: { q?: string; subFilter?: SubFilter; offset?: number } = {}) => {
@@ -110,17 +128,53 @@ export default function ManagerPage() {
     }
   }
 
-  async function toggleActive(terminal: ManagerTerminal) {
-    setBusyId(terminal.id);
+  async function openInvoice(terminal: ManagerTerminal) {
+    setInvoiceTerminal(terminal);
+    setLastInvoice(null);
+    setInvoicePlan("basic");
+    setInvoiceMonths(1);
     try {
-      const updated = await updateManagerTerminal(terminal.id, { active: !terminal.active });
-      setItems((current) => current.map((item) => (item.id === updated.id ? updated : item)));
+      if (!billingOptions) {
+        setBillingOptions(await getManagerBillingOptions());
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao carregar opções de cobrança");
+    }
+  }
+
+  async function createInvoice() {
+    if (!invoiceTerminal) return;
+    setInvoiceBusy(true);
+    setError(null);
+    try {
+      const invoice = await createManagerInvoice(invoiceTerminal.id, {
+        plan: invoicePlan,
+        months: invoiceMonths,
+      });
+      setLastInvoice(invoice);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Falha ao criar fatura");
+    } finally {
+      setInvoiceBusy(false);
+    }
+  }
+
+  async function confirmTransferPaid() {
+    if (!lastInvoice) return;
+    setInvoiceBusy(true);
+    try {
+      const paid = await markManagerInvoicePaid(lastInvoice.id, "Transferência M-Pesa confirmada no manager");
+      setLastInvoice(paid);
       await loadData();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Falha ao atualizar");
+      setError(cause instanceof Error ? cause.message : "Falha ao marcar pago");
     } finally {
-      setBusyId(null);
+      setInvoiceBusy(false);
     }
+  }
+
+  function copyText(value: string) {
+    void navigator.clipboard?.writeText(value);
   }
 
   if (access === "checking" || isLoading) {
@@ -213,7 +267,7 @@ export default function ManagerPage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">Terminais SkyPDV</h1>
           <p className="mt-2 text-sm text-muted-foreground">
-            Gestão de plataforma: lojas, donos e estado da assinatura.
+            Gestão de plataforma: faturação SkyWallet / transferência. Por agora a loja não é desligada por falta de pagamento.
           </p>
         </div>
 
@@ -335,27 +389,18 @@ export default function ManagerPage() {
                         <div className="flex flex-wrap gap-1.5">
                           <Button
                             size="sm"
+                            disabled={busyId === terminal.id}
+                            onClick={() => void openInvoice(terminal)}
+                          >
+                            Cobrar
+                          </Button>
+                          <Button
+                            size="sm"
                             variant="outline"
                             disabled={busyId === terminal.id}
                             onClick={() => void setSubscription(terminal, "active")}
                           >
                             Activar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={busyId === terminal.id}
-                            onClick={() => void setSubscription(terminal, "suspended")}
-                          >
-                            Suspender
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            disabled={busyId === terminal.id}
-                            onClick={() => void toggleActive(terminal)}
-                          >
-                            {terminal.active ? "Desactivar" : "Reactivar"}
                           </Button>
                         </div>
                       </td>
@@ -399,6 +444,123 @@ export default function ManagerPage() {
           </div>
         </section>
       </main>
+
+      <Dialog
+        open={!!invoiceTerminal}
+        onOpenChange={(open) => {
+          if (!open) {
+            setInvoiceTerminal(null);
+            setLastInvoice(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Cobrar {invoiceTerminal?.name}</DialogTitle>
+            <DialogDescription>
+              Cria fatura + link SkyWallet para {invoiceTerminal?.owner.email}. Quando pagar, a assinatura activa.
+            </DialogDescription>
+          </DialogHeader>
+
+          {!lastInvoice ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1 text-sm">
+                  <span className="text-muted-foreground">Plano</span>
+                  <select
+                    className="h-10 w-full rounded-md border border-input bg-background px-3"
+                    value={invoicePlan}
+                    onChange={(event) => setInvoicePlan(event.target.value as "basic" | "pro")}
+                  >
+                    <option value="basic">
+                      Básico ({billingOptions?.plans.basic.amount_mzn ?? 1300} MZN)
+                    </option>
+                    <option value="pro">
+                      Pro ({billingOptions?.plans.pro.amount_mzn ?? 1950} MZN)
+                    </option>
+                  </select>
+                </label>
+                <label className="space-y-1 text-sm">
+                  <span className="text-muted-foreground">Meses</span>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={24}
+                    value={invoiceMonths}
+                    onChange={(event) => setInvoiceMonths(Math.max(1, Number(event.target.value) || 1))}
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Alternativa: transferência para {(billingOptions?.transfer.numbers || ["860716912", "852411827"]).join(" · ")}
+              </p>
+              <Button className="w-full" disabled={invoiceBusy} onClick={() => void createInvoice()}>
+                {invoiceBusy ? "A criar link…" : "Criar link de cobrança"}
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4 text-sm">
+              <div className="rounded-xl border border-border bg-muted/40 p-4">
+                <p className="font-semibold capitalize">
+                  Fatura {lastInvoice.plan} · {lastInvoice.months} mês(es)
+                </p>
+                <p className="mt-1 text-2xl font-bold">
+                  {lastInvoice.amount} {lastInvoice.currency}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">Ref: {lastInvoice.order_id}</p>
+                <p className="mt-1 text-xs capitalize text-muted-foreground">Estado: {lastInvoice.status}</p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="font-medium">Link de pagamento</p>
+                <div className="flex gap-2">
+                  <Input readOnly value={lastInvoice.payment_url || ""} />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => copyText(lastInvoice.payment_url || "")}
+                  >
+                    <Copy className="size-4" />
+                  </Button>
+                </div>
+                {lastInvoice.payment_url ? (
+                  <Button className="w-full" asChild>
+                    <a href={lastInvoice.payment_url} target="_blank" rel="noreferrer">
+                      Abrir link
+                    </a>
+                  </Button>
+                ) : null}
+              </div>
+
+              <div className="rounded-xl border border-border p-4">
+                <p className="font-medium">Ou transferência M-Pesa</p>
+                <div className="mt-2 space-y-1">
+                  {(lastInvoice.transfer?.numbers || ["860716912", "852411827"]).map((number) => (
+                    <button
+                      key={number}
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-lg bg-muted/50 px-3 py-2 font-mono text-sm hover:bg-muted"
+                      onClick={() => copyText(number)}
+                    >
+                      {number}
+                      <Copy className="size-3.5 text-muted-foreground" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {lastInvoice.status === "paid" ? (
+                <p className="text-center font-medium text-emerald-700">Pago — assinatura activada.</p>
+              ) : (
+                <Button variant="outline" className="w-full" disabled={invoiceBusy} onClick={() => void confirmTransferPaid()}>
+                  {invoiceBusy ? "A confirmar…" : "Marcar transferência como paga"}
+                </Button>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

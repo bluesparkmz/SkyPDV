@@ -105,3 +105,60 @@ export function updateManagerTerminal(
     body: JSON.stringify(payload),
   });
 }
+
+export type ManagerInvoice = {
+  id: number;
+  terminal_id: number;
+  terminal_name?: string | null;
+  owner_email?: string | null;
+  plan: string;
+  months: number;
+  amount: number;
+  currency: string;
+  status: string;
+  order_id: string;
+  payment_url?: string | null;
+  payment_method?: string | null;
+  notes?: string | null;
+  paid_at?: string | null;
+  created_at?: string | null;
+  transfer: {
+    method: string;
+    numbers: string[];
+    label: string;
+    hint: string;
+  };
+  skywallet_enabled: boolean;
+};
+
+export type ManagerBillingOptions = {
+  plans: Record<string, { label: string; amount_mzn: number }>;
+  transfer: {
+    method: string;
+    numbers: string[];
+    label: string;
+    hint: string;
+  };
+  skywallet_enabled: boolean;
+};
+
+export function getManagerBillingOptions() {
+  return managerFetch<ManagerBillingOptions>("/manager/billing/options");
+}
+
+export function createManagerInvoice(
+  terminalId: number,
+  payload: { plan?: string; months?: number; amount_mzn?: number; notes?: string },
+) {
+  return managerFetch<ManagerInvoice>(`/manager/terminals/${terminalId}/invoices`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function markManagerInvoicePaid(invoiceId: number, notes?: string) {
+  return managerFetch<ManagerInvoice>(`/manager/invoices/${invoiceId}/mark-paid`, {
+    method: "POST",
+    body: JSON.stringify({ notes, payment_method: "transfer" }),
+  });
+}
